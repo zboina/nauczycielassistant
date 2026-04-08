@@ -57,10 +57,9 @@ class ScannerController extends AbstractController
             return $this->redirectToRoute('app_scanner_index');
         }
 
-        // Read and encode image
-        $imageData = file_get_contents($file->getPathname());
-        $mimeType = $file->getMimeType() ?: 'image/jpeg';
-        $base64 = 'data:' . $mimeType . ';base64,' . base64_encode($imageData);
+        // Read, resize and encode image (smaller = more accurate for table OCR)
+        $imageData = $this->optimizeImage($file->getPathname(), $file->getMimeType() ?: 'image/jpeg');
+        $base64 = 'data:image/jpeg;base64,' . base64_encode($imageData);
 
         // Call AI vision — always scan first, then match
         $builder = new AnswerScannerPromptBuilder();
@@ -71,7 +70,7 @@ class ScannerController extends AbstractController
                 userPrompt: $userPrompt,
                 systemPrompt: AnswerScannerPromptBuilder::SYSTEM_PROMPT,
                 module: 'answer_scanner',
-                model: 'google/gemini-2.5-pro',
+                model: 'google/gemini-2.5-flash-image',
                 maxTokens: 2000,
                 owner: $this->getUser(),
                 imageBase64: $base64,
@@ -80,7 +79,7 @@ class ScannerController extends AbstractController
             $scanned = AnswerScannerPromptBuilder::parseResponse($result);
 
             if (!$scanned) {
-                $this->addFlash('warning', 'AI nie mogło odczytać karty. Spróbuj zrobić wyraźniejsze zdjęcie.');
+                $this->addFlash('warning', 'AI nie zwróciło poprawnego formatu. Surowa odpowiedź: ' . mb_substr($result, 0, 200));
                 return $this->redirectToRoute('app_scanner_index');
             }
 
@@ -131,6 +130,47 @@ class ScannerController extends AbstractController
             $this->addFlash('error', $e->getMessage());
             return $this->redirectToRoute('app_scanner_index');
         }
+    }
+
+    /**
+     * Resize image to max 1200px and convert to high-contrast JPEG.
+     */
+    private function optimizeImage(string $path, string $mimeType): string
+    {
+        $img = match (true) {
+            str_contains($mimeType, 'png') => @imagecreatefrompng($path),
+            str_contains($mimeType, 'webp') => @imagecreatefromwebp($path),
+            default => @imagecreatefromjpeg($path),
+        };
+
+        if (!$img) {
+            return file_get_contents($path); // fallback: raw file
+        }
+
+        $w = imagesx($img);
+        $h = imagesy($img);
+        $maxDim = 1200;
+
+        if ($w > $maxDim || $h > $maxDim) {
+            $ratio = min($maxDim / $w, $maxDim / $h);
+            $newW = (int) ($w * $ratio);
+            $newH = (int) ($h * $ratio);
+            $resized = imagecreatetruecolor($newW, $newH);
+            imagecopyresampled($resized, $img, 0, 0, 0, 0, $newW, $newH, $w, $h);
+            imagedestroy($img);
+            $img = $resized;
+        }
+
+        // Increase contrast for better OCR
+        imagefilter($img, IMG_FILTER_CONTRAST, -20);
+        imagefilter($img, IMG_FILTER_BRIGHTNESS, 10);
+
+        ob_start();
+        imagejpeg($img, null, 90);
+        $data = ob_get_clean();
+        imagedestroy($img);
+
+        return $data;
     }
 
     /**

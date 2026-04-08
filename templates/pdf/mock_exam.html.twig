@@ -53,8 +53,8 @@ body { font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; line-height: 1.5
 .ac-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
 .ac-table th, .ac-table td { border: 1.5px solid #000; text-align: center; padding: 5px 4px; font-size: 10pt; }
 .ac-table th { background: #ddd; font-weight: bold; font-size: 10pt; }
-.ac-cell { display: inline-block; width: 28px; height: 28px; border: 2.5px solid #000; text-align: center; line-height: 24px; font-weight: bold; font-size: 12pt; }
-.ac-cell-filled { background: #000; color: #fff; }
+.ac-cell { display: inline-block; width: 22px; height: 22px; border: 2px solid #000; }
+.ac-cell-filled { background: #000; }
 .ac-nr { font-weight: bold; width: 35px; font-size: 12pt; }
 
 .footer { text-align: center; font-size: 7pt; color: #999; margin-top: 15px; border-top: 1px solid #ddd; padding-top: 5px; }
@@ -166,7 +166,7 @@ body { font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; line-height: 1.5
         </div>
 
         <div class="answer-card-info">
-            ✎ Zaznacz wybraną odpowiedź przekreślając literę w kratce.
+            ✎ Zaznacz wybraną odpowiedź stawiając wyraźny X w kratce.
             Zaznacz TYLKO JEDNĄ odpowiedź w każdym wierszu.
         </div>
 
@@ -187,9 +187,9 @@ body { font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; line-height: 1.5
                         {% for letter in ['A','B','C','D'] %}
                             <td>
                                 {% if showAnswers and cq.correct == letter %}
-                                    <span class="ac-cell ac-cell-filled">{{ letter }}</span>
+                                    <span class="ac-cell ac-cell-filled"></span>
                                 {% else %}
-                                    <span class="ac-cell">{{ letter }}</span>
+                                    <span class="ac-cell"></span>
                                 {% endif %}
                             </td>
                         {% endfor %}

@@ -71,6 +71,7 @@ class ScannerController extends AbstractController
                 userPrompt: $userPrompt,
                 systemPrompt: AnswerScannerPromptBuilder::SYSTEM_PROMPT,
                 module: 'answer_scanner',
+                model: 'google/gemini-2.5-pro',
                 maxTokens: 2000,
                 owner: $this->getUser(),
                 imageBase64: $base64,

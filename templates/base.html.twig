@@ -31,14 +31,20 @@
             .navbar-vertical .navbar-nav .nav-item.active > .nav-link { background: rgba(var(--tblr-primary-rgb), .08); color: var(--tblr-primary); font-weight: 600; }
             .result-box { white-space: pre-wrap; font-family: Georgia, serif; line-height: 1.8; background: #fff; border: 1px solid #e6e8eb; border-radius: .5rem; padding: 1.25rem; }
             .empty-icon i { color: #626976; }
+            /* Mobile sidebar fix */
+            @media (max-width: 991.98px) {
+                .navbar-vertical { position: fixed; top: 0; left: 0; right: 0; z-index: 1050; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+                .navbar-vertical .navbar-collapse { max-height: calc(100vh - 60px); overflow-y: auto; }
+                .page-wrapper { padding-top: 60px; }
+            }
         </style>
         {% block stylesheets %}{% endblock %}
         {% block javascripts %}
             {% block importmap %}{{ importmap('app') }}{% endblock %}
         {% endblock %}
     </head>
-    <body class="d-flex flex-column">
-        <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.2.0/dist/js/tabler.min.js" defer></script>
+    <body class="d-flex flex-column" data-bs-no-jquery>
+        <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.2.0/dist/js/tabler.min.js"></script>
         {% block layout %}
         <div class="page">
             {# ── SIDEBAR ─────────────────────────────── #}
@@ -175,8 +181,17 @@
                                         </div>
                                     </a>
                                     <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+                                        <a href="{{ path('app_profile') }}" class="dropdown-item">
+                                            <i class="ti ti-user me-2"></i>Mój profil
+                                        </a>
+                                        {% if is_granted('ROLE_ADMIN') %}
+                                            <a href="{{ path('app_admin_index') }}" class="dropdown-item">
+                                                <i class="ti ti-users-group me-2"></i>Zarządzanie użytkownikami
+                                            </a>
+                                        {% endif %}
+                                        <div class="dropdown-divider"></div>
                                         <a href="{{ path('app_logout') }}" class="dropdown-item text-danger">
-                                            <i class="ti ti-logout me-2"></i> Wyloguj
+                                            <i class="ti ti-logout me-2"></i>Wyloguj
                                         </a>
                                     </div>
                                 </div>
@@ -225,8 +240,10 @@
             </div>
         </div>
 
-        {# ── AI Loading Modal ──────────────────────────── #}
-        <div class="modal modal-blur fade" id="aiLoadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        {% endblock %}
+
+        {# ── AI Loading Modal (outside layout block — persists across Turbo) ── #}
+        <div class="modal modal-blur fade" id="aiLoadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" data-turbo-permanent>
             <div class="modal-dialog modal-sm modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-body text-center py-4">
@@ -246,51 +263,67 @@
             </div>
         </div>
 
-        <script defer>
-        document.addEventListener('DOMContentLoaded', function() {
-            var timer = null, modalInstance = null;
-            var modalEl = document.getElementById('aiLoadingModal');
+        <script>
+        /* ═══ Nauczyciel Assistant — global scripts ═══ */
 
-            function showAiLoading(message) {
-                document.getElementById('aiLoadingMessage').textContent = message || 'Trwa generowanie treści...';
-                var timerEl = document.getElementById('aiLoadingTimer');
-                var sec = 0; timerEl.textContent = '0';
-                clearInterval(timer);
-                timer = setInterval(function(){ sec++; timerEl.textContent = sec; }, 1000);
-                if (!modalInstance) modalInstance = new bootstrap.Modal(modalEl, {backdrop:'static', keyboard:false});
-                modalInstance.show();
+        /* 1. AI Loading Modal — pure DOM, zero dependencies */
+        var _aiTimer = null;
+        window.showAiLoading = function(msg) {
+            var el = document.getElementById('aiLoadingModal');
+            if (!el) return;
+            document.getElementById('aiLoadingMessage').textContent = msg || 'Trwa generowanie treści...';
+            var t = document.getElementById('aiLoadingTimer'), sec = 0;
+            if (t) t.textContent = '0';
+            clearInterval(_aiTimer);
+            _aiTimer = setInterval(function(){ sec++; if(t) t.textContent = sec; }, 1000);
+            // Show: pure CSS — no bootstrap dependency
+            el.style.display = 'block';
+            el.offsetHeight; // force reflow
+            el.classList.add('show');
+            document.body.classList.add('modal-open');
+            document.body.style.overflow = 'hidden';
+            if (!document.querySelector('.modal-backdrop')) {
+                var bd = document.createElement('div');
+                bd.className = 'modal-backdrop fade show';
+                document.body.appendChild(bd);
             }
+        };
+        window.hideAiLoading = function() {
+            clearInterval(_aiTimer);
+            var el = document.getElementById('aiLoadingModal');
+            if (el) { el.classList.remove('show'); el.style.display = 'none'; }
+            document.querySelectorAll('.modal-backdrop').forEach(function(b){ b.remove(); });
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+        };
 
-            function hideAiLoading() {
-                clearInterval(timer);
-                if (modalInstance) try { modalInstance.hide(); } catch(e) {}
-            }
-
-            // Listen for both native submit and Turbo submit
-            function onFormSubmit(e) {
-                var form = e.target;
-                if (!form.matches || !form.matches('form')) form = form.closest ? form.closest('form') : null;
-                if (form && form.hasAttribute('data-ai-loading')) {
-                    showAiLoading(form.getAttribute('data-ai-loading'));
-                }
-            }
-
-            document.addEventListener('submit', onFormSubmit, true);
-            document.addEventListener('turbo:submit-start', function(e) {
-                var form = e.target;
-                if (form && form.hasAttribute && form.hasAttribute('data-ai-loading')) {
-                    showAiLoading(form.getAttribute('data-ai-loading'));
-                }
+        /* 2. Attach to ALL forms with data-ai-loading + reinit Bootstrap */
+        function _initPage() {
+            // Attach AI modal to forms
+            document.querySelectorAll('form[data-ai-loading]').forEach(function(f) {
+                if (f._ai) return; f._ai = 1;
+                f.addEventListener('submit', function(){ window.showAiLoading(f.getAttribute('data-ai-loading')); });
             });
+            // Reinit Bootstrap dropdowns & collapses (for Turbo)
+            if (typeof bootstrap !== 'undefined') {
+                document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function(el){ bootstrap.Dropdown.getOrCreateInstance(el); });
+                document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(el){ if(!bootstrap.Collapse.getInstance(el)) new bootstrap.Collapse(el,{toggle:false}); });
+            }
+        }
+        // Run on every page state
+        document.addEventListener('DOMContentLoaded', _initPage);
+        document.addEventListener('turbo:load', function(){ window.hideAiLoading(); _initPage(); });
+        document.addEventListener('turbo:render', _initPage);
+        document.addEventListener('turbo:before-render', function(){ window.hideAiLoading(); });
 
-            // Hide on page load (after redirect)
-            document.addEventListener('turbo:before-render', hideAiLoading);
-            document.addEventListener('turbo:load', hideAiLoading);
-
-            window.showAiLoading = showAiLoading;
-            window.hideAiLoading = hideAiLoading;
+        /* 3. Turbo submit-start — catches Turbo-intercepted forms */
+        document.addEventListener('turbo:submit-start', function(e){
+            var f = e.detail && e.detail.formSubmission ? e.detail.formSubmission.formElement : null;
+            if (!f) f = e.target;
+            if (f && f.getAttribute && f.getAttribute('data-ai-loading')) {
+                window.showAiLoading(f.getAttribute('data-ai-loading'));
+            }
         });
         </script>
-        {% endblock %}
     </body>
 </html>

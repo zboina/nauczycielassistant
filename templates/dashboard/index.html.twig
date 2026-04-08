@@ -5,172 +5,298 @@
 {% block title_text %}Dashboard{% endblock %}
 
 {% block body %}
-{# ── Stat cards ─────────────────────────── #}
-<div class="row row-deck row-cards mb-4">
-    <div class="col-sm-6 col-lg-3">
-        <div class="card card-sm">
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-auto">
-                        <span class="bg-primary text-white avatar"><i class="ti ti-file-text"></i></span>
-                    </div>
-                    <div class="col">
-                        <div class="font-weight-medium">{{ testsCount }}</div>
-                        <div class="text-secondary">Sprawdziany</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card card-sm">
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-auto">
-                        <span class="bg-green text-white avatar"><i class="ti ti-notebook"></i></span>
-                    </div>
-                    <div class="col">
-                        <div class="font-weight-medium">{{ worksheetsCount }}</div>
-                        <div class="text-secondary">Karty pracy</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card card-sm">
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-auto">
-                        <span class="bg-orange text-white avatar"><i class="ti ti-mail-forward"></i></span>
-                    </div>
-                    <div class="col">
-                        <div class="font-weight-medium">{{ parentInfoCount }}</div>
-                        <div class="text-secondary">Info dla rodziców</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card card-sm">
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-auto">
-                        <span class="bg-purple text-white avatar"><i class="ti ti-robot"></i></span>
-                    </div>
-                    <div class="col">
-                        <div class="font-weight-medium">{{ aiStats.totalRequests ?? 0 }}</div>
-                        <div class="text-secondary">Zapytania AI</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="row g-4">
 
-{# ── Quick access modules ────────────────── #}
-<div class="row row-deck row-cards mb-4">
-    <div class="col-md-4">
-        <a href="{{ path('app_generate_test') }}" class="card card-link card-link-pop">
-            <div class="card-body text-center py-4">
-                <span class="avatar avatar-xl bg-primary-lt mb-3 rounded">
-                    <i class="ti ti-robot" style="font-size: 1.5rem;"></i>
-                </span>
-                <h3 class="mb-1">Generatory AI</h3>
-                <p class="text-secondary mb-0">Sprawdziany, karty pracy, informacje</p>
-            </div>
-        </a>
-    </div>
-    <div class="col-md-4">
-        <a href="{{ path('app_literature_index') }}" class="card card-link card-link-pop">
-            <div class="card-body text-center py-4">
-                <span class="avatar avatar-xl bg-green-lt mb-3 rounded">
-                    <i class="ti ti-book-2" style="font-size: 1.5rem;"></i>
-                </span>
-                <h3 class="mb-1">Lektury kl. 4-8</h3>
-                <p class="text-secondary mb-0">Baza lektur, pytania, streszczenia</p>
-            </div>
-        </a>
-    </div>
-    <div class="col-md-4">
-        <a href="{{ path('app_classroom_timer') }}" class="card card-link card-link-pop">
-            <div class="card-body text-center py-4">
-                <span class="avatar avatar-xl bg-orange-lt mb-3 rounded">
-                    <i class="ti ti-chalkboard" style="font-size: 1.5rem;"></i>
-                </span>
-                <h3 class="mb-1">Narzędzia lekcyjne</h3>
-                <p class="text-secondary mb-0">Timer, losowanie, dyktowanie</p>
-            </div>
-        </a>
-    </div>
-    <div class="col-md-4">
-        <a href="{{ path('app_theory_index') }}" class="card card-link card-link-pop">
-            <div class="card-body text-center py-4">
-                <span class="avatar avatar-xl bg-purple-lt mb-3 rounded">
-                    <i class="ti ti-school" style="font-size: 1.5rem;"></i>
-                </span>
-                <h3 class="mb-1">Teoria</h3>
-                <p class="text-secondary mb-0">PP MEN, gatunki, środki stylistyczne, gramatyka</p>
-            </div>
-        </a>
-    </div>
-</div>
+    {# ── Left column ──────────────────────── #}
+    <div class="col-lg-8">
 
-{# ── Recent materials table ──────────────── #}
-<div class="card">
-    <div class="card-header">
-        <h3 class="card-title"><i class="ti ti-clock me-2"></i>Ostatnio wygenerowane</h3>
-        <div class="card-actions">
-            <a href="{{ path('app_generate_history') }}" class="btn btn-link">Zobacz wszystko</a>
+        {# Today card #}
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="avatar avatar-xl rounded bg-primary-lt text-primary" style="font-size:1.5rem;font-weight:bold;">
+                            {{ 'now'|date('d') }}
+                        </span>
+                    </div>
+                    <div class="col">
+                        <h2 class="mb-1" style="text-transform:capitalize;">{{ todayFormatted }}</h2>
+                        {% if nameDays %}
+                            <div class="text-secondary"><i class="ti ti-gift me-1"></i>Imieniny: <strong>{{ nameDays }}</strong></div>
+                        {% endif %}
+                    </div>
+                    <div class="col-auto text-end d-none d-md-block">
+                        <div class="text-secondary" style="font-size:.85rem;">
+                            <i class="ti ti-clock me-1"></i><span id="liveTime">{{ 'now'|date('H:i') }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if historicalEvents|length > 0 %}
+                    <div class="mt-3 pt-3 border-top">
+                        <div class="fw-bold small text-uppercase text-secondary mb-2">
+                            <i class="ti ti-calendar-event me-1"></i>Tego dnia w historii
+                        </div>
+                        {% for event in historicalEvents %}
+                            <div class="d-flex gap-2 mb-1">
+                                <i class="ti ti-point-filled text-primary flex-shrink-0" style="margin-top:3px;"></i>
+                                <span style="font-size:.88rem;">{{ event }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
         </div>
+
+        {# Stat cards #}
+        <div class="row row-deck row-cards mb-4">
+            <div class="col-6 col-lg-3">
+                <div class="card card-sm">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-auto"><span class="bg-primary text-white avatar"><i class="ti ti-file-text"></i></span></div>
+                            <div class="col">
+                                <div class="fw-bold fs-3">{{ testsCount }}</div>
+                                <div class="text-secondary small">Sprawdziany</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card card-sm">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-auto"><span class="bg-green text-white avatar"><i class="ti ti-notebook"></i></span></div>
+                            <div class="col">
+                                <div class="fw-bold fs-3">{{ worksheetsCount }}</div>
+                                <div class="text-secondary small">Karty pracy</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card card-sm">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-auto"><span class="bg-orange text-white avatar"><i class="ti ti-writing"></i></span></div>
+                            <div class="col">
+                                <div class="fw-bold fs-3">{{ pendingReviews }}</div>
+                                <div class="text-secondary small">Do sprawdzenia</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card card-sm">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-auto"><span class="bg-purple text-white avatar"><i class="ti ti-robot"></i></span></div>
+                            <div class="col">
+                                <div class="fw-bold fs-3">{{ aiStats.totalRequests ?? 0 }}</div>
+                                <div class="text-secondary small">Zapytania AI</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Quick access #}
+        <div class="row row-deck row-cards mb-4">
+            <div class="col-6 col-md-3">
+                <a href="{{ path('app_generate_test_index') }}" class="card card-link card-link-pop">
+                    <div class="card-body text-center py-3">
+                        <span class="avatar avatar-lg bg-primary-lt mb-2 rounded"><i class="ti ti-file-text" style="font-size:1.3rem;"></i></span>
+                        <div class="fw-medium">Sprawdziany</div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{{ path('app_generate_worksheet_index') }}" class="card card-link card-link-pop">
+                    <div class="card-body text-center py-3">
+                        <span class="avatar avatar-lg bg-green-lt mb-2 rounded"><i class="ti ti-notebook" style="font-size:1.3rem;"></i></span>
+                        <div class="fw-medium">Karty pracy</div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{{ path('app_essay_index') }}" class="card card-link card-link-pop">
+                    <div class="card-body text-center py-3">
+                        <span class="avatar avatar-lg bg-orange-lt mb-2 rounded"><i class="ti ti-writing" style="font-size:1.3rem;"></i></span>
+                        <div class="fw-medium">Wypracowania</div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{{ path('app_exam8_index') }}" class="card card-link card-link-pop">
+                    <div class="card-body text-center py-3">
+                        <span class="avatar avatar-lg bg-red-lt mb-2 rounded"><i class="ti ti-certificate" style="font-size:1.3rem;"></i></span>
+                        <div class="fw-medium">Egzamin 8-kl.</div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{{ path('app_literature_index') }}" class="card card-link card-link-pop">
+                    <div class="card-body text-center py-3">
+                        <span class="avatar avatar-lg bg-blue-lt mb-2 rounded"><i class="ti ti-book-2" style="font-size:1.3rem;"></i></span>
+                        <div class="fw-medium">Lektury</div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{{ path('app_lesson_plan_index') }}" class="card card-link card-link-pop">
+                    <div class="card-body text-center py-3">
+                        <span class="avatar avatar-lg bg-purple-lt mb-2 rounded"><i class="ti ti-clipboard-text" style="font-size:1.3rem;"></i></span>
+                        <div class="fw-medium">Konspekty</div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{{ path('app_scanner_index') }}" class="card card-link card-link-pop">
+                    <div class="card-body text-center py-3">
+                        <span class="avatar avatar-lg bg-teal-lt mb-2 rounded"><i class="ti ti-scan" style="font-size:1.3rem;"></i></span>
+                        <div class="fw-medium">Skaner</div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{{ path('app_theory_index') }}" class="card card-link card-link-pop">
+                    <div class="card-body text-center py-3">
+                        <span class="avatar avatar-lg bg-secondary-lt mb-2 rounded"><i class="ti ti-school" style="font-size:1.3rem;"></i></span>
+                        <div class="fw-medium">Teoria</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
     </div>
-    {% if recentMaterials|length > 0 %}
-        <div class="table-responsive">
-            <table class="table table-vcenter card-table">
-                <thead>
-                    <tr>
-                        <th>Typ</th>
-                        <th>Tytuł / Kontekst</th>
-                        <th>Klasa</th>
-                        <th>Data</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for material in recentMaterials %}
-                        <tr>
-                            <td>
-                                {% if material.type == 'test' %}
-                                    <span class="badge bg-primary-lt"><i class="ti ti-file-text me-1"></i>Sprawdzian</span>
-                                {% elseif material.type == 'worksheet' %}
-                                    <span class="badge bg-green-lt"><i class="ti ti-notebook me-1"></i>Karta pracy</span>
-                                {% elseif material.type == 'parent_info' %}
-                                    <span class="badge bg-orange-lt"><i class="ti ti-mail me-1"></i>Info</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <a href="{{ path('app_generate_history_show', {id: material.id}) }}" class="text-reset">
-                                    {{ material.title ?? material.subjectContext|u.truncate(50) }}
-                                </a>
-                            </td>
-                            <td><span class="text-secondary">{{ material.classLevel }}</span></td>
-                            <td><span class="text-secondary">{{ material.createdAt|date('d.m.Y H:i') }}</span></td>
-                        </tr>
+
+    {# ── Right column ─────────────────────── #}
+    <div class="col-lg-4">
+
+        {# Upcoming deadlines #}
+        {% if upcomingDeadlines|length > 0 %}
+        <div class="card mb-3">
+            <div class="card-status-start bg-red"></div>
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-alarm me-2"></i>Nadchodzące terminy</h3></div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for essay in upcomingDeadlines %}
+                        <a href="{{ path('app_essay_show', {id: essay.id}) }}" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <div class="fw-medium">{{ essay.topic|u.truncate(40) }}</div>
+                                    <div class="text-secondary small">{{ essay.writingFormLabel }} · kl. {{ essay.classLevel }}</div>
+                                </div>
+                                <div class="text-end">
+                                    {% set daysLeft = (essay.deadline.timestamp - 'now'|date('U')) // 86400 %}
+                                    <span class="badge {{ daysLeft <= 1 ? 'bg-red' : (daysLeft <= 3 ? 'bg-orange' : 'bg-blue') }}-lt">
+                                        {% if daysLeft <= 0 %}dziś!
+                                        {% elseif daysLeft == 1 %}jutro
+                                        {% else %}za {{ daysLeft }} dni{% endif %}
+                                    </span>
+                                    <div class="text-secondary small">{{ essay.deadline|date('d.m H:i') }}</div>
+                                </div>
+                            </div>
+                        </a>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <div class="card-body">
-            <div class="empty">
-                <div class="empty-icon"><i class="ti ti-mood-smile" style="font-size: 2.5rem;"></i></div>
-                <p class="empty-title">Brak materiałów</p>
-                <p class="empty-subtitle text-secondary">Wygeneruj pierwszy sprawdzian lub kartę pracy!</p>
-                <div class="empty-action">
-                    <a href="{{ path('app_generate_test') }}" class="btn btn-primary"><i class="ti ti-robot me-2"></i>Generuj sprawdzian</a>
                 </div>
             </div>
         </div>
-    {% endif %}
+        {% endif %}
+
+        {# Active essays #}
+        {% if activeEssays|length > 0 %}
+        <div class="card mb-3">
+            <div class="card-status-start bg-green"></div>
+            <div class="card-header">
+                <h3 class="card-title"><i class="ti ti-writing me-2"></i>Aktywne wypracowania</h3>
+                <div class="card-actions"><span class="badge bg-green">{{ activeEssays|length }}</span></div>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for essay in activeEssays %}
+                        <a href="{{ path('app_essay_show', {id: essay.id}) }}" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-medium">{{ essay.topic|u.truncate(35) }}</div>
+                                    <div class="text-secondary small">kl. {{ essay.classLevel }} · kod: <strong>{{ essay.accessCode }}</strong></div>
+                                </div>
+                                <span class="badge bg-blue-lt">{{ essay.submissionCount }} prac</span>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {# Quick stats summary #}
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-chart-pie me-2"></i>Podsumowanie</h3></div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-secondary">Sprawdziany (ten miesiąc)</span>
+                    <strong>{{ testsCount }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-secondary">Karty pracy</span>
+                    <strong>{{ worksheetsCount }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-secondary">Info dla rodziców</span>
+                    <strong>{{ parentInfoCount }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-secondary">Arkusze egzaminacyjne</span>
+                    <strong>{{ examsCount }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-secondary">Prace do sprawdzenia</span>
+                    <strong class="{{ pendingReviews > 0 ? 'text-orange' : '' }}">{{ pendingReviews }}</strong>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <span class="text-secondary">Zapytania AI (ten miesiąc)</span>
+                    <strong>{{ aiStats.totalRequests ?? 0 }}</strong>
+                </div>
+            </div>
+        </div>
+
+        {# Tip of the day #}
+        {% set tips = [
+            'Użyj skanera odpowiedzi, by szybko sprawdzić karty z pytaniami zamkniętymi.',
+            'Włącz 2FA w profilu, aby lepiej chronić swoje konto.',
+            'Generuj sprawdziany w wersji A i B — wystarczy dodać "wersja B" w uwagach.',
+            'Możesz przenosić lektury między klasami w widoku lektury.',
+            'Wypracowania uczniów sprawdzisz kodem — wystarczy podać go uczniom.',
+            'Detekcja AI-autorstwa pomoże Ci zweryfikować, czy uczeń pisał samodzielnie.',
+            'Konspekty lekcji eksportujesz do PDF — idealne na obserwację dyrektora.',
+            'Arkusze próbne egzaminu 8-kl. mają kartę odpowiedzi z kodem do skanowania.',
+        ] %}
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex gap-3">
+                    <span class="avatar avatar-lg rounded bg-yellow-lt flex-shrink-0"><i class="ti ti-bulb" style="font-size:1.3rem;"></i></span>
+                    <div>
+                        <div class="fw-bold small text-uppercase text-secondary mb-1">Porada dnia</div>
+                        <div style="font-size:.88rem;">{{ tips[('now'|date('z')) % tips|length] }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
+
+<script>
+// Live clock
+setInterval(function() {
+    var el = document.getElementById('liveTime');
+    if (el) el.textContent = new Date().toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
+}, 30000);
+</script>
 {% endblock %}

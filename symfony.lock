@@ -50,6 +50,9 @@
             "bin/phpunit"
         ]
     },
+    "scheb/2fa-bundle": {
+        "version": "v7.13.1"
+    },
     "symfony/asset-mapper": {
         "version": "7.4",
         "recipe": {

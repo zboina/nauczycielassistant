@@ -15,11 +15,45 @@
     <div class="col-lg-5 col-xl-4">
         <div class="card sticky-top" style="top: 1rem;">
             <div class="card-header"><h3 class="card-title"><i class="ti ti-adjustments me-2"></i>Parametry konspektu</h3></div>
-            <div class="card-body">
+            <div class="card-body" x-data="topicSuggestor()">
                 {{ form_start(form, {'attr': {'novalidate': 'novalidate', 'data-ai-loading': 'Trwa generowanie konspektu...'}}) }}
-                <div class="mb-3">{{ form_label(form.literature) }}{{ form_widget(form.literature, {'attr': {'class': 'form-select'}}) }}{{ form_errors(form.literature) }}</div>
-                <div class="mb-3">{{ form_label(form.classLevel) }}{{ form_widget(form.classLevel, {'attr': {'class': 'form-control'}}) }}{{ form_errors(form.classLevel) }}</div>
-                <div class="mb-3">{{ form_label(form.lessonTopic) }}{{ form_widget(form.lessonTopic, {'attr': {'class': 'form-control'}}) }}{{ form_errors(form.lessonTopic) }}</div>
+                <div class="mb-3">
+                    {{ form_label(form.literature) }}
+                    {{ form_widget(form.literature, {'attr': {'class': 'form-select', 'x-ref': 'litSelect', '@change': 'onLiteratureChange()', 'x-model': 'litId'}}) }}
+                    {{ form_errors(form.literature) }}
+                </div>
+                <div class="mb-3">
+                    {{ form_label(form.classLevel) }}
+                    {{ form_widget(form.classLevel, {'attr': {'class': 'form-control', 'x-ref': 'classInput'}}) }}
+                    {{ form_errors(form.classLevel) }}
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        {{ form_label(form.lessonTopic) }}
+                        <button type="button" class="btn btn-outline-purple btn-sm mb-1"
+                                @click="suggestTopics()" :disabled="loading || !litId">
+                            <template x-if="!loading"><span><i class="ti ti-sparkles me-1"></i>Podpowiedz tematy AI</span></template>
+                            <template x-if="loading"><span><i class="ti ti-loader ti-spin me-1"></i>Generuję...</span></template>
+                        </button>
+                    </div>
+                    {{ form_widget(form.lessonTopic, {'attr': {'class': 'form-control', 'x-ref': 'topicInput'}}) }}
+                    {{ form_errors(form.lessonTopic) }}
+
+                    {# Topic suggestions #}
+                    <div x-show="topics.length > 0" x-transition class="mt-2">
+                        <div class="d-flex flex-wrap gap-1">
+                            <template x-for="(topic, i) in topics" :key="i">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-secondary text-start"
+                                        style="font-size:.78rem;"
+                                        @click="pickTopic(topic)"
+                                        x-text="topic">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                    <div x-show="error" class="alert alert-danger mt-2 py-1 small" x-text="error"></div>
+                </div>
                 <div class="row">
                     <div class="col-6 mb-3">{{ form_label(form.duration) }}{{ form_widget(form.duration, {'attr': {'class': 'form-select'}}) }}</div>
                     <div class="col-6 mb-3">{{ form_label(form.focus) }}{{ form_widget(form.focus, {'attr': {'class': 'form-select'}}) }}</div>
@@ -28,6 +62,69 @@
                 <button type="submit" class="btn btn-primary w-100"><i class="ti ti-sparkles me-2"></i>Generuj konspekt</button>
                 {{ form_end(form) }}
             </div>
+
+            <script>
+            function topicSuggestor() {
+                return {
+                    litId: '',
+                    topics: [],
+                    loading: false,
+                    error: '',
+
+                    onLiteratureChange() {
+                        this.topics = [];
+                        this.error = '';
+                        // Auto-fill class from literature option text
+                        var opt = this.$refs.litSelect.selectedOptions[0];
+                        if (opt && opt.text) {
+                            var m = opt.text.match(/kl\.\s*(\d)/);
+                            if (m) this.$refs.classInput.value = m[1];
+                        }
+                    },
+
+                    async suggestTopics() {
+                        var litId = this.litId;
+                        var classLevel = this.$refs.classInput.value;
+                        if (!litId) { this.error = 'Najpierw wybierz lekturę.'; return; }
+                        if (!classLevel) classLevel = '7';
+
+                        this.loading = true;
+                        this.error = '';
+                        this.topics = [];
+
+                        try {
+                            var fd = new FormData();
+                            fd.append('literatureId', litId);
+                            fd.append('classLevel', classLevel);
+
+                            var resp = await fetch('{{ path("app_lesson_plan_suggest_topics") }}', {
+                                method: 'POST',
+                                body: fd,
+                                headers: {'X-Requested-With': 'XMLHttpRequest'}
+                            });
+                            var data = await resp.json();
+
+                            if (data.topics && data.topics.length > 0) {
+                                this.topics = data.topics;
+                            } else if (data.error) {
+                                this.error = data.error;
+                            } else {
+                                this.error = 'Brak propozycji — spróbuj ponownie.';
+                            }
+                        } catch(e) {
+                            this.error = 'Błąd połączenia: ' + e.message;
+                        } finally {
+                            this.loading = false;
+                        }
+                    },
+
+                    pickTopic(topic) {
+                        this.$refs.topicInput.value = topic;
+                        this.$refs.topicInput.focus();
+                    }
+                };
+            }
+            </script>
         </div>
     </div>
 

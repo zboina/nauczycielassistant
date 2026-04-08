@@ -2,365 +2,443 @@
 
 {% block title %}Losowanie — Nauczyciel Assistant{% endblock %}
 {% block pretitle_text %}Narzędzia lekcyjne{% endblock %}
-{% block title_text %}Losowanie uczniów{% endblock %}
+{% block title_text %}Koło fortuny{% endblock %}
+
+{% block stylesheets %}
+<style>
+    #wheelCanvas { max-width:100%;height:auto;border-radius:50%;box-shadow:0 4px 24px rgba(0,0,0,.15); }
+    .wheel-pointer { position:absolute;top:-14px;left:50%;transform:translateX(-50%);z-index:5;font-size:1.8rem;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3)); }
+    .wheel-winner-bar { margin-top:.5rem; }
+    .wheel-winner-number { font-size:2.5rem;font-weight:900;font-family:'Courier New',monospace;color:var(--tblr-primary); }
+    .wheel-winner-label { display:block;color:#666;font-size:.8rem; }
+
+    .wheel-fullscreen {
+        position:fixed!important; top:0!important; left:0!important; right:0!important; bottom:0!important;
+        z-index:9999!important; margin:0!important; border-radius:0!important;
+        background:#f1f5f9!important;
+    }
+    .wheel-fullscreen .card-body {
+        display:flex; flex-direction:column; align-items:center; justify-content:center;
+        height:100vh; padding:10px!important; overflow:hidden;
+    }
+    .wheel-fullscreen .wheel-pointer { font-size:2.2rem; top:-18px; }
+    .wheel-fullscreen .wheel-winner-number { font-size:4rem; }
+    .wheel-fullscreen .wheel-winner-bar { margin-top:.25rem; }
+    .wheel-fullscreen .mt-3 { margin-top:.5rem!important; }
+
+    .winner-modal-number {
+        font-size: 12rem; font-weight: 900; line-height: 1;
+        font-family: 'Courier New', monospace; color: #fff;
+        text-shadow: 0 0 80px rgba(26,86,219,.8), 0 0 160px rgba(26,86,219,.4);
+        animation: winnerPulse 1s ease-in-out infinite alternate;
+    }
+    @keyframes winnerPulse {
+        from { transform: scale(1); text-shadow: 0 0 80px rgba(26,86,219,.8); }
+        to   { transform: scale(1.05); text-shadow: 0 0 120px rgba(26,86,219,1), 0 0 200px rgba(26,86,219,.5); }
+    }
+    @media (max-width: 600px) {
+        .winner-modal-number { font-size: 7rem; }
+    }
+</style>
+{% endblock %}
 
 {% block body %}
-<div x-data="randomApp()" x-init="init()">
+<div x-data="wheelApp()" x-init="init()" @keydown.escape.window="if(isFullscreen) toggleFullscreen()">
 <div class="row g-4">
     {# Left — settings #}
-    <div class="col-lg-4">
+    <div class="col-lg-3">
         <div class="card mb-3">
             <div class="card-header"><h3 class="card-title"><i class="ti ti-settings me-2"></i>Ustawienia</h3></div>
             <div class="card-body">
                 <div class="mb-3">
-                    <label class="form-label">Liczba uczniów w klasie</label>
-                    <input type="number" class="form-control" min="1" max="50" x-model.number="totalStudents" @change="reset()">
+                    <label class="form-label">Liczba uczniów</label>
+                    <input type="number" class="form-control" min="2" max="50" x-model.number="totalStudents" @change="buildWheel()">
                 </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-secondary btn-sm flex-fill" @click="setTotal(25)">25</button>
-                    <button class="btn btn-outline-secondary btn-sm flex-fill" @click="setTotal(28)">28</button>
-                    <button class="btn btn-outline-secondary btn-sm flex-fill" @click="setTotal(30)">30</button>
-                    <button class="btn btn-outline-secondary btn-sm flex-fill" @click="setTotal(32)">32</button>
-                    <button class="btn btn-outline-secondary btn-sm flex-fill" @click="setTotal(35)">35</button>
+                <div class="d-flex gap-1 flex-wrap mb-3">
+                    <template x-for="n in [25,28,30,32,35]">
+                        <button class="btn btn-sm btn-outline-secondary flex-fill" @click="totalStudents=n; buildWheel()" x-text="n"></button>
+                    </template>
                 </div>
+                <label class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" x-model="noRepeat">
+                    <span class="form-check-label">Bez powtórzeń</span>
+                </label>
+                <button class="btn btn-outline-secondary btn-sm w-100" @click="resetAll()"><i class="ti ti-refresh me-1"></i>Reset</button>
             </div>
         </div>
 
         {# Number grid #}
         <div class="card mb-3" x-show="totalStudents > 0">
-            <div class="card-header">
-                <h3 class="card-title">Numery</h3>
-                <div class="card-actions">
-                    <button class="btn btn-sm btn-ghost-secondary" @click="reset()"><i class="ti ti-refresh me-1"></i>Reset</button>
-                </div>
-            </div>
-            <div class="card-body">
+            <div class="card-header py-2"><h3 class="card-title" style="font-size:.85rem;">Numery</h3></div>
+            <div class="card-body py-2">
                 <div class="d-flex flex-wrap gap-1">
                     <template x-for="n in totalStudents" :key="n">
-                        <button class="btn btn-sm" style="width:42px;"
+                        <button class="btn btn-sm" style="width:36px;height:30px;padding:0;font-size:.75rem;"
                                 :class="{
-                                    'btn-success': drawn.includes(n) && n !== selectedNumber,
-                                    'btn-primary': n === selectedNumber,
+                                    'btn-success': drawn.includes(n),
                                     'btn-danger opacity-50': excluded.includes(n),
-                                    'btn-outline-secondary': !drawn.includes(n) && !excluded.includes(n) && n !== selectedNumber
+                                    'btn-outline-secondary': !drawn.includes(n) && !excluded.includes(n)
                                 }"
-                                @click="toggleExclude(n)"
-                                :title="excluded.includes(n) ? 'Kliknij aby przywrócić' : 'Kliknij aby wykluczyć (nieobecny)'"
-                                x-text="n">
+                                @click="toggleExclude(n)" x-text="n">
                         </button>
                     </template>
                 </div>
-                <div class="mt-3 text-secondary small">
-                    <i class="ti ti-info-circle me-1"></i>Kliknij numer, aby wykluczyć nieobecnego ucznia
+                <div class="mt-2 text-secondary" style="font-size:.7rem;">
+                    Kliknij numer = wyklucz nieobecnego
                 </div>
             </div>
-            <div class="card-footer text-secondary small">
-                <span x-text="availableCount"></span> dostępnych /
-                <span x-text="drawn.length"></span> wylosowanych /
+            <div class="card-footer py-2 text-secondary" style="font-size:.75rem;">
+                <span x-text="availableNumbers.length"></span> dostępnych ·
+                <span x-text="drawn.length"></span> wylosowanych ·
                 <span x-text="excluded.length"></span> nieobecnych
-            </div>
-        </div>
-    </div>
-
-    {# Right — draw area #}
-    <div class="col-lg-8">
-        <div class="card" style="overflow:hidden;">
-            <div class="card-body text-center py-5" style="position:relative;">
-                {# Confetti canvas #}
-                <canvas id="confettiCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;"></canvas>
-
-                <div style="min-height: 220px; display: flex; align-items: center; justify-content: center; position: relative;">
-                    <div x-show="totalStudents === 0" class="text-secondary" style="font-size: 1.3rem;">
-                        Podaj liczbę uczniów w klasie
-                    </div>
-                    <div x-show="totalStudents > 0 && !selectedNumber && !spinning && availableCount > 0" class="text-secondary" style="font-size: 1.3rem;">
-                        Kliknij "Losuj"
-                    </div>
-                    <div x-show="totalStudents > 0 && availableCount === 0 && !spinning && !selectedNumber" class="text-success fw-medium" style="font-size: 1.3rem;">
-                        Wszyscy wylosowani! Kliknij "Reset".
-                    </div>
-
-                    {# Slot-machine style spinner #}
-                    <div x-show="spinning" class="slot-container">
-                        <div class="slot-window">
-                            <div class="slot-number" x-text="spinningNumber"
-                                 :style="'color:' + spinColor"></div>
-                        </div>
-                    </div>
-
-                    {# Winner reveal #}
-                    <div x-show="selectedNumber && !spinning" class="winner-reveal" x-text="selectedNumber"></div>
-                </div>
-
-                <div class="d-flex justify-content-center gap-3 align-items-center mt-3">
-                    <button class="btn btn-primary btn-lg px-5 btn-draw" @click="draw()" :disabled="totalStudents === 0 || availableCount === 0 || spinning">
-                        <i class="ti ti-dice-5 me-2"></i> Losuj!
-                    </button>
-                    <label class="form-check d-inline-flex align-items-center gap-2 mb-0">
-                        <input class="form-check-input" type="checkbox" x-model="noRepeat">
-                        <span class="form-check-label">Bez powtórzeń</span>
-                    </label>
-                </div>
             </div>
         </div>
 
         {# History #}
-        <div class="card mt-3" x-show="history.length > 0">
-            <div class="card-header">
-                <h3 class="card-title"><i class="ti ti-history me-2"></i>Historia losowań</h3>
-                <div class="card-actions"><button class="btn btn-sm btn-ghost-secondary" @click="history = []">Wyczyść</button></div>
+        <div class="card" x-show="history.length > 0">
+            <div class="card-header py-2">
+                <h3 class="card-title" style="font-size:.85rem;"><i class="ti ti-history me-1"></i>Historia</h3>
+                <div class="card-actions"><button class="btn btn-sm btn-ghost-secondary" style="font-size:.7rem;" @click="history=[]">Wyczyść</button></div>
             </div>
-            <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
-                <table class="table table-vcenter card-table table-sm">
-                    <tbody>
-                        <template x-for="(h, i) in history.slice().reverse()" :key="i">
-                            <tr>
-                                <td style="width:60px;"><span class="badge bg-primary-lt" x-text="'#' + (history.length - i)"></span></td>
-                                <td><span class="fw-bold" style="font-size:1.1rem;font-family:'Courier New',monospace;" x-text="'Numer ' + h.number"></span></td>
-                                <td class="text-secondary text-end" x-text="h.time"></td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
+            <div class="card-body py-1" style="max-height:200px;overflow-y:auto;">
+                <template x-for="(h,i) in history.slice().reverse()" :key="i">
+                    <div class="d-flex justify-content-between py-1" style="font-size:.8rem;">
+                        <span><span class="badge bg-primary-lt me-1" x-text="'#'+(history.length-i)"></span> Numer <strong x-text="h.number"></strong></span>
+                        <span class="text-secondary" x-text="h.time"></span>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    {# Right — wheel #}
+    <div class="col-lg-9">
+        <div class="card" id="wheelContainer" :class="{'wheel-fullscreen': isFullscreen}">
+            <div class="card-body text-center" style="position:relative;padding:1.5rem;">
+                {# Wheel #}
+                <div style="position:relative;display:inline-block;" id="wheelWrapper">
+                    {# Pointer arrow #}
+                    <div class="wheel-pointer">▼</div>
+                    <canvas id="wheelCanvas" width="500" height="500"></canvas>
+                </div>
+
+                {# Buttons #}
+                <div class="d-flex justify-content-center gap-3 mt-3">
+                    <template x-if="!spinning && !stopping">
+                        <button class="btn btn-primary px-5" :class="isFullscreen ? 'btn-lg' : ''" @click="spin()" :disabled="totalStudents < 2 || availableNumbers.length === 0">
+                            <i class="ti ti-player-play-filled me-2"></i>Losuj!
+                        </button>
+                    </template>
+                    <template x-if="spinning && !stopping">
+                        <button class="btn btn-danger px-5" :class="isFullscreen ? 'btn-lg' : ''" @click="stopSpin()">
+                            <i class="ti ti-player-stop-filled me-2"></i>STOP!
+                        </button>
+                    </template>
+                    <template x-if="stopping">
+                        <button class="btn btn-secondary px-5" :class="isFullscreen ? 'btn-lg' : ''" disabled>
+                            <i class="ti ti-loader ti-spin me-2"></i>Czekaj...
+                        </button>
+                    </template>
+                    <button class="btn btn-outline-secondary" :class="isFullscreen ? 'btn-lg' : 'btn-sm'" @click="toggleFullscreen()">
+                        <i class="ti" :class="isFullscreen ? 'ti-arrows-minimize' : 'ti-arrows-maximize'"></i>
+                    </button>
+                </div>
+
+                <div x-show="totalStudents > 0 && availableNumbers.length === 0 && !spinning" class="alert alert-success mt-3 d-inline-block">
+                    Wszyscy wylosowani! Kliknij Reset.
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+{# ═══ Winner Modal ═══ #}
+<div x-show="showWinnerModal" x-transition.opacity.duration.300ms
+     style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7);"
+     @click.self="showWinnerModal=false">
+    <canvas id="confettiModalCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+    <div x-show="showWinnerModal" x-transition.scale.80.duration.400ms
+         style="text-align:center;position:relative;z-index:1;">
+        <div style="font-size:1.2rem;color:rgba(255,255,255,.6);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.3em;">Wylosowany numer</div>
+        <div class="winner-modal-number" x-text="winner"></div>
+        <button class="btn btn-light btn-lg mt-4 px-5" @click="showWinnerModal=false">
+            <i class="ti ti-x me-2"></i>Zamknij
+        </button>
+    </div>
 </div>
 
-<style>
-.slot-container {
-    perspective: 400px;
-}
-.slot-window {
-    width: 180px; height: 140px;
-    background: linear-gradient(180deg, rgba(0,0,0,.06) 0%, transparent 30%, transparent 70%, rgba(0,0,0,.06) 100%);
-    border-radius: 16px;
-    display: flex; align-items: center; justify-content: center;
-    overflow: hidden;
-    position: relative;
-    border: 3px solid #dee2e6;
-    box-shadow: inset 0 2px 8px rgba(0,0,0,.08);
-}
-.slot-number {
-    font-size: 6rem;
-    font-weight: 900;
-    font-family: 'Courier New', monospace;
-    animation: slotSpin .08s ease-in-out infinite;
-    text-shadow: 0 2px 4px rgba(0,0,0,.1);
-}
-@keyframes slotSpin {
-    0%   { transform: translateY(-20px); opacity: 0.3; }
-    50%  { transform: translateY(0); opacity: 1; }
-    100% { transform: translateY(20px); opacity: 0.3; }
-}
-.winner-reveal {
-    font-size: 8rem;
-    font-weight: 900;
-    font-family: 'Courier New', monospace;
-    color: var(--tblr-primary);
-    animation: winnerPop .6s cubic-bezier(.17,.67,.24,1.2) forwards;
-    text-shadow: 0 4px 20px rgba(var(--tblr-primary-rgb), .3);
-}
-@keyframes winnerPop {
-    0%   { transform: scale(0.1) rotate(-10deg); opacity: 0; }
-    50%  { transform: scale(1.2) rotate(3deg); opacity: 1; }
-    70%  { transform: scale(0.95) rotate(-1deg); }
-    100% { transform: scale(1) rotate(0); }
-}
-.btn-draw {
-    transition: transform .1s;
-}
-.btn-draw:active {
-    transform: scale(0.95);
-}
-</style>
+</div>
 
 <script>
-function randomApp() {
+function wheelApp() {
+    const COLORS = ['#1a56db','#d63939','#2fb344','#f76707','#ae3ec9','#0ca678','#f59f00','#e64980','#4263eb','#0b7285','#5c940d','#e8590c'];
+
     return {
         totalStudents: 0,
         drawn: [],
         excluded: [],
-        selectedNumber: null,
-        spinningNumber: '',
-        spinning: false,
         noRepeat: true,
         history: [],
+        spinning: false,
+        stopping: false,
+        winner: null,
+        angle: 0,
+        spinSpeed: 0,
+        stopRequested: false,
+        segments: [],
+        isFullscreen: false,
+        showWinnerModal: false,
+        _raf: null,
 
         init() {
-            const saved = localStorage.getItem('nauczyciel_random_total');
-            if (saved) this.totalStudents = parseInt(saved) || 0;
-            const savedExcl = localStorage.getItem('nauczyciel_random_excluded');
-            if (savedExcl) try { this.excluded = JSON.parse(savedExcl); } catch(e) {}
+            var s = localStorage.getItem('nau_wheel_total');
+            if (s) this.totalStudents = parseInt(s) || 0;
+            var e = localStorage.getItem('nau_wheel_excluded');
+            if (e) try { this.excluded = JSON.parse(e); } catch(x) {}
+            this.$nextTick(() => this.buildWheel());
+            // Resize wheel on window resize
+            var self = this;
+            window.addEventListener('resize', function() { self.resizeCanvas(); self.drawWheel(); });
         },
 
-        setTotal(n) {
-            this.totalStudents = n;
-            this.reset();
-        },
-
-        reset() {
-            this.drawn = [];
-            this.selectedNumber = null;
-            localStorage.setItem('nauczyciel_random_total', this.totalStudents);
-        },
-
-        toggleExclude(n) {
-            if (this.excluded.includes(n)) {
-                this.excluded = this.excluded.filter(x => x !== n);
-            } else {
-                this.excluded.push(n);
-                this.drawn = this.drawn.filter(x => x !== n);
-            }
-            localStorage.setItem('nauczyciel_random_excluded', JSON.stringify(this.excluded));
-        },
-
-        get availableCount() {
-            let count = 0;
-            for (let i = 1; i <= this.totalStudents; i++) {
-                if (!this.excluded.includes(i) && (!this.noRepeat || !this.drawn.includes(i))) count++;
-            }
-            return count;
-        },
-
-        getAvailableNumbers() {
-            const nums = [];
-            for (let i = 1; i <= this.totalStudents; i++) {
+        get availableNumbers() {
+            var nums = [];
+            for (var i = 1; i <= this.totalStudents; i++) {
                 if (!this.excluded.includes(i) && (!this.noRepeat || !this.drawn.includes(i))) nums.push(i);
             }
             return nums;
         },
 
-        spinColor: '#333',
+        toggleExclude(n) {
+            if (this.excluded.includes(n)) this.excluded = this.excluded.filter(x => x !== n);
+            else { this.excluded.push(n); this.drawn = this.drawn.filter(x => x !== n); }
+            localStorage.setItem('nau_wheel_excluded', JSON.stringify(this.excluded));
+            this.buildWheel();
+        },
 
-        draw() {
-            const available = this.getAvailableNumbers();
-            if (!available.length) return;
+        resetAll() {
+            this.drawn = [];
+            this.winner = null;
+            localStorage.setItem('nau_wheel_total', this.totalStudents);
+            this.buildWheel();
+        },
 
+        buildWheel() {
+            localStorage.setItem('nau_wheel_total', this.totalStudents);
+            var nums = this.availableNumbers;
+            // Shuffle for random placement
+            for (var i = nums.length - 1; i > 0; i--) {
+                var j = Math.floor(Math.random() * (i + 1));
+                var tmp = nums[i]; nums[i] = nums[j]; nums[j] = tmp;
+            }
+            this.segments = nums;
+            this.resizeCanvas();
+            this.drawWheel();
+        },
+
+        drawWheel() {
+            var canvas = document.getElementById('wheelCanvas');
+            if (!canvas) return;
+            var ctx = canvas.getContext('2d');
+            var W = canvas.width, H = canvas.height;
+            var cx = W/2, cy = H/2, R = W/2 - 10;
+            ctx.clearRect(0, 0, W, H);
+
+            var segs = this.segments;
+            if (segs.length === 0) {
+                ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI*2);
+                ctx.fillStyle = '#f1f5f9'; ctx.fill();
+                ctx.strokeStyle = '#dee2e6'; ctx.lineWidth = 3; ctx.stroke();
+                ctx.fillStyle = '#999'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText('Podaj liczbę uczniów', cx, cy);
+                return;
+            }
+
+            var sliceAngle = (Math.PI * 2) / segs.length;
+            var startAngle = this.angle;
+
+            segs.forEach((num, i) => {
+                var a1 = startAngle + i * sliceAngle;
+                var a2 = a1 + sliceAngle;
+
+                // Segment
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, R, a1, a2);
+                ctx.closePath();
+                ctx.fillStyle = COLORS[i % COLORS.length];
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Text
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(a1 + sliceAngle / 2);
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#fff';
+                var fontSize = segs.length <= 10 ? 22 : (segs.length <= 20 ? 16 : (segs.length <= 30 ? 13 : 10));
+                ctx.font = 'bold ' + fontSize + 'px "Courier New", monospace';
+                ctx.shadowColor = 'rgba(0,0,0,.4)';
+                ctx.shadowBlur = 2;
+                ctx.fillText(num, R * 0.65, 0);
+                ctx.restore();
+            });
+
+            // Center circle
+            ctx.beginPath(); ctx.arc(cx, cy, 28, 0, Math.PI*2);
+            ctx.fillStyle = '#fff'; ctx.fill();
+            ctx.strokeStyle = '#dee2e6'; ctx.lineWidth = 3; ctx.stroke();
+            ctx.fillStyle = '#333'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(segs.length, cx, cy);
+        },
+
+        spin() {
+            if (this.spinning || this.stopping || this.segments.length === 0) return;
             this.spinning = true;
-            this.selectedNumber = null;
-            this.spinColor = '#333';
+            this.stopping = false;
+            this.stopRequested = false;
+            this.winner = null;
+            this.spinSpeed = 0.15 + Math.random() * 0.1; // initial speed (rad/frame)
 
-            const winner = available[Math.floor(Math.random() * available.length)];
-            const totalTicks = 25 + Math.floor(Math.random() * 10);
-            let tick = 0;
-            const colors = ['#1a56db','#d63939','#2fb344','#f76707','#ae3ec9','#0ca678'];
-
-            const doTick = () => {
-                tick++;
-                // Show random number (last 3 ticks show winner to build suspense)
-                if (tick >= totalTicks - 2) {
-                    this.spinningNumber = winner;
+            var self = this;
+            function frame() {
+                if (self.stopRequested) {
+                    // Decelerate
+                    self.spinSpeed *= 0.985;
+                    if (self.spinSpeed < 0.001) {
+                        self.spinning = false;
+                        self.resolveWinner();
+                        return;
+                    }
                 } else {
-                    this.spinningNumber = available[Math.floor(Math.random() * available.length)];
+                    // Accelerate up to max
+                    if (self.spinSpeed < 0.4) self.spinSpeed *= 1.01;
                 }
-                this.spinColor = colors[tick % colors.length];
+                self.angle += self.spinSpeed;
+                self.drawWheel();
+                self._raf = requestAnimationFrame(frame);
+            }
+            self._raf = requestAnimationFrame(frame);
+        },
 
-                if (tick >= totalTicks) {
-                    // DONE — reveal winner
-                    this.spinningNumber = '';
-                    this.spinning = false;
-                    this.selectedNumber = winner;
-                    this.drawn.push(winner);
-                    this.history.push({
-                        number: winner,
-                        time: new Date().toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit', second:'2-digit'})
-                    });
-                    playWinSound();
-                    launchConfetti();
-                    return;
-                }
+        stopSpin() {
+            this.stopRequested = true;
+            this.stopping = true;
+        },
 
-                // Easing — starts fast, slows down at end
-                const progress = tick / totalTicks;
-                const delay = 50 + Math.pow(progress, 3) * 400;
-                setTimeout(doTick, delay);
-            };
-            doTick();
+        resolveWinner() {
+            if (this.segments.length === 0) return;
+            var sliceAngle = (Math.PI * 2) / this.segments.length;
+            // Pointer is at the top = -PI/2 in canvas coords
+            // The wheel is drawn starting from this.angle, segments go clockwise
+            // The segment under the pointer at -PI/2:
+            var pointerAngle = -Math.PI / 2;
+            // Which segment is at the pointer? Subtract the wheel rotation.
+            var relAngle = (pointerAngle - this.angle) % (Math.PI * 2);
+            if (relAngle < 0) relAngle += Math.PI * 2;
+            var idx = Math.floor(relAngle / sliceAngle) % this.segments.length;
+            var num = this.segments[idx];
+
+            this.spinning = false;
+            this.stopping = false;
+            this.winner = num;
+            this.showWinnerModal = true;
+            this.drawn.push(num);
+            this.history.push({
+                number: num,
+                time: new Date().toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit', second:'2-digit'})
+            });
+
+            playWinSound();
+            // Confetti on the modal canvas
+            setTimeout(function(){ launchConfetti('confettiModalCanvas'); }, 100);
+
+            // Rebuild wheel after delay
+            var self = this;
+            setTimeout(function(){ self.buildWheel(); }, 2500);
+        },
+
+        resizeCanvas() {
+            var canvas = document.getElementById('wheelCanvas');
+            if (!canvas) return;
+            var size;
+            if (this.isFullscreen) {
+                // Fit within viewport: leave 120px for winner text + buttons
+                size = Math.min(window.innerWidth - 40, window.innerHeight - 120);
+                size = Math.max(size, 250);
+            } else {
+                // Normal mode: fit the card width
+                var wrapper = document.getElementById('wheelWrapper');
+                var maxW = wrapper ? wrapper.parentElement.clientWidth - 40 : 500;
+                size = Math.min(500, maxW);
+            }
+            canvas.width = size;
+            canvas.height = size;
+        },
+
+        toggleFullscreen() {
+            this.isFullscreen = !this.isFullscreen;
+            var self = this;
+            // Wait for CSS to apply, then resize
+            setTimeout(function() {
+                self.resizeCanvas();
+                self.drawWheel();
+            }, 50);
         }
     };
 }
 
-// ─── Win sound ───────────────────────────────
+// ─── Win sound ───
 function playWinSound() {
     try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5 E5 G5 C6
-        notes.forEach((freq, i) => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.value = freq;
+        var ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [523.25, 659.25, 783.99, 1046.50].forEach(function(freq, i) {
+            var osc = ctx.createOscillator(), gain = ctx.createGain();
+            osc.type = 'sine'; osc.frequency.value = freq;
             gain.gain.value = 0.15;
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15 * i + 0.4);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start(ctx.currentTime + 0.1 * i);
-            osc.stop(ctx.currentTime + 0.1 * i + 0.4);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15*i + 0.4);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(ctx.currentTime + 0.1*i); osc.stop(ctx.currentTime + 0.1*i + 0.4);
         });
-        setTimeout(() => ctx.close().catch(()=>{}), 2000);
+        setTimeout(function(){ ctx.close().catch(function(){}); }, 2000);
     } catch(e) {}
 }
 
-// ─── Confetti ────────────────────────────────
-function launchConfetti() {
-    const canvas = document.getElementById('confettiCanvas');
+// ─── Confetti ───
+function launchConfetti(canvasId) {
+    var canvas = document.getElementById(canvasId || 'confettiCanvas');
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-
-    const colors = ['#1a56db','#d63939','#2fb344','#f76707','#ae3ec9','#f59f00','#0ca678','#e64980'];
-    const particles = [];
-
-    for (let i = 0; i < 80; i++) {
-        particles.push({
-            x: canvas.width / 2 + (Math.random() - 0.5) * 60,
-            y: canvas.height / 2,
-            vx: (Math.random() - 0.5) * 16,
-            vy: -Math.random() * 12 - 4,
-            w: Math.random() * 8 + 4,
-            h: Math.random() * 6 + 3,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            rotation: Math.random() * 360,
-            rotSpeed: (Math.random() - 0.5) * 15,
-            gravity: 0.25 + Math.random() * 0.15,
-            life: 1,
+    var ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
+    var colors = ['#1a56db','#d63939','#2fb344','#f76707','#ae3ec9','#f59f00','#0ca678','#e64980'];
+    var P = [];
+    for (var i = 0; i < 100; i++) {
+        P.push({
+            x: canvas.width/2 + (Math.random()-.5)*80, y: canvas.height/2,
+            vx: (Math.random()-.5)*18, vy: -Math.random()*14-4,
+            w: Math.random()*10+4, h: Math.random()*7+3,
+            c: colors[Math.floor(Math.random()*colors.length)],
+            r: Math.random()*360, rs: (Math.random()-.5)*15,
+            g: 0.25+Math.random()*0.15, life: 1
         });
     }
-
-    let frame = 0;
+    var fr = 0;
     function tick() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        let alive = false;
-
-        particles.forEach(p => {
-            p.x += p.vx;
-            p.vy += p.gravity;
-            p.y += p.vy;
-            p.rotation += p.rotSpeed;
-            p.life -= 0.012;
-            p.vx *= 0.99;
-
-            if (p.life <= 0) return;
-            alive = true;
-
-            ctx.save();
-            ctx.translate(p.x, p.y);
-            ctx.rotate(p.rotation * Math.PI / 180);
-            ctx.globalAlpha = Math.max(0, p.life);
-            ctx.fillStyle = p.color;
-            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-            ctx.restore();
+        var alive = false;
+        P.forEach(function(p) {
+            p.x += p.vx; p.vy += p.g; p.y += p.vy; p.r += p.rs; p.life -= 0.01; p.vx *= 0.99;
+            if (p.life <= 0) return; alive = true;
+            ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r*Math.PI/180);
+            ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.c;
+            ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h); ctx.restore();
         });
-
-        frame++;
-        if (alive && frame < 180) {
-            requestAnimationFrame(tick);
-        } else {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+        fr++;
+        if (alive && fr < 200) requestAnimationFrame(tick);
+        else ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
     requestAnimationFrame(tick);
 }

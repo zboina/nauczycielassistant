@@ -26,6 +26,54 @@ class LessonPlanController extends AbstractController
         private readonly PdfGenerator $pdf,
     ) {}
 
+    #[Route('/suggest-topics', name: 'app_lesson_plan_suggest_topics', methods: ['POST'])]
+    public function suggestTopics(Request $request): Response
+    {
+        $litId = $request->request->getInt('literatureId');
+        $classLevel = $request->request->get('classLevel', '');
+
+        $literature = $litId ? $this->em->getRepository(Literature::class)->find($litId) : null;
+        if (!$literature) {
+            return $this->json(['error' => 'Wybierz lekturę'], 400);
+        }
+
+        $prompt = <<<PROMPT
+Podaj 10 konkretnych, różnorodnych tematów lekcji języka polskiego do lektury "{$literature->getTitle()}" ({$literature->getAuthor()}) dla klasy {$classLevel} szkoły podstawowej.
+
+Tematy powinny być:
+- Zgodne z podstawą programową MEN
+- Zróżnicowane: analiza tekstu, charakterystyka bohaterów, problematyka, kontekst, język, dyskusja, twórcze pisanie
+- Sformułowane jak prawdziwe tematy lekcji (nie pytania)
+- Dostosowane do poziomu klasy {$classLevel}
+
+Odpowiedz WYŁĄCZNIE jako JSON array stringów, np:
+["Temat 1", "Temat 2", "Temat 3"]
+PROMPT;
+
+        try {
+            $result = $this->ai->generate(
+                userPrompt: $prompt,
+                systemPrompt: 'Jesteś doświadczonym nauczycielem języka polskiego. Odpowiadaj WYŁĄCZNIE poprawnym JSON-em (array stringów).',
+                module: 'topic_suggestions',
+                maxTokens: 1500,
+                owner: $this->getUser(),
+            );
+
+            $json = trim($result);
+            $json = preg_replace('/^```(?:json)?\s*/i', '', $json);
+            $json = preg_replace('/\s*```$/', '', $json);
+            $topics = json_decode(trim($json), true);
+
+            if (!is_array($topics)) {
+                return $this->json(['topics' => []]);
+            }
+
+            return $this->json(['topics' => array_values($topics)]);
+        } catch (\RuntimeException $e) {
+            return $this->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     #[Route('', name: 'app_lesson_plan_index')]
     public function index(Request $request, LessonPlanRepository $repo): Response
     {

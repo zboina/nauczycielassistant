@@ -1,0 +1,68 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nowy użytkownik — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Administracja{% endblock %}
+{% block title_text %}Dodaj użytkownika{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_admin_index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Lista użytkowników</a>
+{% endblock %}
+
+{% block body %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-user-plus me-2"></i>Nowy użytkownik</h3></div>
+            <div class="card-body">
+                <form method="post" action="{{ path('app_admin_user_create') }}" data-turbo="false">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Imię i nazwisko</label>
+                            <input type="text" name="fullName" class="form-control" required placeholder="Jan Kowalski">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Email</label>
+                            <input type="email" name="email" class="form-control" required placeholder="nauczyciel@szkola.pl">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Hasło</label>
+                            <input type="password" name="password" class="form-control" required minlength="6" placeholder="Min. 6 znaków">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Szkoła</label>
+                            <input type="text" name="schoolName" class="form-control" placeholder="SP nr 5">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Miasto</label>
+                            <input type="text" name="city" class="form-control" placeholder="Kraków">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-check form-switch">
+                                <input type="checkbox" name="isActive" value="1" class="form-check-input" checked>
+                                <span class="form-check-label">Konto aktywne</span>
+                            </label>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-check form-switch">
+                                <input type="checkbox" name="isAdmin" value="1" class="form-check-input">
+                                <span class="form-check-label">Administrator</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ti ti-user-plus me-1"></i>Utwórz użytkownika
+                        </button>
+                        <a href="{{ path('app_admin_index') }}" class="btn btn-outline-secondary">Anuluj</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

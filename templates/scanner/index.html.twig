@@ -27,11 +27,6 @@
                             <input type="hidden" name="sourceType" :value="sourceType">
                         </div>
 
-                        {# Auto mode info #}
-                        <div x-show="sourceType==='auto'" class="alert alert-info py-2" style="font-size:.85rem;">
-                            <i class="ti ti-scan me-1"></i>System odczyta kod sprawdzianu (np. <strong>T-42</strong>) z karty odpowiedzi i automatycznie dopasuje klucz.
-                        </div>
-
                         {# Test select #}
                         <div x-show="sourceType==='test'">
                             <select :name="sourceType==='test' ? 'sourceId' : ''" x-model="sourceId" class="form-select">
@@ -52,6 +47,15 @@
                             </select>
                         </div>
                     </div>
+
+                    <template x-if="sourceType==='auto'">
+                        <div class="alert alert-info mb-3 py-2 px-3">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="ti ti-info-circle flex-shrink-0" style="margin-top:2px;"></i>
+                                <small>Tryb automatyczny: system odczyta kod (np. T-42) z karty odpowiedzi i sam dopasuje klucz.</small>
+                            </div>
+                        </div>
+                    </template>
 
                     {# Photo upload #}
                     <div class="mb-3">

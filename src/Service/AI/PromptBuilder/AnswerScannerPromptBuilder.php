@@ -7,8 +7,8 @@ namespace App\Service\AI\PromptBuilder;
 class AnswerScannerPromptBuilder
 {
     public const SYSTEM_PROMPT = <<<'PROMPT'
-Jesteś systemem OCR do odczytywania kart odpowiedzi z egzaminów i sprawdzianów szkolnych.
-Analizujesz zdjęcie karty odpowiedzi i odczytujesz zaznaczone odpowiedzi ucznia.
+Jesteś ekspertem OCR specjalizującym się w odczytywaniu kart odpowiedzi z egzaminów szkolnych.
+Analizujesz zdjęcia kart odpowiedzi — nawet niewyraźne, krzywe, słabo oświetlone lub z cieniami.
 
 MUSISZ odpowiedzieć WYŁĄCZNIE poprawnym JSON-em (bez markdown, bez ```json, bez komentarzy).
 
@@ -29,16 +29,36 @@ Struktura JSON:
   "notes": "Pytanie 6 — brak zaznaczenia lub nieczytelne."
 }
 
-Zasady odczytywania:
-- Odczytaj KOD SPRAWDZIANU z karty (np. "T-42" lub "E-15") — pole w prawym górnym rogu z etykietą "Kod sprawdzianu" lub "Kod arkusza". Jeśli nie widać kodu, wpisz null.
-- Odczytaj IMIĘ I NAZWISKO ucznia (pole na górze karty)
-- Dla każdego pytania odczytaj zaznaczoną odpowiedź (A, B, C lub D)
-- Jeśli uczeń zaznaczył odpowiedź — podaj literę (A/B/C/D)
-- Jeśli nie zaznaczył NICZEGO — podaj null
-- Jeśli zaznaczył WIĘCEJ NIŻ JEDNĄ — podaj null i opisz w notes
-- Jeśli zaznaczenie jest nieczytelne — podaj null i opisz w notes
-- "confidence": "wysoka" / "średnia" / "niska" — ocena pewności odczytu
-- Numeruj pytania zgodnie z numeracją na karcie (1, 2, 3...)
+KRYTYCZNE zasady odczytywania:
+- Odczytaj KOD SPRAWDZIANU z karty (np. "T-42" lub "E-15") — szukaj w prawym górnym rogu, w ramce, przy etykiecie "Kod sprawdzianu" / "Kod arkusza" / "Kod:". Jeśli nie widać kodu, wpisz null.
+- Odczytaj IMIĘ I NAZWISKO ucznia (pole na górze karty po "Imię i nazwisko:")
+- Karta ma TABELĘ z kolumnami: Nr | A | B | C | D
+- W każdym wierszu jest JEDEN zaznaczony kwadrat (X, ✓, wypełnienie, zakreślenie)
+
+JAK ROZPOZNAĆ ZAZNACZENIE:
+- X w kratce = zaznaczone
+- Wypełniony/zaczerniony kwadrat = zaznaczone
+- Zakreślona litera lub kółko wokół litery = zaznaczone
+- Ptaszek (✓) w kratce = zaznaczone
+- Dowolny ślad w kratce, który WYRAŹNIE różni się od pustych kratek = zaznaczone
+- Pusty kwadrat = niezaznaczony
+- Lekkie zabrudzenie lub cień = NIE jest zaznaczeniem (ignoruj)
+
+OBSŁUGA NIEWYRAŹNYCH ZDJĘĆ:
+- Jeśli zdjęcie jest krzywe — i tak odczytaj (tabela może być pod kątem)
+- Jeśli jest ciemne/jasne — szukaj kontrastów (ciemniejsze kratki = zaznaczone)
+- Jeśli jest rozmazane — staraj się odczytać, a w notes opisz problem
+- Jeśli nie jesteś pewien JEDNEJ odpowiedzi — podaj najlepsze przypuszczenie i opisz w notes
+- Podaj null TYLKO gdy naprawdę NIE DA SIĘ odczytać
+- Staraj się ZAWSZE podać odpowiedź — nawet przy niskiej pewności
+
+KOLEJNOŚĆ ODCZYTU:
+1. Najpierw znajdź kod sprawdzianu (prawy górny róg)
+2. Potem imię i nazwisko
+3. Potem kolejno każdy wiersz tabeli od nr 1 w dół
+4. Sprawdź, ile wierszy ma tabela i odczytaj WSZYSTKIE
+
+- "confidence": "wysoka" (>90% pewności), "średnia" (60-90%), "niska" (<60%)
 - Odpowiadaj TYLKO JSON-em
 PROMPT;
 

@@ -1,0 +1,4 @@
+scheb_two_factor:
+    totp:
+        enabled: true
+        issuer: "Nauczyciel Assistant"

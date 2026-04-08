@@ -23,6 +23,8 @@ class LessonPlanRepository extends ServiceEntityRepository
     public function findByOwner(User $owner, ?string $classLevel = null): array
     {
         $qb = $this->createQueryBuilder('lp')
+            ->leftJoin('lp.literature', 'lit')
+            ->addSelect('lit')
             ->andWhere('lp.owner = :owner')
             ->setParameter('owner', $owner)
             ->orderBy('lp.createdAt', 'DESC');

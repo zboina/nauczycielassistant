@@ -249,11 +249,11 @@ body {
         {% set letters = ['A','B','C','D'] %}
         {% for key, opt in q.options %}
             <div class="option-box">
-                <span class="option-checkbox"></span>
                 <span class="option-letter">{{ letters[key] }}.</span>
                 {{ opt }}
             </div>
         {% endfor %}
+        <div style="font-size:7.5pt;color:#888;margin-top:3px;font-style:italic;">Odpowiedź zaznacz na karcie odpowiedzi.</div>
 
     {% elseif q.type == 'true_false' %}
         <div class="tf-boxes">

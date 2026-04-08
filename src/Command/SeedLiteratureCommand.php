@@ -38,6 +38,8 @@ class SeedLiteratureCommand extends Command
 
         $data = json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
 
+        // Nullify orphaned references before deleting literature
+        $this->em->getConnection()->executeStatement('UPDATE lesson_plan SET literature_id = NULL');
         // Clear existing data
         $this->em->createQuery('DELETE FROM App\Entity\LiteratureQuestion')->execute();
         $this->em->createQuery('DELETE FROM App\Entity\Literature')->execute();

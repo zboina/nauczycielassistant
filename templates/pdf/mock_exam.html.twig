@@ -72,6 +72,10 @@ body { font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; line-height: 1.5
     <tr><td>Klasa: <span class="dotted" style="min-width:80px;">&nbsp;</span> &nbsp;&nbsp; Data: <span class="dotted" style="min-width:120px;">&nbsp;</span></td></tr>
 </table>
 
+<div style="border:1px solid #999;padding:6px 10px;margin-bottom:12px;font-size:8.5pt;color:#333;background:#f8f8f8;">
+    <strong>INSTRUKCJA:</strong> Odpowiedzi do pytań zamkniętych (ABCD) zaznacz na <strong>karcie odpowiedzi</strong> dołączonej do arkusza, stawiając wyraźny X w odpowiednim polu. Odpowiedzi do pytań otwartych zapisz w wyznaczonych miejscach.
+</div>
+
 {% for part in data.parts ?? [] %}
     <div class="part-title">{{ part.name }}</div>
 
@@ -97,11 +101,11 @@ body { font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; line-height: 1.5
                     {% for opt in q.options %}
                         {% set isCorrect = showAnswers and q.correct is defined and opt starts with q.correct %}
                         <li class="{{ isCorrect ? 'correct' : '' }}">
-                            <span class="box"></span>{{ opt }}
-                            {% if isCorrect %} ✓{% endif %}
+                            {{ opt }}{% if isCorrect %} ✓{% endif %}
                         </li>
                     {% endfor %}
                 </ul>
+                <div style="font-size:7.5pt;color:#888;margin-top:2px;font-style:italic;">Odpowiedź zaznacz na karcie odpowiedzi.</div>
             {% else %}
                 {% set lines = q.points <= 2 ? 3 : (q.points <= 3 ? 5 : 8) %}
                 <div class="answer-lines">

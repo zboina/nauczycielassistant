@@ -1,0 +1,98 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Zarządzanie użytkownikami — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Administracja{% endblock %}
+{% block title_text %}Zarządzanie użytkownikami{% endblock %}
+
+{% block body %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title"><i class="ti ti-users me-2"></i>Użytkownicy ({{ users|length }})</h3>
+        <div class="card-actions">
+            <a href="{{ path('app_admin_user_create') }}" class="btn btn-primary btn-sm"><i class="ti ti-user-plus me-1"></i>Dodaj użytkownika</a>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+            <thead>
+                <tr>
+                    <th>Użytkownik</th>
+                    <th>Email</th>
+                    <th>Szkoła</th>
+                    <th>Rola</th>
+                    <th>2FA</th>
+                    <th>Status</th>
+                    <th>Rejestracja</th>
+                    <th class="text-end">Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                    <tr class="{{ not user.active ? 'bg-light text-secondary' : '' }}">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <span class="avatar avatar-sm rounded me-2" style="background-image:url('https://ui-avatars.com/api/?name={{ user.fullName|url_encode }}&background={{ user.admin ? 'dc3545' : '1a56db' }}&color=fff&size=32')"></span>
+                                <div class="fw-medium">{{ user.fullName }}</div>
+                            </div>
+                        </td>
+                        <td>{{ user.email }}</td>
+                        <td class="text-secondary">{{ user.schoolName ?? '—' }}</td>
+                        <td>
+                            {% if user.admin %}
+                                <span class="badge bg-red-lt">Admin</span>
+                            {% else %}
+                                <span class="badge bg-blue-lt">Nauczyciel</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.totpAuthenticationEnabled %}
+                                <span class="badge bg-green-lt"><i class="ti ti-shield-check"></i></span>
+                            {% else %}
+                                <span class="badge bg-secondary-lt"><i class="ti ti-shield-off"></i></span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.active %}
+                                <span class="badge bg-green-lt">Aktywny</span>
+                            {% else %}
+                                <span class="badge bg-red-lt">Zablokowany</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-secondary">{{ user.createdAt|date('d.m.Y') }}</td>
+                        <td class="text-end text-nowrap">
+                            {% if user != app.user %}
+                                <div class="btn-group">
+                                    <a href="{{ path('app_admin_user_edit', {id: user.id}) }}" class="btn btn-sm btn-ghost-primary" title="Edytuj">
+                                        <i class="ti ti-edit"></i>
+                                    </a>
+                                    <form method="post" action="{{ path('app_admin_user_toggle', {id: user.id}) }}" class="d-inline">
+                                        <button class="btn btn-sm {{ user.active ? 'btn-ghost-warning' : 'btn-ghost-success' }}" title="{{ user.active ? 'Zablokuj' : 'Odblokuj' }}">
+                                            <i class="ti {{ user.active ? 'ti-lock' : 'ti-lock-open' }}"></i>
+                                        </button>
+                                    </form>
+                                    <form method="post" action="{{ path('app_admin_user_role', {id: user.id}) }}" class="d-inline">
+                                        <button class="btn btn-sm btn-ghost-primary" title="{{ user.admin ? 'Usuń admina' : 'Nadaj admina' }}">
+                                            <i class="ti {{ user.admin ? 'ti-crown-off' : 'ti-crown' }}"></i>
+                                        </button>
+                                    </form>
+                                    <form method="post" action="{{ path('app_admin_user_reset_password', {id: user.id}) }}" class="d-inline" onsubmit="return confirm('Zresetować hasło?')">
+                                        <button class="btn btn-sm btn-ghost-secondary" title="Reset hasła"><i class="ti ti-key"></i></button>
+                                    </form>
+                                    <form method="post" action="{{ path('app_admin_user_delete', {id: user.id}) }}" class="d-inline" onsubmit="return confirm('UWAGA: Usunięcie użytkownika jest nieodwracalne!')">
+                                        <button class="btn btn-sm btn-ghost-danger" title="Usuń"><i class="ti ti-trash"></i></button>
+                                    </form>
+                                </div>
+                            {% else %}
+                                <a href="{{ path('app_admin_user_edit', {id: user.id}) }}" class="btn btn-sm btn-ghost-primary" title="Edytuj">
+                                    <i class="ti ti-edit me-1"></i>Edytuj
+                                </a>
+                                <span class="badge bg-secondary-lt ms-1">To Ty</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

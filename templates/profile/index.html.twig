@@ -1,0 +1,115 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Profil — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Konto{% endblock %}
+{% block title_text %}Mój profil{% endblock %}
+
+{% block body %}
+<div class="row g-4">
+    <div class="col-lg-8">
+        {# Profile edit #}
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-user me-2"></i>Dane profilu</h3></div>
+            <div class="card-body">
+                <form method="post" action="{{ path('app_profile_edit') }}" data-turbo="false">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Imię i nazwisko</label>
+                            <input type="text" name="fullName" class="form-control" value="{{ app.user.fullName }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" value="{{ app.user.email }}" disabled>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Szkoła</label>
+                            <input type="text" name="schoolName" class="form-control" value="{{ app.user.schoolName }}" placeholder="np. SP nr 5 w Krakowie">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Miasto</label>
+                            <input type="text" name="city" class="form-control" value="{{ app.user.city }}" placeholder="np. Kraków">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="ti ti-check me-1"></i>Zapisz zmiany</button>
+                </form>
+            </div>
+        </div>
+
+        {# Change password #}
+        <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-lock me-2"></i>Zmiana hasła</h3></div>
+            <div class="card-body">
+                <form method="post" action="{{ path('app_profile_change_password') }}" data-turbo="false">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Obecne hasło</label>
+                            <input type="password" name="currentPassword" class="form-control" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Nowe hasło</label>
+                            <input type="password" name="newPassword" class="form-control" required minlength="6">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Powtórz nowe hasło</label>
+                            <input type="password" name="confirmPassword" class="form-control" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary"><i class="ti ti-lock me-1"></i>Zmień hasło</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        {# 2FA #}
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-shield-check me-2"></i>Weryfikacja 2FA</h3></div>
+            <div class="card-body">
+                {% if app.user.totpSecret %}
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <span class="avatar avatar-lg rounded bg-green-lt"><i class="ti ti-shield-check" style="font-size:1.3rem;"></i></span>
+                        <div>
+                            <div class="fw-bold text-green">2FA włączone</div>
+                            <div class="text-secondary small">Twoje konto jest chronione kodem TOTP</div>
+                        </div>
+                    </div>
+                    <form method="post" action="{{ path('app_profile_2fa_disable') }}" onsubmit="return confirm('Na pewno wyłączyć 2FA?')">
+                        <button type="submit" class="btn btn-outline-danger w-100"><i class="ti ti-shield-off me-1"></i>Wyłącz 2FA</button>
+                    </form>
+                {% else %}
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <span class="avatar avatar-lg rounded bg-orange-lt"><i class="ti ti-shield-off" style="font-size:1.3rem;"></i></span>
+                        <div>
+                            <div class="fw-bold text-orange">2FA wyłączone</div>
+                            <div class="text-secondary small">Włącz dodatkową ochronę konta</div>
+                        </div>
+                    </div>
+                    <a href="{{ path('app_profile_2fa_enable') }}" class="btn btn-primary w-100"><i class="ti ti-shield-check me-1"></i>Włącz 2FA</a>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Account info #}
+        <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-info-circle me-2"></i>Informacje</h3></div>
+            <div class="card-body">
+                <div class="datagrid">
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Konto utworzono</div>
+                        <div class="datagrid-content">{{ app.user.createdAt|date('d.m.Y') }}</div>
+                    </div>
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Rola</div>
+                        <div class="datagrid-content">
+                            {% if app.user.admin %}<span class="badge bg-red-lt">Administrator</span>
+                            {% else %}<span class="badge bg-blue-lt">Nauczyciel</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

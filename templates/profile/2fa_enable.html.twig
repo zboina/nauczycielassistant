@@ -1,0 +1,62 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Włącz 2FA — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Konto{% endblock %}
+{% block title_text %}Konfiguracja weryfikacji 2FA{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_profile') }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Profil</a>
+{% endblock %}
+
+{% block body %}
+<div class="row g-4 justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-shield-check me-2"></i>Konfiguracja 2FA (TOTP)</h3></div>
+            <div class="card-body">
+                <div class="steps steps-vertical mb-4">
+                    <div class="step-item">
+                        <div class="step-content">
+                            <div class="step-title">Zainstaluj aplikację</div>
+                            <div class="text-secondary small">Pobierz Google Authenticator, Microsoft Authenticator lub Authy na telefon</div>
+                        </div>
+                    </div>
+                    <div class="step-item active">
+                        <div class="step-content">
+                            <div class="step-title">Zeskanuj kod QR</div>
+                            <div class="text-secondary small">Otwórz aplikację i zeskanuj poniższy kod</div>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-content">
+                            <div class="step-title">Potwierdź kodem</div>
+                            <div class="text-secondary small">Wpisz 6-cyfrowy kod z aplikacji</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mb-4">
+                    <img src="data:image/png;base64,{{ qrCode }}" alt="QR Code" class="border rounded p-2" style="width:250px;height:250px;">
+                </div>
+
+                <div class="alert alert-secondary text-center mb-4">
+                    <div class="small text-secondary mb-1">Klucz ręczny (jeśli nie możesz zeskanować):</div>
+                    <code class="fs-5" style="letter-spacing:.1em;">{{ secret }}</code>
+                </div>
+
+                <form method="post" action="{{ path('app_profile_2fa_confirm') }}" data-turbo="false">
+                    <div class="mb-3">
+                        <label class="form-label">Kod z aplikacji</label>
+                        <input type="text" name="code" class="form-control form-control-lg text-center font-monospace"
+                               placeholder="000000" maxlength="6" required autofocus autocomplete="one-time-code"
+                               inputmode="numeric" pattern="[0-9]*" style="letter-spacing:.3em;font-size:1.3rem;">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="ti ti-shield-check me-2"></i>Potwierdź i włącz 2FA
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

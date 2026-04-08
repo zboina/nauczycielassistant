@@ -1,0 +1,48 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Weryfikacja 2FA — Nauczyciel Assistant{% endblock %}
+
+{% block layout %}
+<div class="d-flex flex-column min-vh-100 bg-white">
+    <div class="d-flex flex-fill align-items-center justify-content-center">
+        <div class="container container-tight py-4" style="max-width: 420px;">
+            <div class="text-center mb-4">
+                <img src="/images/logo.png" alt="Logo" style="height:4rem;width:auto;" class="mb-3">
+                <h1 class="fw-bold">Weryfikacja 2FA</h1>
+                <p class="text-secondary">Wpisz kod z aplikacji uwierzytelniającej</p>
+            </div>
+            <div class="card card-md">
+                <div class="card-body">
+                    {% if authenticationError %}
+                        <div class="alert alert-danger">
+                            <i class="ti ti-alert-circle me-2"></i>{{ authenticationError|trans(authenticationErrorData, 'SchebTwoFactorBundle') }}
+                        </div>
+                    {% endif %}
+
+                    <form method="post" action="{{ checkPathUrl }}" data-turbo="false">
+                        <div class="mb-4">
+                            <label class="form-label" for="code2fa">Kod TOTP</label>
+                            <input type="text" name="{{ authCodeParameterName }}" id="code2fa"
+                                   class="form-control form-control-lg text-center font-monospace"
+                                   placeholder="000000" maxlength="6" autofocus required autocomplete="one-time-code"
+                                   inputmode="numeric" pattern="[0-9]*"
+                                   style="letter-spacing:.3em;font-size:1.5rem;">
+                        </div>
+                        {% if isCsrfProtectionEnabled %}
+                            <input type="hidden" name="{{ csrfParameterName }}" value="{{ csrf_token(csrfTokenId) }}">
+                        {% endif %}
+                        <button type="submit" class="btn btn-primary w-100 btn-lg">
+                            <i class="ti ti-shield-check me-2"></i>Weryfikuj
+                        </button>
+                    </form>
+                    <div class="text-center mt-3">
+                        <a href="{{ logoutPath }}" class="text-secondary">
+                            <i class="ti ti-logout me-1"></i>Wyloguj
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

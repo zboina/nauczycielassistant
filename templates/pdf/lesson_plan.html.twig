@@ -37,7 +37,7 @@ li { margin-bottom: 2px; font-size: 9pt; }
 
 .three-col { display: table; width: 100%; }
 .three-col .col { display: table-cell; width: 33.33%; vertical-align: top; padding: 6px; }
-.info-box { border: 1px solid #ddd; padding: 6px; height: 100%; }
+.info-box { border: 1px solid #ddd; padding: 6px; }
 .info-title { font-weight: bold; font-size: 8pt; text-transform: uppercase; color: #555; margin-bottom: 3px; }
 .info-content { font-size: 8.5pt; }
 
@@ -118,33 +118,29 @@ li { margin-bottom: 2px; font-size: 9pt; }
 {% endfor %}
 {% endif %}
 
-<div class="three-col">
-    <div class="col">
-        {% if lpData.homework is defined %}
-        <div class="info-box">
-            <div class="info-title">Praca domowa</div>
-            <div class="info-content">{{ lpData.homework }}</div>
-        </div>
-        {% endif %}
-    </div>
-    <div class="col">
-        {% if lpData.evaluation is defined %}
-        <div class="info-box">
-            <div class="info-title">Ewaluacja</div>
-            <div class="info-content">{{ lpData.evaluation }}</div>
-        </div>
-        {% endif %}
-    </div>
-    <div class="col">
-        <div class="info-box">
-            <div class="info-title">Uwagi metodyczne</div>
-            <div class="info-content">
-                {% if lpData.notesForSPE is defined %}<div style="margin-bottom:3px;"><strong>SPE:</strong> {{ lpData.notesForSPE }}</div>{% endif %}
-                {% if lpData.notesForGifted is defined %}<div><strong>Zdolni:</strong> {{ lpData.notesForGifted }}</div>{% endif %}
-            </div>
-        </div>
+{% if lpData.homework is defined and lpData.homework %}
+<div class="info-box" style="margin-bottom:6px;">
+    <div class="info-title">Praca domowa</div>
+    <div class="info-content">{{ lpData.homework }}</div>
+</div>
+{% endif %}
+
+{% if lpData.evaluation is defined and lpData.evaluation %}
+<div class="info-box" style="margin-bottom:6px;">
+    <div class="info-title">Ewaluacja</div>
+    <div class="info-content">{{ lpData.evaluation }}</div>
+</div>
+{% endif %}
+
+{% if (lpData.notesForSPE is defined and lpData.notesForSPE) or (lpData.notesForGifted is defined and lpData.notesForGifted) %}
+<div class="info-box" style="margin-bottom:6px;">
+    <div class="info-title">Uwagi metodyczne</div>
+    <div class="info-content">
+        {% if lpData.notesForSPE is defined and lpData.notesForSPE %}<div style="margin-bottom:3px;"><strong>SPE:</strong> {{ lpData.notesForSPE }}</div>{% endif %}
+        {% if lpData.notesForGifted is defined and lpData.notesForGifted %}<div><strong>Zdolni:</strong> {{ lpData.notesForGifted }}</div>{% endif %}
     </div>
 </div>
+{% endif %}
 
 <div class="lp-footer">Wygenerowano w Nauczyciel Assistant</div>
 

@@ -10,6 +10,7 @@ use App\Form\LessonPlanType;
 use App\Repository\LessonPlanRepository;
 use App\Service\AI\OpenRouterClient;
 use App\Service\AI\PromptBuilder\LessonPlanPromptBuilder;
+use App\Service\DocxGenerator;
 use App\Service\PdfGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -24,6 +25,7 @@ class LessonPlanController extends AbstractController
         private readonly OpenRouterClient $ai,
         private readonly EntityManagerInterface $em,
         private readonly PdfGenerator $pdf,
+        private readonly DocxGenerator $docx,
     ) {}
 
     #[Route('/suggest-topics', name: 'app_lesson_plan_suggest_topics', methods: ['POST'])]
@@ -221,6 +223,23 @@ PROMPT;
             ['plan' => $plan, 'lpData' => $lpData],
             'konspekt_' . date('Y-m-d_His') . '.pdf',
         );
+    }
+
+    #[Route('/{id}/docx', name: 'app_lesson_plan_docx', requirements: ['id' => '\d+'])]
+    public function docx(LessonPlan $plan): Response
+    {
+        if ($plan->getOwner() !== $this->getUser()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $lpData = LessonPlanPromptBuilder::parseResponse($plan->getContent());
+        if (!$lpData) {
+            $this->addFlash('error', 'Nie można wyeksportować — brak danych strukturalnych.');
+            return $this->redirectToRoute('app_lesson_plan_show', ['id' => $plan->getId()]);
+        }
+
+        $word = $this->docx->generateLessonPlanDocx($lpData, $plan->getLessonTopic());
+        return $this->docx->generateResponse($word, 'konspekt_' . date('Y-m-d') . '.docx');
     }
 
     #[Route('/{id}/favorite', name: 'app_lesson_plan_favorite', requirements: ['id' => '\d+'], methods: ['POST'])]

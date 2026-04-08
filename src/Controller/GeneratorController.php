@@ -13,6 +13,7 @@ use App\Service\AI\OpenRouterClient;
 use App\Service\AI\PromptBuilder\TestPromptBuilder;
 use App\Service\AI\PromptBuilder\WorksheetPromptBuilder;
 use App\Service\AI\PromptBuilder\ParentInfoPromptBuilder;
+use App\Service\DocxGenerator;
 use App\Service\PdfGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -27,6 +28,7 @@ class GeneratorController extends AbstractController
         private readonly OpenRouterClient $ai,
         private readonly EntityManagerInterface $em,
         private readonly PdfGenerator $pdf,
+        private readonly DocxGenerator $docx,
     ) {}
 
     // ─── LISTA SPRAWDZIANÓW ────────────────────────────────────
@@ -148,6 +150,18 @@ class GeneratorController extends AbstractController
         );
     }
 
+    #[Route('/test/docx', name: 'app_generate_test_docx')]
+    public function testDocx(Request $request): Response
+    {
+        $sessionData = $request->getSession()->get('last_test');
+        if (!$sessionData || !($sessionData['parsed'] ?? null)) {
+            $this->addFlash('error', 'Brak danych. Wygeneruj najpierw sprawdzian.');
+            return $this->redirectToRoute('app_generate_test');
+        }
+        $word = $this->docx->generateTestDocx($sessionData['parsed'], $sessionData['subject'], $sessionData['classLevel'], $request->query->getBoolean('answers'));
+        return $this->docx->generateResponse($word, 'sprawdzian_' . date('Y-m-d') . '.docx');
+    }
+
     // ─── LISTA KART PRACY ──────────────────────────────────────
 
     #[Route('/worksheet', name: 'app_generate_worksheet_index')]
@@ -264,6 +278,18 @@ class GeneratorController extends AbstractController
             ],
             'karta_pracy_' . date('Y-m-d_His') . '.pdf',
         );
+    }
+
+    #[Route('/worksheet/docx', name: 'app_generate_worksheet_docx')]
+    public function worksheetDocx(Request $request): Response
+    {
+        $sessionData = $request->getSession()->get('last_worksheet');
+        if (!$sessionData || !($sessionData['parsed'] ?? null)) {
+            $this->addFlash('error', 'Brak danych. Wygeneruj najpierw kartę pracy.');
+            return $this->redirectToRoute('app_generate_worksheet');
+        }
+        $word = $this->docx->generateWorksheetDocx($sessionData['parsed'], $sessionData['topic'], $sessionData['classLevel'], $request->query->getBoolean('answers'));
+        return $this->docx->generateResponse($word, 'karta_pracy_' . date('Y-m-d') . '.docx');
     }
 
     // ─── LISTA INFO DLA RODZICÓW ─────────────────────────────
@@ -475,5 +501,34 @@ class GeneratorController extends AbstractController
             ],
             'material_' . date('Y-m-d_His') . '.pdf',
         );
+    }
+
+    #[Route('/history/{id}/docx', name: 'app_generate_history_docx')]
+    public function historyDocx(Request $request, GeneratedMaterial $material): Response
+    {
+        if ($material->getOwner() !== $this->getUser()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $includeAnswers = $request->query->getBoolean('answers');
+
+        if ($material->getType() === 'test') {
+            $data = TestPromptBuilder::parseResponse($material->getContent());
+            if ($data) {
+                $word = $this->docx->generateTestDocx($data, $material->getSubjectContext(), $material->getClassLevel(), $includeAnswers);
+                return $this->docx->generateResponse($word, 'sprawdzian_' . date('Y-m-d') . '.docx');
+            }
+        }
+
+        if ($material->getType() === 'worksheet') {
+            $data = WorksheetPromptBuilder::parseResponse($material->getContent());
+            if ($data) {
+                $word = $this->docx->generateWorksheetDocx($data, $material->getSubjectContext(), $material->getClassLevel(), $includeAnswers);
+                return $this->docx->generateResponse($word, 'karta_pracy_' . date('Y-m-d') . '.docx');
+            }
+        }
+
+        $this->addFlash('error', 'Eksport DOCX niedostępny dla tego typu materiału.');
+        return $this->redirectToRoute('app_generate_history_show', ['id' => $material->getId()]);
     }
 }

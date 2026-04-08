@@ -127,13 +127,19 @@
         </div>
 
         <div class="card mb-3">
-            <div class="card-header"><h3 class="card-title">Pobierz PDF</h3></div>
+            <div class="card-header"><h3 class="card-title">Pobierz</h3></div>
             <div class="card-body d-flex flex-column gap-2">
                 <a href="{{ path('app_exam8_pdf', {id: exam.id}) }}" class="btn btn-primary" target="_blank">
                     <i class="ti ti-file-type-pdf me-2"></i>PDF (uczeń)
                 </a>
                 <a href="{{ path('app_exam8_pdf', {id: exam.id, answers: 1}) }}" class="btn btn-outline-primary" target="_blank">
-                    <i class="ti ti-file-type-pdf me-2"></i>PDF + klucz odpowiedzi
+                    <i class="ti ti-file-type-pdf me-2"></i>PDF + klucz
+                </a>
+                <a href="{{ path('app_exam8_docx', {id: exam.id}) }}" class="btn btn-outline-blue">
+                    <i class="ti ti-file-type-doc me-2"></i>DOCX (uczeń)
+                </a>
+                <a href="{{ path('app_exam8_docx', {id: exam.id, answers: 1}) }}" class="btn btn-outline-blue">
+                    <i class="ti ti-file-type-doc me-2"></i>DOCX + klucz
                 </a>
             </div>
         </div>

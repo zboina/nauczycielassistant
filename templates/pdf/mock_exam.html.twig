@@ -94,14 +94,14 @@ body { font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; line-height: 1.5
                 Zadanie {{ q.number }}.
                 <span class="q-points">({{ q.points }} {{ q.points == 1 ? 'punkt' : 'punkty' }})</span>
             </div>
-            <div class="q-text">{{ q.text }}</div>
+            <div class="q-text">{{ q.text|raw }}</div>
 
             {% if q.type == 'closed' and q.options is defined %}
                 <ul class="options">
                     {% for opt in q.options %}
                         {% set isCorrect = showAnswers and q.correct is defined and opt starts with q.correct %}
                         <li class="{{ isCorrect ? 'correct' : '' }}">
-                            {{ opt }}{% if isCorrect %} ✓{% endif %}
+                            {{ opt|raw }}{% if isCorrect %} ✓{% endif %}
                         </li>
                     {% endfor %}
                 </ul>

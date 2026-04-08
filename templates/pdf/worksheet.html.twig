@@ -72,41 +72,41 @@ body { font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; line-height: 1.5
 {% for i, ex in wsData.exercises %}
 <div class="exercise">
     <div class="ex-header">Zadanie {{ i + 1 }}. <span class="ex-points">({{ ex.points }} pkt)</span></div>
-    <div class="ex-instruction">{{ ex.instruction }}</div>
+    <div class="ex-instruction">{{ ex.instruction|raw }}</div>
 
     {% if ex.type == 'fill_blanks' %}
-        <div class="content-box">{{ ex.content }}</div>
+        <div class="content-box">{{ ex.content|raw }}</div>
 
     {% elseif ex.type == 'open' %}
-        <div style="margin-bottom:4px;">{{ ex.content | default('') }}</div>
+        <div style="margin-bottom:4px;">{{ ex.content | default('')|raw }}</div>
         {% for l in range(1, ex.lines|default(3)) %}
             <div class="answer-line"></div>
         {% endfor %}
 
     {% elseif ex.type == 'choice' and ex.options is defined %}
-        <div style="margin-bottom:4px;">{{ ex.content | default('') }}</div>
+        <div style="margin-bottom:4px;">{{ ex.content | default('')|raw }}</div>
         {% for opt in ex.options %}
-            <div class="option-row"><span class="checkbox"></span> {{ opt }}</div>
+            <div class="option-row"><span class="checkbox"></span> {{ opt|raw }}</div>
         {% endfor %}
 
     {% elseif ex.type == 'true_false' and ex.statements is defined %}
         <table class="tf-table">
             <tr><th>Stwierdzenie</th><th style="width:35px;text-align:center;">P</th><th style="width:35px;text-align:center;">F</th></tr>
             {% for st in ex.statements %}
-                <tr><td>{{ st.text }}</td><td style="text-align:center;"><span class="tf-box"></span></td><td style="text-align:center;"><span class="tf-box"></span></td></tr>
+                <tr><td>{{ st.text|raw }}</td><td style="text-align:center;"><span class="tf-box"></span></td><td style="text-align:center;"><span class="tf-box"></span></td></tr>
             {% endfor %}
         </table>
 
     {% elseif ex.type == 'match' and ex.pairs is defined %}
         <table class="match-table">
             {% for p in ex.pairs %}
-                <tr><td>{{ loop.index }}. {{ p.left }}</td><td class="arrow">........</td><td>{{ ['a','b','c','d','e','f','g','h'][loop.index0] }}. {{ p.right }}</td></tr>
+                <tr><td>{{ loop.index }}. {{ p.left|raw }}</td><td class="arrow">........</td><td>{{ ['a','b','c','d','e','f','g','h'][loop.index0] }}. {{ p.right|raw }}</td></tr>
             {% endfor %}
         </table>
 
     {% elseif ex.type == 'transform' and ex.sentences is defined %}
         {% for s in ex.sentences %}
-            <div class="transform-source">{{ loop.index }}. {{ s }}</div>
+            <div class="transform-source">{{ loop.index }}. {{ s|raw }}</div>
             <div class="answer-line"></div>
             <div style="height:4px;"></div>
         {% endfor %}
@@ -114,7 +114,7 @@ body { font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; line-height: 1.5
     {% elseif ex.type == 'order' and ex.items is defined %}
         <div style="margin-bottom:6px;">
             {% for item in ex.items %}
-                <span class="order-item">{{ item }}</span>
+                <span class="order-item">{{ item|raw }}</span>
             {% endfor %}
         </div>
         <div>Prawidłowa kolejność:
@@ -125,12 +125,12 @@ body { font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; line-height: 1.5
 
     {% elseif ex.type == 'text_analysis' %}
         {% if ex.text is defined %}
-            <div class="text-box">{{ ex.text }}</div>
+            <div class="text-box">{{ ex.text|raw }}</div>
         {% endif %}
         {% if ex.questions is defined %}
             {% for q in ex.questions %}
                 <div style="margin-bottom:6px;">
-                    <div style="font-weight:bold;margin-bottom:2px;">{{ loop.index }}. {{ q }}</div>
+                    <div style="font-weight:bold;margin-bottom:2px;">{{ loop.index }}. {{ q|raw }}</div>
                     {% for l in range(1, ex.lines_per_question|default(3)) %}
                         <div class="answer-line"></div>
                     {% endfor %}
@@ -139,7 +139,7 @@ body { font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; line-height: 1.5
         {% endif %}
 
     {% else %}
-        <div class="content-box">{{ ex.content | default('') }}</div>
+        <div class="content-box">{{ ex.content | default('')|raw }}</div>
     {% endif %}
 </div>
 {% endfor %}

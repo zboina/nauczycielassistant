@@ -244,8 +244,9 @@ function testFormApp() {
                         <input type="hidden" name="_token" value="{{ csrf_token('save') }}">
                         <button type="submit" class="btn btn-ghost-success btn-sm"><i class="ti ti-device-floppy me-1"></i>Zapisz</button>
                     </form>
-                    <a href="{{ path('app_generate_test_pdf') }}" class="btn btn-ghost-primary btn-sm" target="_blank"><i class="ti ti-file-type-pdf me-1"></i>PDF (uczeń)</a>
-                    <a href="{{ path('app_generate_test_pdf', {answers: 1}) }}" class="btn btn-ghost-primary btn-sm" target="_blank"><i class="ti ti-file-type-pdf me-1"></i>PDF + klucz</a>
+                    <a href="{{ path('app_generate_test_pdf') }}" class="btn btn-ghost-primary btn-sm" target="_blank"><i class="ti ti-file-type-pdf me-1"></i>PDF</a>
+                    <a href="{{ path('app_generate_test_docx') }}" class="btn btn-ghost-blue btn-sm"><i class="ti ti-file-type-doc me-1"></i>DOCX</a>
+                    <a href="{{ path('app_generate_test_pdf', {answers: 1}) }}" class="btn btn-ghost-primary btn-sm" target="_blank"><i class="ti ti-key me-1"></i>PDF+klucz</a>
                 </div>
             </div>
             <div class="card-body">

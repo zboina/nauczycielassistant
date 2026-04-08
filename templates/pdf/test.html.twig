@@ -243,14 +243,14 @@ body {
         Zadanie {{ i + 1 }}.
         <span class="question-points">({{ q.points }} {{ q.points == 1 ? 'pkt' : 'pkt' }})</span>
     </div>
-    <div class="question-text">{{ q.text }}</div>
+    <div class="question-text">{{ q.text|raw }}</div>
 
     {% if q.type == 'closed' and q.options is defined %}
         {% set letters = ['A','B','C','D'] %}
         {% for key, opt in q.options %}
             <div class="option-box">
                 <span class="option-letter">{{ letters[key] }}.</span>
-                {{ opt }}
+                {{ opt|raw }}
             </div>
         {% endfor %}
         <div style="font-size:7.5pt;color:#888;margin-top:3px;font-style:italic;">Odpowiedź zaznacz na karcie odpowiedzi.</div>

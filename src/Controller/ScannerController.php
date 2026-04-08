@@ -57,9 +57,10 @@ class ScannerController extends AbstractController
             return $this->redirectToRoute('app_scanner_index');
         }
 
-        // Read, resize and encode image (smaller = more accurate for table OCR)
-        $imageData = $this->optimizeImage($file->getPathname(), $file->getMimeType() ?: 'image/jpeg');
-        $base64 = 'data:image/jpeg;base64,' . base64_encode($imageData);
+        // Read and encode image
+        $imageData = file_get_contents($file->getPathname());
+        $mimeType = $file->getMimeType() ?: 'image/jpeg';
+        $base64 = 'data:' . $mimeType . ';base64,' . base64_encode($imageData);
 
         // Call AI vision — always scan first, then match
         $builder = new AnswerScannerPromptBuilder();
@@ -70,7 +71,6 @@ class ScannerController extends AbstractController
                 userPrompt: $userPrompt,
                 systemPrompt: AnswerScannerPromptBuilder::SYSTEM_PROMPT,
                 module: 'answer_scanner',
-                model: 'google/gemini-2.5-flash-image',
                 maxTokens: 2000,
                 owner: $this->getUser(),
                 imageBase64: $base64,

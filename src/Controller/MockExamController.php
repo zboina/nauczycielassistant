@@ -9,6 +9,7 @@ use App\Entity\MockExamResult;
 use App\Repository\MockExamRepository;
 use App\Service\AI\OpenRouterClient;
 use App\Service\AI\PromptBuilder\MockExamPromptBuilder;
+use App\Service\DocxGenerator;
 use App\Service\PdfGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,6 +24,7 @@ class MockExamController extends AbstractController
         private readonly EntityManagerInterface $em,
         private readonly OpenRouterClient $ai,
         private readonly PdfGenerator $pdf,
+        private readonly DocxGenerator $docx,
     ) {}
 
     // ─── List all exams ─────────────────────────────────────
@@ -131,6 +133,17 @@ class MockExamController extends AbstractController
             ['exam' => $exam, 'data' => $exam->getExamContent(), 'showAnswers' => $showAnswers],
             'egzamin_probny_' . date('Y-m-d') . '.pdf',
         );
+    }
+
+    #[Route('/{id}/docx', name: 'app_exam8_docx', requirements: ['id' => '\d+'])]
+    public function docx(MockExam $exam, Request $request): Response
+    {
+        if ($exam->getOwner() !== $this->getUser()) {
+            throw $this->createAccessDeniedException();
+        }
+        $showAnswers = $request->query->getBoolean('answers');
+        $word = $this->docx->generateMockExamDocx($exam->getExamContent(), $exam->getMaxPoints(), $showAnswers);
+        return $this->docx->generateResponse($word, 'egzamin_probny_' . date('Y-m-d') . '.docx');
     }
 
     // ─── Enter results ──────────────────────────────────────

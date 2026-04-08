@@ -40,9 +40,9 @@
                             <a href="{{ path(pdfRoute, {id: m.id}) }}" class="btn btn-ghost-primary btn-sm" target="_blank" title="PDF">
                                 <i class="ti ti-file-type-pdf"></i>
                             </a>
-                            {% if pdfRoute != 'app_generate_history_pdf' or m.type != 'parent_info' %}
-                                <a href="{{ path(pdfRoute, {id: m.id, answers: 1}) }}" class="btn btn-ghost-primary btn-sm" target="_blank" title="PDF + klucz">
-                                    <i class="ti ti-key"></i>
+                            {% if m.type != 'parent_info' %}
+                                <a href="{{ path('app_generate_history_docx', {id: m.id}) }}" class="btn btn-ghost-blue btn-sm" title="DOCX">
+                                    <i class="ti ti-file-type-doc"></i>
                                 </a>
                             {% endif %}
                             <form method="post" action="{{ path('app_generate_material_delete', {id: m.id}) }}" class="d-inline" onsubmit="return confirm('Usunąć?')">

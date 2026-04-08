@@ -26,9 +26,12 @@
             .card-link { text-decoration: none; color: inherit; }
             .card-link:hover { color: inherit; }
             .page-wrapper { min-height: 100vh; }
-            .navbar-vertical .navbar-nav .nav-link { padding: .5rem .75rem; border-radius: .375rem; margin: 1px 0; }
+            .navbar-vertical .navbar-nav .nav-link { padding: .25rem .75rem; border-radius: .375rem; margin: 0; font-size: .85rem; }
+            .navbar-vertical .navbar-nav .nav-link .nav-link-icon { width: 1.2rem; height: 1.2rem; font-size: .9rem; }
             .navbar-vertical .navbar-nav .nav-link:hover { background: rgba(var(--tblr-primary-rgb), .04); }
             .navbar-vertical .navbar-nav .nav-item.active > .nav-link { background: rgba(var(--tblr-primary-rgb), .08); color: var(--tblr-primary); font-weight: 600; }
+            .navbar-vertical .navbar-nav .nav-item.mt-2 { margin-top: .5rem!important; }
+            .navbar-vertical .navbar-nav .nav-item.mt-2 .nav-link { padding: .15rem .75rem; font-size: .6rem; }
             .result-box { white-space: pre-wrap; font-family: Georgia, serif; line-height: 1.8; background: #fff; border: 1px solid #e6e8eb; border-radius: .5rem; padding: 1.25rem; }
             .empty-icon i { color: #626976; }
             /* Mobile sidebar fix */
@@ -43,7 +46,7 @@
             {% block importmap %}{{ importmap('app') }}{% endblock %}
         {% endblock %}
     </head>
-    <body class="d-flex flex-column" data-bs-no-jquery>
+    <body class="d-flex flex-column" data-bs-no-jquery data-turbo="false">
         <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.2.0/dist/js/tabler.min.js"></script>
         {% block layout %}
         <div class="page">
@@ -55,17 +58,24 @@
                     </button>
                     <h1 class="navbar-brand navbar-brand-autodark">
                         <a href="{{ path('app_dashboard') }}" class="d-flex align-items-center gap-2 text-decoration-none">
-                            <img src="/images/logo.png" alt="Logo" style="height:2.2rem;width:auto;">
-                            <span>Nauczyciel<br><small class="fw-normal" style="font-size:.65rem;opacity:.7;">Assistant</small></span>
+                            <img src="/images/logo.png" alt="Logo" style="height:1.8rem;width:auto;">
+                            <span style="font-size:.9rem;">Nauczyciel<br><small class="fw-normal" style="font-size:.6rem;opacity:.7;">Assistant</small></span>
                         </a>
                     </h1>
                     <div class="collapse navbar-collapse" id="sidebar-menu">
-                        <ul class="navbar-nav pt-lg-3">
+                        <ul class="navbar-nav pt-lg-2">
                             {# Dashboard #}
                             <li class="nav-item {{ app.request.attributes.get('_route') == 'app_dashboard' ? 'active' }}">
                                 <a class="nav-link" href="{{ path('app_dashboard') }}">
                                     <span class="nav-link-icon"><i class="ti ti-layout-dashboard"></i></span>
                                     <span class="nav-link-title">Dashboard</span>
+                                </a>
+                            </li>
+
+                            <li class="nav-item {{ app.request.attributes.get('_route') starts with 'app_chat' ? 'active' }}">
+                                <a class="nav-link" href="{{ path('app_chat') }}">
+                                    <span class="nav-link-icon"><i class="ti ti-message-chatbot"></i></span>
+                                    <span class="nav-link-title">Asystent AI</span>
                                 </a>
                             </li>
 
@@ -264,9 +274,7 @@
         </div>
 
         <script>
-        /* ═══ Nauczyciel Assistant — global scripts ═══ */
-
-        /* 1. AI Loading Modal — pure DOM, zero dependencies */
+        /* ═══ AI Loading Modal ═══ */
         var _aiTimer = null;
         window.showAiLoading = function(msg) {
             var el = document.getElementById('aiLoadingModal');
@@ -276,9 +284,8 @@
             if (t) t.textContent = '0';
             clearInterval(_aiTimer);
             _aiTimer = setInterval(function(){ sec++; if(t) t.textContent = sec; }, 1000);
-            // Show: pure CSS — no bootstrap dependency
             el.style.display = 'block';
-            el.offsetHeight; // force reflow
+            el.offsetHeight;
             el.classList.add('show');
             document.body.classList.add('modal-open');
             document.body.style.overflow = 'hidden';
@@ -296,33 +303,11 @@
             document.body.classList.remove('modal-open');
             document.body.style.overflow = '';
         };
-
-        /* 2. Attach to ALL forms with data-ai-loading + reinit Bootstrap */
-        function _initPage() {
-            // Attach AI modal to forms
+        /* Attach to forms */
+        document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('form[data-ai-loading]').forEach(function(f) {
-                if (f._ai) return; f._ai = 1;
                 f.addEventListener('submit', function(){ window.showAiLoading(f.getAttribute('data-ai-loading')); });
             });
-            // Reinit Bootstrap dropdowns & collapses (for Turbo)
-            if (typeof bootstrap !== 'undefined') {
-                document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function(el){ bootstrap.Dropdown.getOrCreateInstance(el); });
-                document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(el){ if(!bootstrap.Collapse.getInstance(el)) new bootstrap.Collapse(el,{toggle:false}); });
-            }
-        }
-        // Run on every page state
-        document.addEventListener('DOMContentLoaded', _initPage);
-        document.addEventListener('turbo:load', function(){ window.hideAiLoading(); _initPage(); });
-        document.addEventListener('turbo:render', _initPage);
-        document.addEventListener('turbo:before-render', function(){ window.hideAiLoading(); });
-
-        /* 3. Turbo submit-start — catches Turbo-intercepted forms */
-        document.addEventListener('turbo:submit-start', function(e){
-            var f = e.detail && e.detail.formSubmission ? e.detail.formSubmission.formElement : null;
-            if (!f) f = e.target;
-            if (f && f.getAttribute && f.getAttribute('data-ai-loading')) {
-                window.showAiLoading(f.getAttribute('data-ai-loading'));
-            }
         });
         </script>
     </body>

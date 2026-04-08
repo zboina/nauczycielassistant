@@ -9,12 +9,14 @@
 {% endblock %}
 
 {% set g = grading %}
-{% set pctColor = g.percent >= 85 ? 'green' : (g.percent >= 70 ? 'blue' : (g.percent >= 50 ? 'yellow' : (g.percent >= 30 ? 'orange' : 'red'))) %}
 
 {% block body %}
 <div class="row g-4">
     {# Left: results #}
     <div class="col-lg-7">
+
+        {% if g %}
+        {% set pctColor = g.percent >= 85 ? 'green' : (g.percent >= 70 ? 'blue' : (g.percent >= 50 ? 'yellow' : (g.percent >= 30 ? 'orange' : 'red'))) %}
         {# Score summary #}
         <div class="card mb-3">
             <div class="card-body">
@@ -28,7 +30,12 @@
                         <h2 class="mb-1">
                             {{ scanned.studentName ?? 'Uczeń (nieodczytane)' }}
                         </h2>
-                        <div class="text-secondary">{{ sourceTitle }}</div>
+                        <div class="text-secondary">
+                            {{ sourceTitle }}
+                            {% if scanned.examCode is defined and scanned.examCode %}
+                                <span class="badge bg-primary-lt ms-2">{{ scanned.examCode }}</span>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="col-auto text-end">
                         <div class="display-6 fw-bold text-{{ pctColor }}">{{ g.correct }} / {{ g.total }}</div>
@@ -112,6 +119,34 @@
                 </div>
             </div>
         </div>
+        {% else %}
+        {# No grading — show raw scanned answers #}
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <span class="avatar avatar-xl rounded bg-orange-lt text-orange"><i class="ti ti-alert-triangle" style="font-size:1.5rem;"></i></span>
+                    <div>
+                        <h2 class="mb-1">{{ scanned.studentName ?? 'Uczeń' }}</h2>
+                        <div class="text-secondary">
+                            Nie znaleziono klucza odpowiedzi
+                            {% if scanned.examCode is defined and scanned.examCode %}
+                                — kod: <strong>{{ scanned.examCode }}</strong>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <h4 class="mb-2">Odczytane odpowiedzi:</h4>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for num, ans in scanned.answers %}
+                        <div class="border rounded p-2 text-center" style="min-width:50px;">
+                            <div class="small text-secondary">{{ num }}</div>
+                            <div class="fw-bold fs-4">{{ ans ?? '—' }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     {# Right: photo + info #}

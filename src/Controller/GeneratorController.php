@@ -142,6 +142,7 @@ class GeneratorController extends AbstractController
                 'subject' => $sessionData['subject'],
                 'classLevel' => $sessionData['classLevel'],
                 'includeAnswers' => $includeAnswers,
+                'materialId' => null,
             ],
             'sprawdzian_' . date('Y-m-d_His') . '.pdf',
         );
@@ -444,6 +445,7 @@ class GeneratorController extends AbstractController
                     'subject' => $material->getSubjectContext(),
                     'classLevel' => $material->getClassLevel(),
                     'includeAnswers' => $includeAnswers,
+                    'materialId' => $material->getId(),
                 ],
                 'sprawdzian_' . date('Y-m-d_His') . '.pdf',
             );

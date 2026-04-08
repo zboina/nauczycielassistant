@@ -14,6 +14,7 @@ MUSISZ odpowiedzieć WYŁĄCZNIE poprawnym JSON-em (bez markdown, bez ```json, b
 
 Struktura JSON:
 {
+  "examCode": "T-42",
   "studentName": "Jan Kowalski",
   "answers": {
     "1": "B",
@@ -29,6 +30,7 @@ Struktura JSON:
 }
 
 Zasady odczytywania:
+- Odczytaj KOD SPRAWDZIANU z karty (np. "T-42" lub "E-15") — pole w prawym górnym rogu z etykietą "Kod sprawdzianu" lub "Kod arkusza". Jeśli nie widać kodu, wpisz null.
 - Odczytaj IMIĘ I NAZWISKO ucznia (pole na górze karty)
 - Dla każdego pytania odczytaj zaznaczoną odpowiedź (A, B, C lub D)
 - Jeśli uczeń zaznaczył odpowiedź — podaj literę (A/B/C/D)
@@ -40,10 +42,17 @@ Zasady odczytywania:
 - Odpowiadaj TYLKO JSON-em
 PROMPT;
 
-    public function buildUserPrompt(int $questionCount, ?array $answerKey = null): string
+    public function buildUserPrompt(int $questionCount = 0, ?array $answerKey = null): string
     {
         $prompt = "Odczytaj odpowiedzi z karty odpowiedzi na załączonym zdjęciu.\n";
-        $prompt .= "Karta zawiera {$questionCount} pytań zamkniętych (ABCD).\n";
+
+        if ($questionCount > 0) {
+            $prompt .= "Karta zawiera {$questionCount} pytań zamkniętych (ABCD).\n";
+        } else {
+            $prompt .= "Odczytaj WSZYSTKIE pytania widoczne na karcie.\n";
+        }
+
+        $prompt .= "WAŻNE: Odczytaj też KOD SPRAWDZIANU (np. T-42 lub E-15) — jest w prawym górnym rogu karty.\n";
 
         if ($answerKey) {
             $prompt .= "Numery pytań: " . implode(', ', array_keys($answerKey)) . "\n";

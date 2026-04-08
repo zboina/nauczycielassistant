@@ -182,16 +182,25 @@ body {
     display: block;
 }
 
-/* Answer card */
-.answer-card { border: 2px solid #000; padding: 8px 12px; margin-top: 20px; page-break-inside: avoid; }
-.answer-card-title { font-size: 10pt; font-weight: bold; text-align: center; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #000; padding-bottom: 4px; }
-.answer-card-info { font-size: 7.5pt; text-align: center; color: #555; margin-bottom: 8px; }
-.ac-table { width: 100%; border-collapse: collapse; }
-.ac-table th, .ac-table td { border: 1px solid #000; text-align: center; padding: 4px 2px; font-size: 9pt; }
-.ac-table th { background: #eee; font-weight: bold; font-size: 8pt; }
-.ac-bubble { display: inline-block; width: 16px; height: 16px; border: 1.5px solid #000; border-radius: 50%; vertical-align: middle; }
+/* Answer card — separate page */
+.answer-card-page { page-break-before: always; }
+.answer-card { border: 2.5px solid #000; padding: 12px 15px; }
+.answer-card-header { display: table; width: 100%; margin-bottom: 10px; }
+.answer-card-header-left { display: table-cell; vertical-align: top; }
+.answer-card-header-right { display: table-cell; vertical-align: top; text-align: right; }
+.answer-card-title { font-size: 12pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 3px; }
+.answer-card-subtitle { font-size: 8pt; color: #555; }
+.answer-card-code { border: 2px solid #000; padding: 6px 14px; font-family: monospace; font-size: 14pt; font-weight: bold; letter-spacing: 3px; display: inline-block; }
+.answer-card-code-label { font-size: 7pt; text-transform: uppercase; color: #555; text-align: center; margin-bottom: 2px; }
+.answer-card-student { margin: 10px 0; font-size: 10pt; }
+.answer-card-student .dotted-line { min-width: 220px; }
+.answer-card-info { font-size: 8pt; text-align: center; color: #333; margin: 8px 0; padding: 4px; background: #f0f0f0; border: 1px solid #ccc; }
+.ac-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+.ac-table th, .ac-table td { border: 1.5px solid #000; text-align: center; padding: 6px 3px; font-size: 10pt; }
+.ac-table th { background: #ddd; font-weight: bold; font-size: 9pt; }
+.ac-bubble { display: inline-block; width: 18px; height: 18px; border: 2px solid #000; vertical-align: middle; }
 .ac-bubble-filled { background: #000; }
-.ac-nr { font-weight: bold; width: 30px; }
+.ac-nr { font-weight: bold; width: 35px; font-size: 11pt; }
 
 /* Footer */
 .test-footer {
@@ -261,7 +270,9 @@ body {
 </div>
 {% endfor %}
 
-{# ═══════ ANSWER CARD — bubble sheet ═══════ #}
+<div class="test-footer">Wygenerowano w Nauczyciel Assistant</div>
+
+{# ═══════ ANSWER CARD — separate page with code ═══════ #}
 {% set closedQuestions = [] %}
 {% for i, q in testData.questions %}
     {% if q.type == 'closed' %}
@@ -270,40 +281,72 @@ body {
 {% endfor %}
 
 {% if closedQuestions|length > 0 %}
-<div class="answer-card">
-    <div class="answer-card-title">Karta odpowiedzi — pytania zamknięte</div>
-    <div class="answer-card-info">Zaznacz wybraną odpowiedź wypełniając kółko (●) lub stawiając X</div>
-    <table class="ac-table">
-        <thead>
-            <tr>
-                <th class="ac-nr">Nr</th>
-                <th style="width:60px;">A</th>
-                <th style="width:60px;">B</th>
-                <th style="width:60px;">C</th>
-                <th style="width:60px;">D</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for cq in closedQuestions %}
+<div class="answer-card-page">
+    <div class="answer-card">
+        <div class="answer-card-header">
+            <div class="answer-card-header-left">
+                <div class="answer-card-title">Karta odpowiedzi</div>
+                <div class="answer-card-subtitle">{{ testData.title | default('Sprawdzian — ' ~ subject) }}</div>
+            </div>
+            <div class="answer-card-header-right">
+                {% if materialId is defined and materialId %}
+                    <div class="answer-card-code-label">Kod sprawdzianu</div>
+                    <div class="answer-card-code">T-{{ materialId }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="answer-card-student">
+            Imię i nazwisko: <span class="dotted-line">&nbsp;</span>
+            &nbsp;&nbsp;
+            Klasa: <span class="dotted-line" style="min-width:60px;">&nbsp;</span>
+        </div>
+
+        <div class="answer-card-info">
+            ✎ Zaznacz wybraną odpowiedź stawiając wyraźny X w kratce.
+            Zaznacz TYLKO JEDNĄ odpowiedź w każdym wierszu.
+        </div>
+
+        <table class="ac-table">
+            <thead>
                 <tr>
-                    <td class="ac-nr">{{ cq.num }}</td>
-                    {% for letter in ['A','B','C','D'] %}
-                        <td>
-                            {% if includeAnswers is defined and includeAnswers and cq.correct == letter %}
-                                <span class="ac-bubble ac-bubble-filled"></span>
-                            {% else %}
-                                <span class="ac-bubble"></span>
-                            {% endif %}
-                        </td>
-                    {% endfor %}
+                    <th class="ac-nr">Nr</th>
+                    <th>A</th>
+                    <th>B</th>
+                    <th>C</th>
+                    <th>D</th>
                 </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                {% for cq in closedQuestions %}
+                    <tr style="height: 32px;">
+                        <td class="ac-nr">{{ cq.num }}</td>
+                        {% for letter in ['A','B','C','D'] %}
+                            <td>
+                                {% if includeAnswers is defined and includeAnswers and cq.correct == letter %}
+                                    <span class="ac-bubble ac-bubble-filled"></span>
+                                {% else %}
+                                    <span class="ac-bubble"></span>
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if materialId is defined and materialId %}
+            <div style="margin-top: 10px; font-size: 7pt; color: #888; text-align: center;">
+                Kod: T-{{ materialId }} | Nauczyciel Assistant — Skaner odpowiedzi
+            </div>
+        {% else %}
+            <div style="margin-top: 10px; font-size: 7pt; color: #888; text-align: center;">
+                ⚠ Zapisz sprawdzian, aby karta otrzymała kod do skanowania
+            </div>
+        {% endif %}
+    </div>
 </div>
 {% endif %}
-
-<div class="test-footer">Wygenerowano w Nauczyciel Assistant</div>
 
 {% if includeAnswers %}
 {# ═══════ ANSWER KEY (separate page) ═══════ #}

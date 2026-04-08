@@ -48,7 +48,7 @@ class ScannerController extends AbstractController
     #[Route('/scan', name: 'app_scanner_scan', methods: ['POST'])]
     public function scan(Request $request): Response
     {
-        $sourceType = $request->request->get('sourceType'); // 'test' or 'exam'
+        $sourceType = $request->request->get('sourceType'); // 'test', 'exam', or 'auto'
         $sourceId = $request->request->getInt('sourceId');
         $file = $request->files->get('photo');
 
@@ -57,46 +57,14 @@ class ScannerController extends AbstractController
             return $this->redirectToRoute('app_scanner_index');
         }
 
-        // Build answer key from source
-        $answerKey = [];
-        $sourceTitle = '';
-
-        if ($sourceType === 'test' && $sourceId) {
-            $material = $this->em->getRepository(GeneratedMaterial::class)->find($sourceId);
-            if (!$material || $material->getOwner() !== $this->getUser()) {
-                throw $this->createAccessDeniedException();
-            }
-            $parsed = TestPromptBuilder::parseResponse($material->getContent());
-            if ($parsed && isset($parsed['questions'])) {
-                foreach ($parsed['questions'] as $i => $q) {
-                    if ($q['type'] === 'closed' && isset($q['correct'])) {
-                        $answerKey[(string) ($i + 1)] = $q['correct'];
-                    }
-                }
-            }
-            $sourceTitle = $material->getTitle();
-        } elseif ($sourceType === 'exam' && $sourceId) {
-            $exam = $this->em->getRepository(MockExam::class)->find($sourceId);
-            if (!$exam || $exam->getOwner() !== $this->getUser()) {
-                throw $this->createAccessDeniedException();
-            }
-            $answerKey = $exam->getAnswerKey() ?? [];
-            $sourceTitle = $exam->getTitle();
-        }
-
-        if (empty($answerKey)) {
-            $this->addFlash('error', 'Wybrany materiał nie zawiera pytań zamkniętych z kluczem odpowiedzi.');
-            return $this->redirectToRoute('app_scanner_index');
-        }
-
         // Read and encode image
         $imageData = file_get_contents($file->getPathname());
         $mimeType = $file->getMimeType() ?: 'image/jpeg';
         $base64 = 'data:' . $mimeType . ';base64,' . base64_encode($imageData);
 
-        // Call AI vision
+        // Call AI vision — always scan first, then match
         $builder = new AnswerScannerPromptBuilder();
-        $userPrompt = $builder->buildUserPrompt(count($answerKey), $answerKey);
+        $userPrompt = $builder->buildUserPrompt(0); // 0 = unknown count, AI reads from card
 
         try {
             $result = $this->ai->generate(
@@ -115,10 +83,51 @@ class ScannerController extends AbstractController
                 return $this->redirectToRoute('app_scanner_index');
             }
 
+            // Resolve source — auto-detect from code or use manual selection
+            $answerKey = [];
+            $sourceTitle = '';
+
+            if ($sourceType === 'auto' && isset($scanned['examCode']) && $scanned['examCode']) {
+                [$sourceType, $sourceId] = $this->resolveExamCode($scanned['examCode']);
+            }
+
+            if ($sourceType === 'test' && $sourceId) {
+                $material = $this->em->getRepository(GeneratedMaterial::class)->find($sourceId);
+                if ($material && $material->getOwner() === $this->getUser()) {
+                    $parsed = TestPromptBuilder::parseResponse($material->getContent());
+                    if ($parsed && isset($parsed['questions'])) {
+                        foreach ($parsed['questions'] as $i => $q) {
+                            if ($q['type'] === 'closed' && isset($q['correct'])) {
+                                $answerKey[(string) ($i + 1)] = $q['correct'];
+                            }
+                        }
+                    }
+                    $sourceTitle = $material->getTitle();
+                }
+            } elseif ($sourceType === 'exam' && $sourceId) {
+                $exam = $this->em->getRepository(MockExam::class)->find($sourceId);
+                if ($exam && $exam->getOwner() === $this->getUser()) {
+                    $answerKey = $exam->getAnswerKey() ?? [];
+                    $sourceTitle = $exam->getTitle();
+                }
+            }
+
+            if (empty($answerKey)) {
+                // Store scanned data without grading — show with warning
+                $request->getSession()->set('scanner_result', [
+                    'scanned' => $scanned,
+                    'grading' => null,
+                    'sourceTitle' => $scanned['examCode'] ?? 'Nierozpoznany',
+                    'answerKey' => [],
+                    'imageData' => $base64,
+                ]);
+                $this->addFlash('warning', 'Nie znaleziono sprawdzianu z kodem "' . ($scanned['examCode'] ?? '?') . '". Odpowiedzi odczytane, ale nie sprawdzone.');
+                return $this->redirectToRoute('app_scanner_result');
+            }
+
             // Grade answers
             $grading = AnswerScannerPromptBuilder::gradeAnswers($scanned['answers'], $answerKey);
 
-            // Store in session for display
             $request->getSession()->set('scanner_result', [
                 'scanned' => $scanned,
                 'grading' => $grading,
@@ -133,6 +142,21 @@ class ScannerController extends AbstractController
             $this->addFlash('error', $e->getMessage());
             return $this->redirectToRoute('app_scanner_index');
         }
+    }
+
+    /**
+     * Parse exam code like "T-42" or "E-15" into [sourceType, sourceId].
+     * @return array{string, int}
+     */
+    private function resolveExamCode(string $code): array
+    {
+        if (preg_match('/^T-(\d+)$/i', $code, $m)) {
+            return ['test', (int) $m[1]];
+        }
+        if (preg_match('/^E-(\d+)$/i', $code, $m)) {
+            return ['exam', (int) $m[1]];
+        }
+        return ['', 0];
     }
 
     #[Route('/result', name: 'app_scanner_result')]

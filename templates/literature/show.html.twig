@@ -1,0 +1,192 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ literature.title }} — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Baza lektur{% endblock %}
+{% block title_text %}{{ literature.title }}{% endblock %}
+
+{% set classColors = {'4': 'cyan', '5': 'teal', '6': 'blue', '7': 'green', '8': 'orange'} %}
+{% set color = classColors[literature.classLevel] | default('blue') %}
+
+{% block page_actions %}
+    <a href="{{ path('app_literature_index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="ti ti-arrow-left me-1"></i> Lista lektur
+    </a>
+{% endblock %}
+
+{% block body %}
+<div class="row g-4">
+    {# ── Left sidebar ─────────────── #}
+    <div class="col-lg-4">
+        {# Info card #}
+        <div class="card mb-3">
+            <div class="card-status-top bg-{{ color }}"></div>
+            <div class="card-body text-center pb-0">
+                <span class="avatar avatar-xl rounded bg-{{ color }}-lt text-{{ color }} mb-3" style="font-size:1.5rem;">
+                    {{ literature.title|first }}
+                </span>
+                <h2 class="mb-1">{{ literature.title }}</h2>
+                <div class="text-secondary mb-3">{{ literature.author }}</div>
+            </div>
+            <div class="card-body pt-2">
+                <div class="datagrid">
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Klasa</div>
+                        <div class="datagrid-content"><span class="badge bg-{{ color }}-lt">{{ literature.classLevel }}</span></div>
+                    </div>
+                    {% if literature.epoch %}
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Epoka</div>
+                        <div class="datagrid-content">{{ literature.epoch }}</div>
+                    </div>
+                    {% endif %}
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Status</div>
+                        <div class="datagrid-content">
+                            {% if literature.isObligatory %}<span class="badge bg-red-lt">Obowiązkowa</span>
+                            {% else %}<span class="badge bg-secondary-lt">Uzupełniająca</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Themes #}
+        {% if literature.themes %}
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-tags me-2"></i>Motywy i tematy</h3></div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    {% for theme in literature.themes %}
+                        <span class="badge bg-purple-lt">{{ theme }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {# Characters #}
+        {% if literature.characters %}
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-users me-2"></i>Bohaterowie</h3></div>
+            <div class="list-group list-group-flush">
+                {% for char in literature.characters %}
+                    <div class="list-group-item">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <span class="avatar avatar-sm rounded bg-{{ color }}-lt">{{ char.name|first }}</span>
+                            </div>
+                            <div class="col">
+                                <div class="fw-medium">{{ char.name }}</div>
+                                <div class="text-secondary small">{{ char.description }}</div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {# Change class #}
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-transfer me-2"></i>Przenieś do klasy</h3></div>
+            <div class="card-body">
+                <form method="post" action="{{ path('app_literature_change_class', {id: literature.id}) }}" class="d-flex gap-2">
+                    <select name="classLevel" class="form-select form-select-sm">
+                        {% for cl in ['4','5','6','7','8'] %}
+                            <option value="{{ cl }}" {{ literature.classLevel == cl ? 'selected' : '' }}>Klasa {{ cl }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-primary flex-shrink-0">
+                        <i class="ti ti-check me-1"></i>Zmień
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {# Actions #}
+        <div class="card">
+            <div class="card-body d-flex flex-column gap-2">
+                <a href="{{ path('app_lesson_plan_generate', {literature: literature.id}) }}" class="btn btn-primary w-100">
+                    <i class="ti ti-clipboard-text me-2"></i> Generuj konspekt lekcji
+                </a>
+                <form method="post" action="{{ path('app_literature_generate_questions', {id: literature.id}) }}" data-ai-loading="Trwa generowanie pytań do lektury...">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="ti ti-sparkles me-2"></i> Generuj nowe pytania AI
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {# ── Right content ────────────── #}
+    <div class="col-lg-8">
+        {# Summary #}
+        {% if literature.summary %}
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-file-description me-2"></i>Streszczenie</h3></div>
+            <div class="card-body" style="line-height: 1.8;">{{ literature.summary }}</div>
+        </div>
+        {% endif %}
+
+        {# AI-generated questions #}
+        {% set generatedQuestions = app.session.get('generated_questions_' ~ literature.id) %}
+        {% if generatedQuestions %}
+        <div class="card mb-3">
+            <div class="card-status-start bg-purple"></div>
+            <div class="card-stamp"><div class="card-stamp-icon bg-purple"><i class="ti ti-sparkles"></i></div></div>
+            <div class="card-header">
+                <h3 class="card-title">Pytania wygenerowane przez AI</h3>
+                <div class="card-actions">
+                    <button class="btn btn-ghost-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('aiQ').innerText).then(()=>{this.innerHTML='<i class=\'ti ti-check me-1\'></i>Skopiowano'})">
+                        <i class="ti ti-copy me-1"></i>Kopiuj
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="aiQ" class="result-box">{{ generatedQuestions }}</div>
+            </div>
+        </div>
+        {% endif %}
+
+        {# Preinstalled questions #}
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="ti ti-help-circle me-2"></i>Gotowe pytania ({{ literature.questions|length }})</h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="accordion" id="qa">
+                    {% for question in literature.questions %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q{{ question.id }}">
+                                    <span class="d-flex align-items-center gap-2 flex-wrap">
+                                        {% if question.questionType == 'closed' %}<span class="badge bg-blue-lt">ABCD</span>
+                                        {% elseif question.questionType == 'open' %}<span class="badge bg-green-lt">Otwarte</span>
+                                        {% elseif question.questionType == 'true_false' %}<span class="badge bg-orange-lt">P/F</span>{% endif %}
+                                        {% if question.difficulty == 'easy' %}<span class="badge bg-success-lt">Łatwe</span>
+                                        {% elseif question.difficulty == 'medium' %}<span class="badge bg-warning-lt">Średnie</span>
+                                        {% elseif question.difficulty == 'hard' %}<span class="badge bg-danger-lt">Trudne</span>{% endif %}
+                                        <span>{{ question.question|split("\n")|first }}</span>
+                                    </span>
+                                </button>
+                            </h2>
+                            <div id="q{{ question.id }}" class="accordion-collapse collapse" data-bs-parent="#qa">
+                                <div class="accordion-body">
+                                    {% if question.question|split("\n")|length > 1 %}
+                                        <div class="mb-3" style="white-space: pre-wrap;">{{ question.question }}</div>
+                                    {% endif %}
+                                    {% if question.answer %}
+                                        <div class="alert alert-success mb-0">
+                                            <i class="ti ti-check me-2"></i><strong>Odpowiedź:</strong> {{ question.answer }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

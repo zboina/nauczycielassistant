@@ -1,0 +1,60 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Egzamin 8-klasisty — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Egzamin ósmoklasisty{% endblock %}
+{% block title_text %}Arkusze próbne{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_exam8_generate') }}" class="btn btn-primary btn-sm"><i class="ti ti-sparkles me-1"></i>Generuj arkusz</a>
+{% endblock %}
+
+{% block body %}
+{% if exams|length > 0 %}
+    <div class="row row-cards">
+        {% for exam in exams %}
+            <div class="col-md-6 col-xl-4">
+                <div class="card">
+                    <div class="card-status-start bg-red"></div>
+                    <div class="card-body">
+                        <h3 class="card-title mb-1">
+                            <a href="{{ path('app_exam8_show', {id: exam.id}) }}" class="text-reset">{{ exam.title }}</a>
+                        </h3>
+                        <div class="text-secondary mb-3" style="font-size:.85rem;">{{ exam.examTypeLabel }}</div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <span class="badge bg-primary-lt">Kl. {{ exam.classLevel }}</span>
+                            <span class="badge bg-red-lt">{{ exam.maxPoints }} pkt</span>
+                            {% if exam.resultCount > 0 %}
+                                <span class="badge bg-blue-lt"><i class="ti ti-users me-1"></i>{{ exam.resultCount }} wyników</span>
+                                {% if exam.averagePercent is not null %}
+                                    <span class="badge bg-green-lt">Śr. {{ exam.averagePercent }}%</span>
+                                {% endif %}
+                            {% endif %}
+                            <span class="badge bg-secondary-lt">{{ exam.createdAt|date('d.m.Y') }}</span>
+                        </div>
+                    </div>
+                    <div class="card-footer d-flex justify-content-between">
+                        <a href="{{ path('app_exam8_show', {id: exam.id}) }}" class="btn btn-primary btn-sm"><i class="ti ti-eye me-1"></i>Podgląd</a>
+                        <div class="btn-group">
+                            <a href="{{ path('app_exam8_results', {id: exam.id}) }}" class="btn btn-outline-blue btn-sm"><i class="ti ti-chart-bar me-1"></i>Wyniki</a>
+                            <a href="{{ path('app_exam8_pdf', {id: exam.id}) }}" class="btn btn-outline-secondary btn-sm" target="_blank"><i class="ti ti-file-type-pdf"></i></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="card">
+        <div class="card-body">
+            <div class="empty">
+                <div class="empty-icon"><i class="ti ti-school" style="font-size:2.5rem;"></i></div>
+                <p class="empty-title">Brak arkuszy próbnych</p>
+                <p class="empty-subtitle text-secondary">Wygeneruj pierwszy arkusz próbny egzaminu ósmoklasisty.</p>
+                <div class="empty-action">
+                    <a href="{{ path('app_exam8_generate') }}" class="btn btn-primary"><i class="ti ti-sparkles me-2"></i>Generuj arkusz</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

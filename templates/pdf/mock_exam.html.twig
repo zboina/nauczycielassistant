@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<style>
+@page { margin: 15mm 18mm; }
+body { font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; line-height: 1.5; color: #000; }
+
+.exam-header { border: 2px solid #000; padding: 10px 15px; margin-bottom: 15px; }
+.exam-title { font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 5px; }
+.exam-meta { font-size: 9pt; text-align: center; color: #555; }
+
+.student-info { margin-bottom: 15px; font-size: 10pt; }
+.student-info td { padding: 3px 0; }
+.dotted { border-bottom: 1px dotted #000; min-width: 200px; display: inline-block; }
+
+.part-title { font-size: 11pt; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 3px; margin: 20px 0 10px; }
+
+.text-box { border: 1px solid #ccc; padding: 10px; margin-bottom: 12px; font-style: italic; line-height: 1.7; background: #fafafa; }
+.text-source { font-size: 8pt; text-align: right; color: #555; margin-top: 3px; font-style: normal; }
+
+.question { margin-bottom: 12px; page-break-inside: avoid; }
+.q-header { font-weight: bold; margin-bottom: 4px; }
+.q-points { float: right; font-weight: normal; color: #555; font-size: 9pt; }
+.q-text { margin-bottom: 6px; }
+
+.options { margin: 0; padding: 0; list-style: none; }
+.options li { padding: 3px 0 3px 5px; margin-bottom: 2px; }
+.options li .box { display: inline-block; width: 14px; height: 14px; border: 1.5px solid #000; margin-right: 6px; vertical-align: middle; }
+.correct { font-weight: bold; }
+
+.answer-lines { margin-top: 4px; }
+.answer-line { border-bottom: 1px dotted #999; height: 2em; }
+
+.essay-topic { border: 1px solid #ccc; padding: 8px 12px; margin-bottom: 10px; }
+.essay-label { font-weight: bold; font-size: 9pt; color: #555; margin-bottom: 3px; }
+
+.key-header { font-size: 12pt; font-weight: bold; text-align: center; margin: 20px 0 10px; border-top: 2px solid #000; padding-top: 10px; }
+.key-item { margin-bottom: 4px; font-size: 9pt; }
+
+/* Answer card */
+.answer-card { border: 2px solid #000; padding: 8px 12px; margin-top: 20px; page-break-inside: avoid; }
+.answer-card-title { font-size: 10pt; font-weight: bold; text-align: center; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #000; padding-bottom: 4px; }
+.answer-card-info { font-size: 7.5pt; text-align: center; color: #555; margin-bottom: 8px; }
+.ac-table { width: 100%; border-collapse: collapse; }
+.ac-table th, .ac-table td { border: 1px solid #000; text-align: center; padding: 4px 2px; font-size: 9pt; }
+.ac-table th { background: #eee; font-weight: bold; font-size: 8pt; }
+.ac-bubble { display: inline-block; width: 16px; height: 16px; border: 1.5px solid #000; border-radius: 50%; vertical-align: middle; }
+.ac-bubble-filled { background: #000; }
+.ac-nr { font-weight: bold; width: 30px; }
+
+.footer { text-align: center; font-size: 7pt; color: #999; margin-top: 15px; border-top: 1px solid #ddd; padding-top: 5px; }
+</style>
+</head>
+<body>
+
+<div class="exam-header">
+    <div class="exam-title">{{ data.title ?? exam.title }}</div>
+    <div class="exam-meta">Czas pracy: 180 minut | Maksymalna liczba punktów: {{ exam.maxPoints }}</div>
+</div>
+
+<table class="student-info">
+    <tr><td>Imię i nazwisko: <span class="dotted">&nbsp;</span></td></tr>
+    <tr><td>Klasa: <span class="dotted" style="min-width:80px;">&nbsp;</span> &nbsp;&nbsp; Data: <span class="dotted" style="min-width:120px;">&nbsp;</span></td></tr>
+</table>
+
+{% for part in data.parts ?? [] %}
+    <div class="part-title">{{ part.name }}</div>
+
+    {% if part.text is defined %}
+        <div class="text-box">
+            {{ part.text }}
+        </div>
+        {% if part.textAuthor is defined %}
+            <div class="text-source">{{ part.textAuthor }}</div>
+        {% endif %}
+    {% endif %}
+
+    {% for q in part.questions ?? [] %}
+        <div class="question">
+            <div class="q-header">
+                Zadanie {{ q.number }}.
+                <span class="q-points">({{ q.points }} {{ q.points == 1 ? 'punkt' : 'punkty' }})</span>
+            </div>
+            <div class="q-text">{{ q.text }}</div>
+
+            {% if q.type == 'closed' and q.options is defined %}
+                <ul class="options">
+                    {% for opt in q.options %}
+                        {% set isCorrect = showAnswers and q.correct is defined and opt starts with q.correct %}
+                        <li class="{{ isCorrect ? 'correct' : '' }}">
+                            <span class="box"></span>{{ opt }}
+                            {% if isCorrect %} ✓{% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                {% set lines = q.points <= 2 ? 3 : (q.points <= 3 ? 5 : 8) %}
+                <div class="answer-lines">
+                    {% for i in 1..lines %}
+                        <div class="answer-line"></div>
+                    {% endfor %}
+                </div>
+                {% if showAnswers and q.answer is defined %}
+                    <div style="margin-top:4px;font-size:8pt;color:#0066cc;">
+                        <strong>Odpowiedź:</strong> {{ q.answer }}
+                    </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    {% endfor %}
+{% endfor %}
+
+{% if data.essayTopics is defined %}
+    <div class="part-title">Część 3 — Wypracowanie ({{ data.essayMaxPoints ?? 20 }} punktów)</div>
+    <p>Wybierz <strong>jeden</strong> z poniższych tematów i napisz wypracowanie liczące co najmniej {{ data.essayTopics[0].minWords ?? 200 }} słów.</p>
+
+    {% for topic in data.essayTopics %}
+        <div class="essay-topic">
+            <div class="essay-label">Temat {{ loop.index }} ({{ topic.type }}):</div>
+            {{ topic.topic }}
+        </div>
+    {% endfor %}
+{% endif %}
+
+{# ═══════ ANSWER CARD — bubble sheet ═══════ #}
+{% set closedQuestions = [] %}
+{% for part in data.parts ?? [] %}
+    {% for q in part.questions ?? [] %}
+        {% if q.type == 'closed' and q.correct is defined %}
+            {% set closedQuestions = closedQuestions|merge([{num: q.number, correct: q.correct}]) %}
+        {% endif %}
+    {% endfor %}
+{% endfor %}
+
+{% if closedQuestions|length > 0 %}
+<div class="answer-card">
+    <div class="answer-card-title">Karta odpowiedzi — pytania zamknięte</div>
+    <div class="answer-card-info">Zaznacz wybraną odpowiedź wypełniając kółko (●) lub stawiając X</div>
+    <table class="ac-table">
+        <thead>
+            <tr>
+                <th class="ac-nr">Nr</th>
+                <th style="width:60px;">A</th>
+                <th style="width:60px;">B</th>
+                <th style="width:60px;">C</th>
+                <th style="width:60px;">D</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cq in closedQuestions %}
+                <tr>
+                    <td class="ac-nr">{{ cq.num }}</td>
+                    {% for letter in ['A','B','C','D'] %}
+                        <td>
+                            {% if showAnswers and cq.correct == letter %}
+                                <span class="ac-bubble ac-bubble-filled"></span>
+                            {% else %}
+                                <span class="ac-bubble"></span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if showAnswers %}
+    <div class="key-header">KLUCZ ODPOWIEDZI</div>
+    {% for part in data.parts ?? [] %}
+        <div style="font-weight:bold;font-size:9pt;margin:8px 0 4px;">{{ part.name }}</div>
+        {% for q in part.questions ?? [] %}
+            <div class="key-item">
+                <strong>Zad. {{ q.number }}:</strong>
+                {% if q.type == 'closed' %}
+                    {{ q.correct }}
+                {% elseif q.answer is defined %}
+                    {{ q.answer }}
+                {% endif %}
+                ({{ q.points }} pkt)
+            </div>
+        {% endfor %}
+    {% endfor %}
+{% endif %}
+
+<div class="footer">Wygenerowano w Nauczyciel Assistant | Arkusz próbny — nie jest oficjalnym materiałem CKE</div>
+
+</body>
+</html>

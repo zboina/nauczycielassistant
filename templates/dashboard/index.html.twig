@@ -1,0 +1,176 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dashboard — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Witaj, {{ app.user.fullName }}!{% endblock %}
+{% block title_text %}Dashboard{% endblock %}
+
+{% block body %}
+{# ── Stat cards ─────────────────────────── #}
+<div class="row row-deck row-cards mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-primary text-white avatar"><i class="ti ti-file-text"></i></span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium">{{ testsCount }}</div>
+                        <div class="text-secondary">Sprawdziany</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-green text-white avatar"><i class="ti ti-notebook"></i></span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium">{{ worksheetsCount }}</div>
+                        <div class="text-secondary">Karty pracy</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-orange text-white avatar"><i class="ti ti-mail-forward"></i></span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium">{{ parentInfoCount }}</div>
+                        <div class="text-secondary">Info dla rodziców</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="bg-purple text-white avatar"><i class="ti ti-robot"></i></span>
+                    </div>
+                    <div class="col">
+                        <div class="font-weight-medium">{{ aiStats.totalRequests ?? 0 }}</div>
+                        <div class="text-secondary">Zapytania AI</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── Quick access modules ────────────────── #}
+<div class="row row-deck row-cards mb-4">
+    <div class="col-md-4">
+        <a href="{{ path('app_generate_test') }}" class="card card-link card-link-pop">
+            <div class="card-body text-center py-4">
+                <span class="avatar avatar-xl bg-primary-lt mb-3 rounded">
+                    <i class="ti ti-robot" style="font-size: 1.5rem;"></i>
+                </span>
+                <h3 class="mb-1">Generatory AI</h3>
+                <p class="text-secondary mb-0">Sprawdziany, karty pracy, informacje</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{{ path('app_literature_index') }}" class="card card-link card-link-pop">
+            <div class="card-body text-center py-4">
+                <span class="avatar avatar-xl bg-green-lt mb-3 rounded">
+                    <i class="ti ti-book-2" style="font-size: 1.5rem;"></i>
+                </span>
+                <h3 class="mb-1">Lektury kl. 4-8</h3>
+                <p class="text-secondary mb-0">Baza lektur, pytania, streszczenia</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{{ path('app_classroom_timer') }}" class="card card-link card-link-pop">
+            <div class="card-body text-center py-4">
+                <span class="avatar avatar-xl bg-orange-lt mb-3 rounded">
+                    <i class="ti ti-chalkboard" style="font-size: 1.5rem;"></i>
+                </span>
+                <h3 class="mb-1">Narzędzia lekcyjne</h3>
+                <p class="text-secondary mb-0">Timer, losowanie, dyktowanie</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{{ path('app_theory_index') }}" class="card card-link card-link-pop">
+            <div class="card-body text-center py-4">
+                <span class="avatar avatar-xl bg-purple-lt mb-3 rounded">
+                    <i class="ti ti-school" style="font-size: 1.5rem;"></i>
+                </span>
+                <h3 class="mb-1">Teoria</h3>
+                <p class="text-secondary mb-0">PP MEN, gatunki, środki stylistyczne, gramatyka</p>
+            </div>
+        </a>
+    </div>
+</div>
+
+{# ── Recent materials table ──────────────── #}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title"><i class="ti ti-clock me-2"></i>Ostatnio wygenerowane</h3>
+        <div class="card-actions">
+            <a href="{{ path('app_generate_history') }}" class="btn btn-link">Zobacz wszystko</a>
+        </div>
+    </div>
+    {% if recentMaterials|length > 0 %}
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table">
+                <thead>
+                    <tr>
+                        <th>Typ</th>
+                        <th>Tytuł / Kontekst</th>
+                        <th>Klasa</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for material in recentMaterials %}
+                        <tr>
+                            <td>
+                                {% if material.type == 'test' %}
+                                    <span class="badge bg-primary-lt"><i class="ti ti-file-text me-1"></i>Sprawdzian</span>
+                                {% elseif material.type == 'worksheet' %}
+                                    <span class="badge bg-green-lt"><i class="ti ti-notebook me-1"></i>Karta pracy</span>
+                                {% elseif material.type == 'parent_info' %}
+                                    <span class="badge bg-orange-lt"><i class="ti ti-mail me-1"></i>Info</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ path('app_generate_history_show', {id: material.id}) }}" class="text-reset">
+                                    {{ material.title ?? material.subjectContext|u.truncate(50) }}
+                                </a>
+                            </td>
+                            <td><span class="text-secondary">{{ material.classLevel }}</span></td>
+                            <td><span class="text-secondary">{{ material.createdAt|date('d.m.Y H:i') }}</span></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="card-body">
+            <div class="empty">
+                <div class="empty-icon"><i class="ti ti-mood-smile" style="font-size: 2.5rem;"></i></div>
+                <p class="empty-title">Brak materiałów</p>
+                <p class="empty-subtitle text-secondary">Wygeneruj pierwszy sprawdzian lub kartę pracy!</p>
+                <div class="empty-action">
+                    <a href="{{ path('app_generate_test') }}" class="btn btn-primary"><i class="ti ti-robot me-2"></i>Generuj sprawdzian</a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

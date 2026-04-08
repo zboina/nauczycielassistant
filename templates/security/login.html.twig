@@ -1,0 +1,72 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Logowanie — Nauczyciel Assistant{% endblock %}
+
+{% block layout %}
+<div class="d-flex flex-column min-vh-100 bg-white">
+    <div class="row g-0 flex-fill">
+        <div class="col-12 col-lg-6 d-flex align-items-center justify-content-center">
+            <div class="container container-tight py-4" style="max-width: 420px;">
+                <div class="text-center mb-4">
+                    <img src="/images/logo.png" alt="Nauczyciel Assistant" style="height:5rem;width:auto;" class="mb-3">
+                    <h1 class="fw-bold">Nauczyciel Assistant</h1>
+                    <p class="text-secondary">Narzędzia AI dla nauczyciela</p>
+                </div>
+                <div class="card card-md">
+                    <div class="card-body">
+                        <h2 class="h2 text-center mb-4">Logowanie</h2>
+
+                        {% if error %}
+                            <div class="alert alert-danger">
+                                <i class="ti ti-alert-circle me-2"></i>
+                                {{ error.messageKey|trans(error.messageData, 'security') }}
+                            </div>
+                        {% endif %}
+
+                        <form method="post" data-turbo="false">
+                            <div class="mb-3">
+                                <label class="form-label" for="inputEmail">Email</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="ti ti-mail"></i></span>
+                                    <input type="email" name="_username" id="inputEmail" class="form-control"
+                                           value="{{ last_username }}" placeholder="nauczyciel@szkola.pl" autofocus required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="inputPassword">Hasło</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="ti ti-lock"></i></span>
+                                    <input type="password" name="_password" id="inputPassword" class="form-control"
+                                           placeholder="Twoje hasło" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-check">
+                                    <input type="checkbox" name="_remember_me" class="form-check-input">
+                                    <span class="form-check-label">Zapamiętaj mnie</span>
+                                </label>
+                            </div>
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+                            <div class="form-footer">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="ti ti-login me-2"></i> Zaloguj się
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="text-center text-secondary mt-3">
+                    Nie masz konta? <a href="{{ path('app_register') }}" class="fw-medium">Zarejestruj się</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="text-center text-white px-5">
+                <img src="/images/logo.png" alt="Logo" style="height:8rem;width:auto;filter:brightness(0) invert(1);" class="mb-3">
+                <h2 class="fw-bold mb-3">Twój asystent w szkole</h2>
+                <p class="opacity-75" style="font-size: 1.1rem;">Generuj sprawdziany, karty pracy i informacje dla rodziców z pomocą AI. Zarządzaj lekturami i korzystaj z narzędzi lekcyjnych.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

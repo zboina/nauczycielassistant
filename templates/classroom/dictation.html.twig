@@ -1,0 +1,334 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dyktowanie — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Narzędzia lekcyjne{% endblock %}
+{% block title_text %}Dyktowanie (Speech-to-Text){% endblock %}
+
+{% block body %}
+<div class="row g-4">
+    {# Main editor area #}
+    <div class="col-lg-8">
+        {# Top bar — REC + status #}
+        <div class="card mb-3">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center gap-3">
+                    <button class="btn btn-icon btn-lg rounded-circle" id="recBtn"
+                            style="width:48px;height:48px;border:3px solid var(--tblr-danger);background:transparent;transition:all .2s;"
+                            title="Start/Stop (Ctrl+Enter)">
+                        <span id="recDot" style="width:18px;height:18px;background:var(--tblr-danger);border-radius:50%;display:block;transition:all .2s;"></span>
+                    </button>
+                    <div class="d-flex align-items-center gap-1" id="waveform" style="height:32px;"></div>
+                    <span class="text-secondary" id="statusText">Kliknij mikrofon</span>
+                    <div class="flex-fill"></div>
+                    <span class="text-secondary small" id="counter">0 słów / 0 znaków</span>
+                </div>
+            </div>
+        </div>
+
+        {# Quick toolbar #}
+        <div class="d-flex gap-1 mb-2" id="quickToolbar"></div>
+
+        {# Editor #}
+        <div class="card mb-3">
+            <div class="card-body p-0">
+                <div class="form-control border-0" id="editor" contenteditable="true"
+                     data-placeholder="Kliknij mikrofon lub naciśnij Ctrl+Enter i zacznij mówić..."
+                     spellcheck="true"
+                     style="min-height:350px;max-height:55vh;overflow-y:auto;font-family:Georgia,serif;font-size:1.1rem;line-height:1.8;resize:none;box-shadow:none;padding:1.25rem;"></div>
+            </div>
+        </div>
+
+        {# Bottom actions #}
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-secondary small">Ostatnie:</span>
+            <div class="d-flex gap-2" id="cmdLog"></div>
+            <div class="flex-fill"></div>
+            <button class="btn btn-sm btn-outline-secondary" id="btnCopyAll"><i class="ti ti-copy me-1"></i>Kopiuj tekst</button>
+            <button class="btn btn-sm btn-outline-secondary" id="btnSaveTxt"><i class="ti ti-download me-1"></i>.txt</button>
+        </div>
+    </div>
+
+    {# Sidebar — commands + settings #}
+    <div class="col-lg-4">
+        {# Settings card #}
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-settings me-2"></i>Ustawienia</h3></div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Słowo aktywacyjne</label>
+                    <input type="text" class="form-control form-control-sm" id="setKeyword" value="zboina">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Głośność beep</label>
+                    <input type="range" class="form-range" id="setBeepVol" min="0" max="1" step="0.1" value="0.3">
+                </div>
+                <label class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="setAutoCap" checked>
+                    <span class="form-check-label">Auto-kapitalizacja po kropce</span>
+                </label>
+                <button class="btn btn-sm btn-primary w-100" id="settingsSave"><i class="ti ti-check me-1"></i>Zapisz ustawienia</button>
+            </div>
+        </div>
+
+        {# Commands card #}
+        <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-command me-2"></i>Komendy głosowe</h3></div>
+            <div class="card-body p-0" id="cmdList" style="max-height:450px;overflow-y:auto;"></div>
+        </div>
+    </div>
+</div>
+
+{# Toast container #}
+<div id="toastContainer" style="position:fixed;top:5rem;right:1rem;z-index:1060;display:flex;flex-direction:column;gap:.5rem;"></div>
+
+<style>
+.ghost-text { color: #9ca3af; font-style: italic; }
+#editor:empty::before { content: attr(data-placeholder); color: #9ca3af; pointer-events: none; font-style: italic; }
+.rec-active { background: rgba(var(--tblr-danger-rgb),.08) !important; animation: rec-pulse 1.5s ease infinite; }
+.rec-active #recDot { width:14px !important; height:14px !important; border-radius:3px !important; }
+@keyframes rec-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(var(--tblr-danger-rgb),.3)} 50%{box-shadow:0 0 0 10px transparent} }
+.wv-bar { width:3px; background:var(--tblr-success); border-radius:2px; height:4px; transition:height .05s; opacity:.6; }
+.dyk-toast { background:#fff; border:1px solid #dee2e6; border-left:3px solid var(--tblr-primary); padding:.5rem 1rem; border-radius:6px; font-size:.8rem; box-shadow:0 2px 8px rgba(0,0,0,.1); animation:tIn .3s ease,tOut .3s ease 2.7s forwards; }
+@keyframes tIn { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:translateX(0)} }
+@keyframes tOut { to{opacity:0;transform:translateX(40px)} }
+.cmd-grp { font-size:.65rem; font-weight:700; color:var(--tblr-primary); text-transform:uppercase; letter-spacing:.05em; padding:.6rem 1rem .3rem; border-bottom:1px solid #e6e8eb; }
+.cmd-row { display:flex; align-items:center; gap:.5rem; padding:.4rem 1rem; cursor:pointer; transition:background .15s; }
+.cmd-row:hover { background:rgba(var(--tblr-primary-rgb),.04); }
+.cmd-icon { font-size:1.1rem; width:24px; text-align:center; flex-shrink:0; }
+.cmd-name { font-size:.72rem; font-weight:600; color:var(--tblr-primary); }
+.cmd-desc { font-size:.62rem; color:#6c7a89; }
+.cmd-run { background:none; border:1px solid #dee2e6; color:#6c7a89; font-size:.55rem; padding:.1rem .35rem; border-radius:4px; cursor:pointer; flex-shrink:0; }
+.cmd-run:hover { background:var(--tblr-primary); color:#fff; border-color:var(--tblr-primary); }
+.cmd-log-item { font-size:.75rem; color:#6c7a89; white-space:nowrap; animation:tIn .3s ease; }
+</style>
+
+<script>
+(function() {
+  'use strict';
+
+  const DEFAULT_KEYWORD = 'zboina';
+  let config = { keyword: DEFAULT_KEYWORD, beepVol: 0.3, autoCap: true };
+  try { const s = JSON.parse(localStorage.getItem('dyktron_config')); if (s) Object.assign(config, s); } catch(e) {}
+
+  const CMD_GROUPS = [
+    { title: 'Edycja', cmds: [
+      { id:'akapit', names:['akapit'], icon:'\u00B6', desc:'Nowy akapit', action:cmdParagraph },
+      { id:'nowa', names:['nowa linia','nowa linijka'], icon:'\u21B5', desc:'Nowa linia', action:cmdNewline },
+      { id:'usun', names:['usuń','usun'], icon:'\u2702', desc:'Usuń ostatnie zdanie', action:cmdDeleteSentence },
+      { id:'cofnij', names:['cofnij'], icon:'\u21A9', desc:'Cofnij', action:cmdUndo },
+      { id:'wyczysc', names:['wyczyść','wyczysc'], icon:'\uD83D\uDDD1', desc:'Wyczyść edytor', action:cmdClear },
+    ]},
+    { title: 'Schowek', cmds: [
+      { id:'kopiuj', names:['kopiuj'], icon:'\uD83D\uDCCB', desc:'Kopiuj do schowka', action:cmdCopy },
+      { id:'zapisz', names:['zapisz'], icon:'\uD83D\uDCBE', desc:'Pobierz .txt', action:cmdSave },
+    ]},
+    { title: 'Sterowanie', cmds: [
+      { id:'stop', names:['stop'], icon:'\u23F9', desc:'Zatrzymaj', action:cmdStop },
+      { id:'start', names:['start'], icon:'\u25B6', desc:'Wznów', action:cmdStart },
+    ]},
+    { title: 'Interpunkcja', cmds: [
+      { id:'kropka', names:['kropka'], icon:'.', desc:'Wstaw "."', action:cmdDot },
+      { id:'przecinek', names:['przecinek'], icon:',', desc:'Wstaw ","', action:cmdComma },
+      { id:'pytajnik', names:['pytajnik','znak zapytania'], icon:'?', desc:'Wstaw "?"', action:cmdQuestion },
+      { id:'wykrzyknik', names:['wykrzyknik'], icon:'!', desc:'Wstaw "!"', action:cmdExclaim },
+      { id:'duza', names:['duża litera','duza litera','wielka litera'], icon:'Aa', desc:'Wielka litera', action:cmdUpperNext },
+    ]}
+  ];
+  const COMMANDS = CMD_GROUPS.flatMap(g => g.cmds);
+  let isListening=false, recognition=null, undoStack=[], capitalizeNext=false, cmdLogItems=[];
+  let audioCtx=null, analyser=null, micStream=null;
+
+  const recBtn=document.getElementById('recBtn'), waveformEl=document.getElementById('waveform');
+  const statusText=document.getElementById('statusText'), counterEl=document.getElementById('counter');
+  const editor=document.getElementById('editor'), cmdListEl=document.getElementById('cmdList');
+  const cmdLogEl=document.getElementById('cmdLog'), quickToolbar=document.getElementById('quickToolbar');
+  const toastContainer=document.getElementById('toastContainer');
+
+  function execCmd(cmd,src) { pushUndo(); cmd.action(); beep(); logCommand(cmd,src||'kliknięcie'); }
+
+  // Build command list
+  function buildCmdList() {
+    cmdListEl.innerHTML='';
+    CMD_GROUPS.forEach(g => {
+      const t=document.createElement('div'); t.className='cmd-grp'; t.textContent=g.title; cmdListEl.appendChild(t);
+      g.cmds.forEach(cmd => {
+        const r=document.createElement('div'); r.className='cmd-row';
+        r.innerHTML=`<span class="cmd-icon">${cmd.icon}</span><div style="flex:1;min-width:0"><div class="cmd-name">${config.keyword.toUpperCase()} ${cmd.names[0].toUpperCase()}</div><div class="cmd-desc">${cmd.desc}</div></div><button class="cmd-run">\u25B6</button>`;
+        r.addEventListener('click',()=>execCmd(cmd));
+        r.querySelector('.cmd-run').addEventListener('click',e=>{e.stopPropagation();execCmd(cmd);});
+        cmdListEl.appendChild(r);
+      });
+    });
+  }
+  buildCmdList();
+
+  // Quick toolbar
+  const QUICK=['akapit','kopiuj','cofnij','wyczysc','zapisz'];
+  (function buildQuick(){
+    quickToolbar.innerHTML='';
+    QUICK.forEach(id=>{
+      const cmd=COMMANDS.find(c=>c.id===id); if(!cmd) return;
+      const b=document.createElement('button'); b.className='btn btn-sm btn-outline-secondary'; b.innerHTML=cmd.icon+' <span class="d-none d-md-inline ms-1" style="font-size:.75rem;">'+cmd.desc+'</span>';
+      b.title=cmd.desc; b.addEventListener('click',()=>execCmd(cmd)); quickToolbar.appendChild(b);
+    });
+  })();
+
+  // Waveform
+  const BARS=20, bars=[];
+  for(let i=0;i<BARS;i++){const b=document.createElement('div');b.className='wv-bar';waveformEl.appendChild(b);bars.push(b);}
+
+  // Autosave
+  try{const s=localStorage.getItem('dyktron_text');if(s)editor.textContent=s;}catch(e){}
+  setInterval(()=>{try{localStorage.setItem('dyktron_text',getText());}catch(e){}},10000);
+  updateCounter();
+
+  // Speech Recognition
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){statusText.textContent='Brak Web Speech API — użyj Chrome';recBtn.style.opacity='.3';recBtn.style.pointerEvents='none';}
+
+  function createRec(){
+    const r=new SR(); r.lang='pl-PL'; r.continuous=true; r.interimResults=true; r.maxAlternatives=1;
+    r.onstart=()=>{isListening=true;recBtn.classList.add('rec-active');statusText.textContent='Nasłuchuję...';statusText.classList.add('text-danger');};
+    r.onend=()=>{recBtn.classList.remove('rec-active');statusText.classList.remove('text-danger');
+      if(isListening){statusText.textContent='Restart...';try{recognition.start();}catch(e){isListening=false;}}
+      else statusText.textContent='Zatrzymano';};
+    r.onerror=(e)=>{if(e.error==='not-allowed'){statusText.textContent='Brak dostępu do mikrofonu!';isListening=false;toast('Brak dostępu do mikrofonu');}};
+    r.onresult=handleResult;
+    return r;
+  }
+
+  function removeGhost(){const g=editor.querySelector('.ghost-text');if(g)g.remove();}
+
+  function handleResult(ev){
+    let interim='',final='';
+    for(let i=ev.resultIndex;i<ev.results.length;i++){const t=ev.results[i][0].transcript;if(ev.results[i].isFinal)final+=t;else interim+=t;}
+    removeGhost();
+    if(interim){const g=document.createElement('span');g.className='ghost-text';g.textContent=interim;editor.appendChild(g);editor.scrollTop=editor.scrollHeight;}
+    if(final){removeGhost();processFinal(final);}
+  }
+
+  function processFinal(text){
+    const kw=config.keyword.toLowerCase(),lower=text.toLowerCase(),variants=getVariants(kw);
+    let kwIdx=-1,kwMatch='';
+    for(const v of variants){const i=lower.indexOf(v);if(i!==-1&&(kwIdx===-1||i<kwIdx)){kwIdx=i;kwMatch=v;}}
+    if(kwIdx!==-1){
+      const before=text.substring(0,kwIdx).trim(); if(before)appendText(before);
+      const after=lower.substring(kwIdx+kwMatch.length).trim(),m=matchCmd(after);
+      if(m){const rest=text.substring(kwIdx+kwMatch.length).trim().substring(m.name.length).trim();pushUndo();m.cmd.action();beep();logCommand(m.cmd);if(rest)appendText(rest);}
+      else{toast('Nie rozpoznano komendy');const rest=text.substring(kwIdx+kwMatch.length).trim();if(rest)appendText(rest);}
+    }else appendText(text);
+    updateCounter();
+  }
+
+  function getVariants(kw){const v=[kw];if(kw==='zboina')v.push('zbójna','zbojna','zboiną','zboi na','z boina');return v;}
+  function matchCmd(t){const s=t.toLowerCase().trim();for(const c of COMMANDS)for(const n of c.names)if(s.startsWith(n))return{cmd:c,name:n};const sn=norm(s);for(const c of COMMANDS)for(const n of c.names)if(sn.startsWith(norm(n)))return{cmd:c,name:n};return null;}
+  function norm(s){return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
+
+  // getText — plain text do kopiowania/zapisu (z \n dla br)
+  function getText(){
+    let text='';
+    editor.childNodes.forEach(n=>{
+      if(n.nodeType===3) text+=n.textContent;
+      else if(n.nodeName==='BR') text+='\n';
+      else if(n.nodeType===1 && !n.classList.contains('ghost-text')) text+=n.textContent;
+    });
+    return text.replace(/\u00A0/g,' ');
+  }
+  // getHtml/setHtml — zachowuje <br> akapity
+  function getHtml(){return editor.innerHTML;}
+  function setHtml(h){removeGhost();editor.innerHTML=h;editor.scrollTop=editor.scrollHeight;}
+  function clearEditor(){removeGhost();editor.innerHTML='';editor.scrollTop=editor.scrollHeight;}
+
+  function appendText(text){
+    removeGhost();pushUndo();let t=text.trim();if(!t)return;
+    if(capitalizeNext){t=t[0].toUpperCase()+t.slice(1);capitalizeNext=false;}
+    if(config.autoCap){const c=getText();if(!c||/[.!?]\s*$/.test(c))t=t[0].toUpperCase()+t.slice(1);}
+    const c=getText();if(c&&!c.endsWith('\n')&&!c.endsWith(' '))editor.appendChild(document.createTextNode(' '));
+    editor.appendChild(document.createTextNode(t));editor.scrollTop=editor.scrollHeight;updateCounter();
+  }
+
+  // pushUndo/popUndo — operują na innerHTML
+  function pushUndo(){undoStack.push(getHtml());if(undoStack.length>50)undoStack.shift();}
+
+  // Wstaw interpunkcję na końcu — operuje na ostatnim text node, nie niszczy <br>
+  function insertPunct(punct){
+    removeGhost();pushUndo();
+    // Znajdź ostatni text node
+    let lastText=null;
+    for(let i=editor.childNodes.length-1;i>=0;i--){
+      const n=editor.childNodes[i];
+      if(n.nodeType===3 && n.textContent.trim()){lastText=n;break;}
+      if(n.nodeType===1 && !n.classList.contains('ghost-text') && n.textContent.trim()){lastText=n;break;}
+    }
+    if(lastText){
+      if(lastText.nodeType===3) lastText.textContent=lastText.textContent.replace(/\s+$/,'')+punct;
+      else lastText.textContent=lastText.textContent.replace(/\s+$/,'')+punct;
+    } else {
+      editor.appendChild(document.createTextNode(punct));
+    }
+    editor.scrollTop=editor.scrollHeight;updateCounter();
+  }
+
+  function cmdCopy(){navigator.clipboard.writeText(getText()).then(()=>toast('Skopiowano do schowka'));}
+  function cmdClear(){if(confirm('Wyczyścić tekst?')){pushUndo();clearEditor();updateCounter();toast('Wyczyszczono');}}
+  function cmdParagraph(){removeGhost();pushUndo();editor.appendChild(document.createElement('br'));editor.appendChild(document.createElement('br'));capitalizeNext=true;editor.scrollTop=editor.scrollHeight;toast('Nowy akapit');}
+  function cmdNewline(){removeGhost();pushUndo();editor.appendChild(document.createElement('br'));editor.scrollTop=editor.scrollHeight;toast('Nowa linia');}
+  function cmdDeleteSentence(){
+    pushUndo();
+    // Usuń od końca do ostatniego znaku interpunkcyjnego — operuj na innerHTML
+    const html=getHtml();
+    // Zamień <br> na placeholder, znajdź ostatnie zdanie, przywróć
+    const t=getText().trimEnd();
+    const p=Math.max(t.lastIndexOf('. '),t.lastIndexOf('! '),t.lastIndexOf('? '));
+    if(p>0){
+      const keep=t.substring(0,p+2);
+      // Odbuduj HTML z zachowanego tekstu — prosto: zamień \n na <br>
+      setHtml(keep.replace(/\n/g,'<br>'));
+    } else clearEditor();
+    toast('Usunięto zdanie');updateCounter();
+  }
+  function cmdUndo(){if(undoStack.length){setHtml(undoStack.pop());toast('Cofnięto');}else toast('Brak do cofnięcia');updateCounter();}
+  function cmdStop(){isListening=false;if(recognition)try{recognition.stop();}catch(e){}stopAudio();toast('Zatrzymano');}
+  function cmdStart(){startListening();toast('Wznowiono');}
+  function cmdSave(){const t=getText();const b=new Blob([t],{type:'text/plain;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='dyktowanie_'+new Date().toISOString().slice(0,10)+'.txt';a.click();toast('Zapisano .txt');}
+  function cmdUpperNext(){capitalizeNext=true;toast('Wielka litera');}
+  function cmdDot(){insertPunct('. ');capitalizeNext=true;}
+  function cmdComma(){insertPunct(', ');}
+  function cmdQuestion(){insertPunct('? ');capitalizeNext=true;}
+  function cmdExclaim(){insertPunct('! ');capitalizeNext=true;}
+
+  function toast(msg){const e=document.createElement('div');e.className='dyk-toast';e.textContent=msg;toastContainer.appendChild(e);setTimeout(()=>e.remove(),3000);}
+  function logCommand(cmd,src){cmdLogItems.unshift(cmd.icon+' '+cmd.names[0]+' ('+(src||'głos')+')');if(cmdLogItems.length>3)cmdLogItems.pop();cmdLogEl.innerHTML=cmdLogItems.map(t=>'<span class="cmd-log-item">'+t+'</span>').join('');}
+  function updateCounter(){const t=getText().trim();const w=t?t.split(/\s+/).length:0;counterEl.textContent=w+' słów / '+t.length+' znaków';}
+  editor.addEventListener('input',updateCounter);
+
+  async function startAudio(){try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();micStream=await navigator.mediaDevices.getUserMedia({audio:true});const s=audioCtx.createMediaStreamSource(micStream);analyser=audioCtx.createAnalyser();analyser.fftSize=64;s.connect(analyser);drawWave();}catch(e){}}
+  function stopAudio(){if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null;}if(audioCtx){audioCtx.close().catch(()=>{});audioCtx=null;analyser=null;}bars.forEach(b=>b.style.height='4px');}
+  function drawWave(){if(!analyser)return;const d=new Uint8Array(analyser.frequencyBinCount);(function tick(){if(!analyser)return;analyser.getByteFrequencyData(d);const s=Math.floor(d.length/BARS);for(let i=0;i<BARS;i++)bars[i].style.height=Math.max(4,(d[i*s]||0)/255*32)+'px';requestAnimationFrame(tick);})();}
+  function beep(){if(!config.beepVol)return;try{const c=new(window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=880;g.gain.value=config.beepVol;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.1);setTimeout(()=>c.close().catch(()=>{}),200);}catch(e){}}
+
+  function startListening(){if(!SR)return;if(!recognition)recognition=createRec();isListening=true;try{recognition.start();}catch(e){recognition.stop();setTimeout(()=>{try{recognition.start();}catch(e2){}},200);}startAudio();}
+  function stopListening(){isListening=false;if(recognition)try{recognition.stop();}catch(e){}statusText.textContent='Zatrzymano';statusText.classList.remove('text-danger');recBtn.classList.remove('rec-active');stopAudio();}
+
+  recBtn.addEventListener('click',()=>{if(isListening)stopListening();else startListening();});
+  document.getElementById('btnCopyAll').addEventListener('click',()=>{navigator.clipboard.writeText(getText()).then(()=>toast('Skopiowano!'));});
+  document.getElementById('btnSaveTxt').addEventListener('click',cmdSave);
+
+  document.getElementById('setKeyword').value=config.keyword;
+  document.getElementById('setBeepVol').value=config.beepVol;
+  document.getElementById('setAutoCap').checked=config.autoCap;
+  document.getElementById('settingsSave').addEventListener('click',()=>{
+    config.keyword=document.getElementById('setKeyword').value.trim().toLowerCase()||DEFAULT_KEYWORD;
+    config.beepVol=parseFloat(document.getElementById('setBeepVol').value);
+    config.autoCap=document.getElementById('setAutoCap').checked;
+    try{localStorage.setItem('dyktron_config',JSON.stringify(config));}catch(e){}
+    buildCmdList();toast('Ustawienia zapisane');
+  });
+
+  document.addEventListener('keydown',e=>{
+    if(e.ctrlKey&&e.key==='Enter'){e.preventDefault();if(isListening)stopListening();else startListening();}
+    if(e.ctrlKey&&e.key==='z'&&document.activeElement===editor){e.preventDefault();cmdUndo();}
+  });
+})();
+</script>
+{% endblock %}

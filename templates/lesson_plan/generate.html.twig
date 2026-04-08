@@ -1,0 +1,81 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Generator konspektów — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Konspekty lekcji{% endblock %}
+{% block title_text %}Generator konspektów{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_lesson_plan_index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="ti ti-list me-1"></i> Zapisane konspekty
+    </a>
+{% endblock %}
+
+{% block body %}
+<div class="row g-4">
+    <div class="col-lg-5 col-xl-4">
+        <div class="card sticky-top" style="top: 1rem;">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-adjustments me-2"></i>Parametry konspektu</h3></div>
+            <div class="card-body">
+                {{ form_start(form, {'attr': {'novalidate': 'novalidate', 'data-ai-loading': 'Trwa generowanie konspektu...'}}) }}
+                <div class="mb-3">{{ form_label(form.literature) }}{{ form_widget(form.literature, {'attr': {'class': 'form-select'}}) }}{{ form_errors(form.literature) }}</div>
+                <div class="mb-3">{{ form_label(form.classLevel) }}{{ form_widget(form.classLevel, {'attr': {'class': 'form-control'}}) }}{{ form_errors(form.classLevel) }}</div>
+                <div class="mb-3">{{ form_label(form.lessonTopic) }}{{ form_widget(form.lessonTopic, {'attr': {'class': 'form-control'}}) }}{{ form_errors(form.lessonTopic) }}</div>
+                <div class="row">
+                    <div class="col-6 mb-3">{{ form_label(form.duration) }}{{ form_widget(form.duration, {'attr': {'class': 'form-select'}}) }}</div>
+                    <div class="col-6 mb-3">{{ form_label(form.focus) }}{{ form_widget(form.focus, {'attr': {'class': 'form-select'}}) }}</div>
+                </div>
+                <div class="mb-3">{{ form_label(form.notes) }}{{ form_widget(form.notes, {'attr': {'class': 'form-control'}}) }}</div>
+                <button type="submit" class="btn btn-primary w-100"><i class="ti ti-sparkles me-2"></i>Generuj konspekt</button>
+                {{ form_end(form) }}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7 col-xl-8">
+        {% if lpData %}
+            <div class="card mb-3">
+                <div class="card-stamp"><div class="card-stamp-icon bg-purple"><i class="ti ti-clipboard-text"></i></div></div>
+                <div class="card-header">
+                    <h3 class="card-title">
+                        {{ lpData.title | default(sessionData.lessonTopic) }}
+                        <span class="badge bg-primary-lt ms-2">{{ lpData.classLevel | default(sessionData.classLevel) }}</span>
+                        <span class="badge bg-secondary-lt ms-1">{{ lpData.duration | default(sessionData.duration) }} min</span>
+                    </h3>
+                    <div class="card-actions">
+                        <form method="post" action="{{ path('app_lesson_plan_save') }}" class="d-inline">
+                            <input type="hidden" name="_token" value="{{ csrf_token('save') }}">
+                            <button type="submit" class="btn btn-ghost-success btn-sm"><i class="ti ti-device-floppy me-1"></i>Zapisz</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% include 'lesson_plan/_structured_view.html.twig' with {lpData: lpData} %}
+                </div>
+            </div>
+        {% elseif lpRaw %}
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Konspekt (tekst)</h3>
+                    <div class="card-actions">
+                        <form method="post" action="{{ path('app_lesson_plan_save') }}" class="d-inline">
+                            <input type="hidden" name="_token" value="{{ csrf_token('save') }}">
+                            <button type="submit" class="btn btn-ghost-success btn-sm"><i class="ti ti-device-floppy me-1"></i>Zapisz</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card-body"><div class="result-box">{{ lpRaw }}</div></div>
+            </div>
+        {% else %}
+            <div class="card border-0 bg-transparent shadow-none">
+                <div class="card-body">
+                    <div class="empty">
+                        <div class="empty-icon"><i class="ti ti-clipboard-text" style="font-size: 3rem;"></i></div>
+                        <p class="empty-title">Generator konspektów lekcji</p>
+                        <p class="empty-subtitle text-secondary">Wybierz lekturę, podaj temat lekcji. AI przygotuje profesjonalny konspekt zgodny z PP MEN.</p>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

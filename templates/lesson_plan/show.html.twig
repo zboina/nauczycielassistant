@@ -1,0 +1,95 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ plan.title }} — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Konspekty lekcji{% endblock %}
+{% block title_text %}{{ plan.title }}{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_lesson_plan_index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Lista</a>
+{% endblock %}
+
+{% block body %}
+<div class="row g-4">
+    <div class="col-lg-8">
+        {% if lpData %}
+            <div class="card">
+                <div class="card-stamp"><div class="card-stamp-icon bg-purple"><i class="ti ti-clipboard-text"></i></div></div>
+                <div class="card-header">
+                    <h3 class="card-title">
+                        {{ lpData.title | default(plan.lessonTopic) }}
+                        <span class="badge bg-primary-lt ms-2">kl. {{ lpData.classLevel | default(plan.classLevel) }}</span>
+                        <span class="badge bg-secondary-lt ms-1">{{ lpData.duration | default(plan.durationMinutes) }} min</span>
+                        {% if lpData.literature is defined %}
+                            <span class="badge bg-green-lt ms-1">{{ lpData.literature }}</span>
+                        {% endif %}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% include 'lesson_plan/_structured_view.html.twig' with {lpData: lpData} %}
+                </div>
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="card-header"><h3 class="card-title">Konspekt</h3></div>
+                <div class="card-body"><div class="result-box">{{ plan.content }}</div></div>
+            </div>
+        {% endif %}
+    </div>
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title">Szczegóły</h3></div>
+            <div class="card-body">
+                <div class="datagrid">
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Temat</div>
+                        <div class="datagrid-content">{{ plan.lessonTopic }}</div>
+                    </div>
+                    {% if plan.literature %}
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Lektura</div>
+                        <div class="datagrid-content"><a href="{{ path('app_literature_show', {id: plan.literature.id}) }}">{{ plan.literature.title }}</a></div>
+                    </div>
+                    {% endif %}
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Klasa</div>
+                        <div class="datagrid-content"><span class="badge bg-primary-lt">{{ plan.classLevel }}</span></div>
+                    </div>
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Czas</div>
+                        <div class="datagrid-content">{{ plan.durationMinutes }} min</div>
+                    </div>
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Utworzono</div>
+                        <div class="datagrid-content">{{ plan.createdAt|date('d.m.Y H:i') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title">Pobierz PDF</h3></div>
+            <div class="card-body d-flex flex-column gap-2">
+                <a href="{{ path('app_lesson_plan_pdf', {id: plan.id}) }}" class="btn btn-primary" target="_blank">
+                    <i class="ti ti-file-type-pdf me-2"></i>Pobierz PDF
+                </a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body d-flex flex-column gap-2">
+                <form method="post" action="{{ path('app_lesson_plan_favorite', {id: plan.id}) }}">
+                    <button type="submit" class="btn w-100 {{ plan.isFavorite ? 'btn-yellow' : 'btn-outline-warning' }}">
+                        <i class="ti {{ plan.isFavorite ? 'ti-star-filled' : 'ti-star' }} me-1"></i>{{ plan.isFavorite ? 'Ulubiony' : 'Dodaj do ulubionych' }}
+                    </button>
+                </form>
+                <a href="{{ path('app_lesson_plan_generate', {literature: plan.literature ? plan.literature.id : ''}) }}" class="btn btn-outline-primary">
+                    <i class="ti ti-sparkles me-1"></i>Generuj nowy wariant
+                </a>
+                <form method="post" action="{{ path('app_lesson_plan_delete', {id: plan.id}) }}" onsubmit="return confirm('Na pewno usunąć?')">
+                    <button type="submit" class="btn btn-outline-danger w-100"><i class="ti ti-trash me-1"></i>Usuń</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

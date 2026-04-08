@@ -1,0 +1,121 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Wyniki — {{ exam.title }} — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Egzamin ósmoklasisty{% endblock %}
+{% block title_text %}Wyniki: {{ exam.title }}{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_exam8_show', {id: exam.id}) }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Arkusz</a>
+    {% if exam.resultCount > 0 %}
+        <a href="{{ path('app_exam8_analysis', {id: exam.id}) }}" class="btn btn-green btn-sm"><i class="ti ti-chart-bar me-1"></i>Analiza</a>
+    {% endif %}
+{% endblock %}
+
+{% block body %}
+<div class="row g-4">
+    {# Add result form #}
+    <div class="col-lg-4">
+        <div class="card sticky-top" style="top:1rem;">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-user-plus me-2"></i>Dodaj wynik ucznia</h3></div>
+            <div class="card-body">
+                <form method="post" action="{{ path('app_exam8_results', {id: exam.id}) }}" data-turbo="false">
+                    <input type="hidden" name="_action" value="add">
+
+                    <div class="mb-3">
+                        <label class="form-label required">Imię i nazwisko</label>
+                        <input type="text" name="studentName" class="form-control" required placeholder="np. Jan Kowalski">
+                    </div>
+
+                    {% for key, cat in categories %}
+                        <div class="mb-2">
+                            <label class="form-label d-flex justify-content-between mb-1">
+                                <span style="font-size:.85rem;">{{ cat.label }}</span>
+                                <span class="text-secondary" style="font-size:.8rem;">max {{ cat.max }}</span>
+                            </label>
+                            <input type="number" name="score[{{ key }}]" class="form-control form-control-sm"
+                                   min="0" max="{{ cat.max }}" value="0" required>
+                        </div>
+                    {% endfor %}
+
+                    <div class="mb-3 mt-3">
+                        <label class="form-label">Uwagi</label>
+                        <input type="text" name="notes" class="form-control form-control-sm" placeholder="opcjonalne">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="ti ti-plus me-1"></i>Dodaj wynik
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {# Results table #}
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="ti ti-users me-2"></i>Wyniki ({{ exam.resultCount }})
+                </h3>
+                {% if exam.averagePercent is not null %}
+                    <div class="card-actions">
+                        <span class="badge bg-blue-lt fs-6">Średnia: {{ exam.averageScore }} / {{ exam.maxPoints }} ({{ exam.averagePercent }}%)</span>
+                    </div>
+                {% endif %}
+            </div>
+            {% if exam.results|length > 0 %}
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Uczeń</th>
+                                {% for key, cat in categories %}
+                                    <th class="text-center" style="font-size:.72rem;max-width:60px;" title="{{ cat.label }}">
+                                        {{ cat.label|split(':')|last|trim|split(' ')|first[:4] }}
+                                        <div class="text-secondary">/{{ cat.max }}</div>
+                                    </th>
+                                {% endfor %}
+                                <th class="text-center">Suma</th>
+                                <th class="text-center">%</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in exam.results %}
+                                <tr>
+                                    <td class="fw-medium">{{ result.studentName }}</td>
+                                    {% for key, cat in categories %}
+                                        {% set val = result.scores[key] ?? 0 %}
+                                        {% set pct = cat.max > 0 ? val / cat.max * 100 : 0 %}
+                                        <td class="text-center {{ pct < 40 ? 'text-danger fw-bold' : '' }}">{{ val }}</td>
+                                    {% endfor %}
+                                    <td class="text-center fw-bold">{{ result.totalScore }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-{{ result.gradeColor }}-lt">{{ result.percent }}%</span>
+                                    </td>
+                                    <td>
+                                        <form method="post" action="{{ path('app_exam8_results', {id: exam.id}) }}" class="d-inline"
+                                              onsubmit="return confirm('Usunąć wynik?')">
+                                            <input type="hidden" name="_action" value="delete">
+                                            <input type="hidden" name="resultId" value="{{ result.id }}">
+                                            <button class="btn btn-ghost-danger btn-sm"><i class="ti ti-x"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="card-body">
+                    <div class="empty py-4">
+                        <div class="empty-icon"><i class="ti ti-clipboard-data" style="font-size:2rem;"></i></div>
+                        <p class="empty-title">Brak wyników</p>
+                        <p class="empty-subtitle text-secondary">Wprowadź wyniki uczniów z formularza po lewej.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

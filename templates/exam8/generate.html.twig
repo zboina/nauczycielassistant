@@ -1,0 +1,108 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Generuj arkusz — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Egzamin ósmoklasisty{% endblock %}
+{% block title_text %}Generator arkuszy próbnych{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_exam8_index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Lista arkuszy</a>
+{% endblock %}
+
+{% block body %}
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-sparkles me-2"></i>Parametry arkusza</h3></div>
+            <div class="card-body">
+                <form method="post" action="{{ path('app_exam8_generate') }}" data-turbo="false" data-ai-loading="Trwa generowanie arkusza próbnego...">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Zakres arkusza</label>
+                            <select name="examType" class="form-select">
+                                {% for val, label in examTypes %}
+                                    <option value="{{ val }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Klasa</label>
+                            <select name="classLevel" class="form-select">
+                                <option value="8" selected>Klasa 8</option>
+                                <option value="7">Klasa 7 (łatwiejszy)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Dodatkowe wskazówki</label>
+                        <textarea name="notes" class="form-control" rows="3"
+                                  placeholder="np. Tekst literacki z epoki romantyzmu. Pytania o środki stylistyczne. Rozprawka nawiązująca do &quot;Kamieni na szaniec&quot;."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 btn-lg">
+                        <i class="ti ti-sparkles me-2"></i>Generuj arkusz próbny
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-info-circle me-2"></i>Struktura egzaminu CKE</h3></div>
+            <div class="card-body">
+                <div class="steps steps-vertical">
+                    <div class="step-item">
+                        <div class="step-content">
+                            <div class="step-title">Część 1 — Tekst literacki</div>
+                            <div class="text-secondary small">5-8 pytań zamkniętych i otwartych (12-15 pkt)</div>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-content">
+                            <div class="step-title">Część 2 — Tekst nieliteracki</div>
+                            <div class="text-secondary small">4-6 pytań (8-10 pkt)</div>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-content">
+                            <div class="step-title">Część 3 — Wypracowanie</div>
+                            <div class="text-secondary small">Rozprawka lub opowiadanie (min. 200 słów, 20 pkt)</div>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between fw-bold">
+                    <span>Czas egzaminu</span><span>180 minut</span>
+                </div>
+                <div class="d-flex justify-content-between fw-bold">
+                    <span>Maksimum punktów</span><span>~45 pkt</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-scale me-2"></i>Kryteria wypracowania CKE</h3></div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% set criteria = [
+                        {name: 'Treść i realizacja tematu', max: 4},
+                        {name: 'Forma wypowiedzi', max: 4},
+                        {name: 'Kompozycja i spójność', max: 3},
+                        {name: 'Język', max: 3},
+                        {name: 'Ortografia', max: 2},
+                        {name: 'Interpunkcja', max: 2},
+                        {name: 'Bogactwo językowe', max: 2},
+                    ] %}
+                    {% for c in criteria %}
+                        <div class="list-group-item d-flex justify-content-between">
+                            <span>{{ c.name }}</span>
+                            <strong>{{ c.max }} pkt</strong>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

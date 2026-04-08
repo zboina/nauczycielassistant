@@ -1,0 +1,23 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Informacje dla rodziców — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Generatory AI{% endblock %}
+{% block title_text %}Informacje dla rodziców{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_generate_parent_info') }}" class="btn btn-primary btn-sm">
+        <i class="ti ti-sparkles me-1"></i>Generuj nową
+    </a>
+{% endblock %}
+
+{% block body %}
+{% include 'generator/_material_list.html.twig' with {
+    materials: materials,
+    typeLabel: 'informację',
+    typeIcon: 'ti-mail-forward',
+    typeColor: 'orange',
+    generateRoute: 'app_generate_parent_info',
+    showRoute: 'app_generate_history_show',
+    pdfRoute: 'app_generate_history_pdf',
+} %}
+{% endblock %}

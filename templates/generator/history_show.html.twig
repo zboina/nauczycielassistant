@@ -1,0 +1,258 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ material.title }} — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Historia materiałów{% endblock %}
+{% block title_text %}{{ material.title }}{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_generate_history') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="ti ti-arrow-left me-1"></i> Wróć
+    </a>
+{% endblock %}
+
+{% block body %}
+<div class="row g-4">
+    <div class="col-lg-8">
+
+        {% if testData %}
+        {# ═══ STRUCTURED TEST ═══ #}
+        <div class="card">
+            <div class="card-stamp"><div class="card-stamp-icon bg-primary"><i class="ti ti-file-text"></i></div></div>
+            <div class="card-header"><h3 class="card-title">{{ testData.title }}</h3></div>
+            <div class="card-body">
+                {% for i, q in testData.questions %}
+                    <div class="border rounded p-3 mb-2">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-bold">Zadanie {{ i + 1 }}.</span>
+                            <span class="badge {{ q.type == 'closed' ? 'bg-blue-lt' : (q.type == 'true_false' ? 'bg-orange-lt' : 'bg-green-lt') }}">
+                                {{ q.type == 'closed' ? 'ABCD' : (q.type == 'true_false' ? 'P/F' : 'Otwarte') }} &middot; {{ q.points }} pkt
+                            </span>
+                        </div>
+                        <div class="mb-2">{{ q.text }}</div>
+                        {% if q.type == 'closed' and q.options is defined %}
+                            {% set letters = ['A','B','C','D'] %}
+                            <div class="row g-2">
+                                {% for key, opt in q.options %}
+                                    {% set isCorrect = q.correct is defined and letters[key] == q.correct %}
+                                    <div class="col-6">
+                                        <div class="d-flex align-items-center gap-2 p-2 border rounded {{ isCorrect ? 'border-success bg-success-lt' : '' }}">
+                                            <span class="avatar avatar-xs rounded fw-bold {{ isCorrect ? 'bg-success text-white' : 'bg-primary-lt' }}" style="font-size:.7rem;">{{ letters[key] }}</span>
+                                            <span style="font-size:.9rem;">{{ opt }}</span>
+                                            {% if isCorrect %}<i class="ti ti-check ms-auto text-success"></i>{% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% elseif q.type == 'true_false' %}
+                            <div class="d-flex gap-3">
+                                {% for val in ['P', 'F'] %}
+                                    <div class="d-flex align-items-center gap-2 p-2 border rounded {{ q.correct == val ? 'border-success bg-success-lt' : '' }}">
+                                        <span class="avatar avatar-xs rounded fw-bold {{ q.correct == val ? 'bg-success text-white' : 'bg-secondary-lt' }}" style="font-size:.7rem;">{{ val }}</span>
+                                        {{ val == 'P' ? 'Prawda' : 'Fałsz' }}
+                                        {% if q.correct == val %}<i class="ti ti-check ms-1 text-success"></i>{% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% elseif q.type == 'open' and q.answer is defined %}
+                            <div class="alert alert-success mt-2 mb-0"><i class="ti ti-check me-1"></i>{{ q.answer }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% elseif wsData %}
+        {# ═══ STRUCTURED WORKSHEET ═══ #}
+        <div class="card">
+            <div class="card-stamp"><div class="card-stamp-icon bg-green"><i class="ti ti-notebook"></i></div></div>
+            <div class="card-header"><h3 class="card-title">{{ wsData.title }}</h3></div>
+            <div class="card-body">
+                {% for i, ex in wsData.exercises %}
+                    <div class="border rounded p-3 mb-2">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-bold">Zadanie {{ i + 1 }}.</span>
+                            <span class="badge bg-green-lt">{{ ex.points }} pkt</span>
+                        </div>
+                        <div class="mb-2 fw-medium">{{ ex.instruction }}</div>
+
+                        {% if ex.type == 'fill_blanks' %}
+                            <div class="p-2 border rounded bg-white" style="line-height:2;">{{ ex.content }}</div>
+
+                        {% elseif ex.type == 'open' %}
+                            <div class="mb-2">{{ ex.content | default('') }}</div>
+                            {% if ex.answer is defined %}
+                                <div class="alert alert-success mt-2 mb-0"><i class="ti ti-check me-1"></i>{{ ex.answer }}</div>
+                            {% endif %}
+
+                        {% elseif ex.type == 'choice' and ex.options is defined %}
+                            <div class="mb-2">{{ ex.content | default('') }}</div>
+                            {% set letters = ['A','B','C','D'] %}
+                            <div class="row g-2">
+                                {% for key, opt in ex.options %}
+                                    {% set letter = opt | split(')') | first | trim %}
+                                    {% set isCorrect = ex.correct is defined and (letters[key] == ex.correct or letter == ex.correct) %}
+                                    <div class="col-6">
+                                        <div class="d-flex align-items-center gap-2 p-2 border rounded {{ isCorrect ? 'border-success bg-success-lt' : '' }}">
+                                            <span class="avatar avatar-xs rounded fw-bold {{ isCorrect ? 'bg-success text-white' : 'bg-primary-lt' }}" style="font-size:.7rem;">{{ letters[key] }}</span>
+                                            <span style="font-size:.9rem;">{{ opt | split(') ') | last }}</span>
+                                            {% if isCorrect %}<i class="ti ti-check ms-auto text-success"></i>{% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                        {% elseif ex.type == 'true_false' and ex.statements is defined %}
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0">
+                                    <thead><tr><th>Stwierdzenie</th><th style="width:80px;" class="text-center">P / F</th></tr></thead>
+                                    <tbody>
+                                    {% for st in ex.statements %}
+                                        <tr>
+                                            <td>{{ st.text }}</td>
+                                            <td class="text-center"><span class="fw-bold {{ st.correct == 'P' ? 'text-success' : 'text-danger' }}">{{ st.correct }}</span></td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        {% elseif ex.type == 'match' and ex.pairs is defined %}
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0">
+                                    {% for p in ex.pairs %}
+                                        <tr>
+                                            <td class="bg-primary-lt text-center">{{ p.left }}</td>
+                                            <td style="width:40px;" class="text-center text-secondary">&harr;</td>
+                                            <td class="bg-green-lt text-center">{{ p.right }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </table>
+                            </div>
+
+                        {% elseif ex.type == 'transform' and ex.sentences is defined %}
+                            {% for s in ex.sentences %}
+                                <div class="p-2 border rounded bg-white mb-1">{{ loop.index }}. {{ s }}</div>
+                            {% endfor %}
+                            {% if ex.answer is defined %}
+                                <div class="alert alert-success mt-2 mb-0"><i class="ti ti-check me-1"></i>{{ ex.answer }}</div>
+                            {% endif %}
+
+                        {% elseif ex.type == 'order' and ex.items is defined %}
+                            <div class="d-flex flex-wrap gap-2 mb-2">
+                                {% for item in ex.items %}
+                                    <span class="badge bg-secondary-lt p-2" style="font-size:.85rem;">{{ item }}</span>
+                                {% endfor %}
+                            </div>
+                            {% if ex.answer is defined %}
+                                <div class="alert alert-success mb-0"><i class="ti ti-check me-1"></i>{{ ex.answer }}</div>
+                            {% endif %}
+
+                        {% elseif ex.type == 'text_analysis' %}
+                            {% if ex.text is defined %}
+                                <div class="p-3 border rounded bg-white mb-3" style="font-style:italic;line-height:1.8;">{{ ex.text }}</div>
+                            {% endif %}
+                            {% if ex.questions is defined %}
+                                {% for q in ex.questions %}
+                                    <div class="fw-medium mb-1">{{ loop.index }}. {{ q }}</div>
+                                {% endfor %}
+                            {% endif %}
+                            {% if ex.answer is defined %}
+                                <div class="alert alert-success mt-2 mb-0"><i class="ti ti-check me-1"></i>{{ ex.answer }}</div>
+                            {% endif %}
+
+                        {% else %}
+                            <div class="p-2 border rounded bg-white">{{ ex.content | default('') }}</div>
+                            {% if ex.answer is defined %}
+                                <div class="alert alert-success mt-2 mb-0"><i class="ti ti-check me-1"></i>{{ ex.answer }}</div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% else %}
+        {# ═══ PLAIN TEXT FALLBACK ═══ #}
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Treść</h3>
+                <div class="card-actions">
+                    <button class="btn btn-ghost-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('mc').innerText).then(()=>{this.innerHTML='<i class=\'ti ti-check me-1\'></i>Skopiowano'})">
+                        <i class="ti ti-copy me-1"></i>Kopiuj
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="mc" class="result-box">{{ material.content }}</div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+    <div class="col-lg-4">
+        {# Details #}
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title">Szczegóły</h3></div>
+            <div class="card-body">
+                <div class="datagrid">
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Typ</div>
+                        <div class="datagrid-content">
+                            {% if material.type == 'test' %}Sprawdzian
+                            {% elseif material.type == 'worksheet' %}Karta pracy
+                            {% elseif material.type == 'parent_info' %}Info dla rodziców{% endif %}
+                        </div>
+                    </div>
+                    {% if material.classLevel %}
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Klasa</div>
+                        <div class="datagrid-content">{{ material.classLevel }}</div>
+                    </div>
+                    {% endif %}
+                    {% if testData %}
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Punkty</div>
+                        <div class="datagrid-content">{{ testData.totalPoints }} pkt ({{ testData.questions|length }} pytań)</div>
+                    </div>
+                    {% elseif wsData %}
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Punkty</div>
+                        <div class="datagrid-content">{{ wsData.totalPoints }} pkt ({{ wsData.exercises|length }} zadań)</div>
+                    </div>
+                    {% endif %}
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Data utworzenia</div>
+                        <div class="datagrid-content">{{ material.createdAt|date('d.m.Y H:i') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# PDF #}
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Pobierz PDF</h3></div>
+            <div class="card-body d-flex flex-column gap-2">
+                {% if material.type == 'test' %}
+                    <a href="{{ path('app_generate_history_pdf', {id: material.id}) }}" class="btn btn-primary" target="_blank">
+                        <i class="ti ti-file-type-pdf me-2"></i>PDF (karta ucznia)
+                    </a>
+                    <a href="{{ path('app_generate_history_pdf', {id: material.id, answers: 1}) }}" class="btn btn-outline-primary" target="_blank">
+                        <i class="ti ti-file-type-pdf me-2"></i>PDF + klucz odpowiedzi
+                    </a>
+                {% elseif material.type == 'worksheet' %}
+                    <a href="{{ path('app_generate_history_pdf', {id: material.id}) }}" class="btn btn-primary" target="_blank">
+                        <i class="ti ti-file-type-pdf me-2"></i>PDF (karta ucznia)
+                    </a>
+                    <a href="{{ path('app_generate_history_pdf', {id: material.id, answers: 1}) }}" class="btn btn-outline-primary" target="_blank">
+                        <i class="ti ti-file-type-pdf me-2"></i>PDF + klucz odpowiedzi
+                    </a>
+                {% else %}
+                    <a href="{{ path('app_generate_history_pdf', {id: material.id}) }}" class="btn btn-primary" target="_blank">
+                        <i class="ti ti-file-type-pdf me-2"></i>Pobierz PDF
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

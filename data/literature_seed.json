@@ -1,0 +1,443 @@
+[
+  {
+    "title": "Baśnie",
+    "author": "Charles Perrault, bracia Grimm",
+    "classLevel": "4",
+    "epoch": "różne epoki",
+    "isObligatory": true,
+    "summary": "Zbiór klasycznych baśni europejskich — opowieści o magii, przygodach i morale. Bohaterowie przechodzą próby, walczą ze złem i otrzymują nagrodę za dobre uczynki. Baśnie uczą rozróżniania dobra od zła, pokazują konsekwencje postępowania i rozwijają wyobraźnię. Typowe elementy: magiczne przedmioty, czarodziejskie postacie, szczęśliwe zakończenie.",
+    "characters": [
+      {"name": "Kopciuszek", "description": "Pokrzywdzona dziewczyna, dobra i pracowita, nagrodzona za cierpliwość i dobroć"},
+      {"name": "Królewna Śnieżka", "description": "Piękna królewna prześladowana przez złą macochę, uratowana przez krasnoludki"},
+      {"name": "Czerwony Kapturek", "description": "Naiwna dziewczynka, która nie posłuchała mamy i została oszukana przez wilka"}
+    ],
+    "themes": ["dobro i zło", "nagroda i kara", "magia", "odwaga", "mądrość ludowa", "morał"],
+    "questions": [
+      {"question": "Wymień trzy cechy gatunkowe baśni.", "answer": "Magiczne elementy, postacie dobre i złe, szczęśliwe zakończenie, morał, formuły (np. \"dawno, dawno temu\").", "difficulty": "easy", "questionType": "open"},
+      {"question": "Baśń zawsze kończy się szczęśliwie.", "answer": "Prawda", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Co odróżnia baśń od legendy?\nA) Baśń jest krótsza\nB) Baśń zawiera elementy magiczne, legenda nawiązuje do historii\nC) Legenda ma morał, baśń nie\nD) Nie ma żadnych różnic", "answer": "B", "difficulty": "medium", "questionType": "closed"},
+      {"question": "Jaką rolę pełni morał w baśni?", "answer": "Morał to nauka płynąca z opowieści — uczy czytelnika, jak postępować, przestrzega przed złym zachowaniem.", "difficulty": "medium", "questionType": "open"}
+    ]
+  },
+  {
+    "title": "W pustyni i w puszczy",
+    "author": "Henryk Sienkiewicz",
+    "classLevel": "4",
+    "epoch": "pozytywizm",
+    "isObligatory": true,
+    "summary": "Powieść przygodowa opowiadająca o czternastoletnim Stasiu Tarkowskim i ośmioletniej Nel Rawlison, porwanych przez Mahdystów w Egipcie. Dzieci muszą przetrwać w afrykańskiej dziczy, pokonując dzikie zwierzęta, choroby i wrogich ludzi. Staś wykazuje się odwagą, zaradnością i odpowiedzialnością, chroniąc Nel. Podróż przez Afrykę staje się drogą dojrzewania — Staś z chłopca zmienia się w odpowiedzialnego młodzieńca.",
+    "characters": [
+      {"name": "Staś Tarkowski", "description": "Czternastoletni Polak, odważny, zaradny, odpowiedzialny za Nel, syn inżyniera"},
+      {"name": "Nel Rawlison", "description": "Ośmioletnia Angielka, delikatna, wrażliwa, córka inżyniera, podopieczna Stasia"},
+      {"name": "Kali", "description": "Afrykański chłopiec, wierny towarzysz Stasia i Nel, lojalny i oddany"},
+      {"name": "Linde", "description": "Misjonarz, który pomógł dzieciom, zmarł na febrę"}
+    ],
+    "themes": ["przyjaźń", "odwaga", "odpowiedzialność", "dojrzewanie", "przyroda Afryki", "wiara"],
+    "questions": [
+      {"question": "Kto porwał Stasia i Nel?", "answer": "Mahdyści (zwolennicy Mahdiego).", "difficulty": "easy", "questionType": "open"},
+      {"question": "Staś miał 14 lat, gdy został porwany.", "answer": "Prawda", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Jak Staś wykazał się odwagą podczas podróży?", "answer": "Zabił lwa, chronił Nel przed niebezpieczeństwami, zbudował obóz, pokonywał trudności w dżungli.", "difficulty": "medium", "questionType": "open"},
+      {"question": "Jak nazywał się słoń, którego Staś oswoił?\nA) Jumbo\nB) King\nC) Saba\nD) Kali", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Nel zachorowała na malarię.", "answer": "Prawda", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Czego Staś nauczył się podczas podróży przez Afrykę?", "answer": "Odpowiedzialności za drugiego człowieka, samodzielności, radzenia sobie w ekstremalnych warunkach. Dojrzał — z chłopca stał się odpowiedzialnym młodzieńcem.", "difficulty": "medium", "questionType": "open"}
+    ]
+  },
+  {
+    "title": "Akademia Pana Kleksa",
+    "author": "Jan Brzechwa",
+    "classLevel": "4",
+    "epoch": "XX wiek",
+    "isObligatory": true,
+    "summary": "Adaś Niezgódka trafia do niezwykłej szkoły prowadzonej przez ekscentrycznego profesora Ambrożego Kleksa. W Akademii uczniowie poznają bajkoznawstwo, kleksografię i inne fantastyczne przedmioty. Pan Kleks posiada magiczne zdolności — m.in. potrafi wytwarzać bajki z plam atramentu. Gdy szkoła zostaje zagrożona przez zdradę Alojzego Bąbla, Adaś pomaga uratować tajemnice Akademii. Powieść łączy humor z fantazją i uczy wartości: przyjaźni, lojalności i ciekawości świata.",
+    "characters": [
+      {"name": "Adaś Niezgódka", "description": "Główny bohater, ciekawy świata chłopiec z piegami, uczeń Akademii"},
+      {"name": "Pan Kleks (Ambroży Kleks)", "description": "Profesor i dyrektor Akademii, ekscentryczny, mądry, posiada magiczne zdolności"},
+      {"name": "Alojzy Bąbel", "description": "Zdrajca, który chciał wykraść tajemnice Akademii"}
+    ],
+    "themes": ["fantazja a rzeczywistość", "przyjaźń", "lojalność", "nauka i ciekawość", "zdrada", "magia"],
+    "questions": [
+      {"question": "Jak nazywał się główny bohater powieści?", "answer": "Adaś Niezgódka.", "difficulty": "easy", "questionType": "open"},
+      {"question": "Czego uczono w Akademii Pana Kleksa?", "answer": "Bajkoznawstwa, kleksografii i innych fantastycznych przedmiotów.", "difficulty": "easy", "questionType": "open"},
+      {"question": "Pan Kleks potrafił wytwarzać bajki z plam atramentu.", "answer": "Prawda", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Kto zdradził tajemnice Akademii?\nA) Adaś Niezgódka\nB) Alojzy Bąbel\nC) Pan Kleks\nD) Mateusz", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Dlaczego Akademia Pana Kleksa jest miejscem niezwykłym?", "answer": "Bo uczy fantastycznych przedmiotów, rządzą nią magiczne zasady, a profesor posiada nadprzyrodzone zdolności.", "difficulty": "medium", "questionType": "open"}
+    ]
+  },
+  {
+    "title": "Legendy polskie",
+    "author": "Wanda Chotomska (i inne zbiory)",
+    "classLevel": "4",
+    "epoch": "tradycja ludowa",
+    "isObligatory": true,
+    "summary": "Zbiór legend polskich — opowieści łączących elementy historyczne z fantastycznymi. Legendy o Lechu, Czechu i Rusie, o smoku wawelskim, o Warsie i Sawie, o Wandzie, co nie chciała Niemca. Każda legenda wyjaśnia pochodzenie nazw miast, herbów lub tradycji. Legendy kształtują tożsamość narodową i uczą historii w atrakcyjny sposób.",
+    "characters": [
+      {"name": "Lech", "description": "Legendarny założyciel Gniezna, który zobaczył białego orła"},
+      {"name": "Smok Wawelski", "description": "Potwór terroryzujący Kraków, pokonany sprytem Szewczyka Dratewki"},
+      {"name": "Wanda", "description": "Córka Kraka, która wolała śmierć niż małżeństwo z wrogiem"}
+    ],
+    "themes": ["tożsamość narodowa", "początki Polski", "odwaga", "spryt", "patriotyzm"],
+    "questions": [
+      {"question": "Co zobaczył Lech, gdy zakładał Gniezno?\nA) Białego orła\nB) Złotego smoka\nC) Srebrną gwiazdę\nD) Czarnego niedźwiedzia", "answer": "A", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Kto pokonał smoka wawelskiego?", "answer": "Szewczyk Dratewka — podrzucił smokowi barana nadziewanego siarką.", "difficulty": "easy", "questionType": "open"},
+      {"question": "Legenda różni się od baśni tym, że nawiązuje do prawdziwych miejsc i wydarzeń.", "answer": "Prawda", "difficulty": "medium", "questionType": "true_false"},
+      {"question": "Dlaczego Wanda wrzuciła się do Wisły?", "answer": "Nie chciała poślubić niemieckiego księcia — wolała śmierć niż zdradę ojczyzny.", "difficulty": "medium", "questionType": "open"}
+    ]
+  },
+  {
+    "title": "Opowieści z Narnii: Lew, czarownica i stara szafa",
+    "author": "Clive Staples Lewis",
+    "classLevel": "5",
+    "epoch": "XX wiek",
+    "isObligatory": true,
+    "summary": "Czworo rodzeństwa — Piotr, Zuzanna, Edmund i Łucja — podczas wojny trafia do wiejskiej posiadłości profesora Kirke'a. Łucja odkrywa magiczną szafę prowadzącą do krainy Narnii, skutej lodem przez Białą Czarownicę. Edmund zdradza rodzeństwo, skuszony tureckim rachatem. Aslan — wielki lew i prawowitywładca Narnii — poświęca się za Edmunda, ale zmartwychwstaje. Dzieci pomagają pokonać Czarownicę i zostają królami i królowymi Narnii.",
+    "characters": [
+      {"name": "Łucja", "description": "Najmłodsza, odważna i ufna, pierwsza odkrywa Narnię"},
+      {"name": "Edmund", "description": "Zdrajca, który się poprawia, skuszony przez Białą Czarownicę"},
+      {"name": "Aslan", "description": "Wielki lew, symbol dobra i poświęcenia, władca Narnii"},
+      {"name": "Biała Czarownica (Jadis)", "description": "Tyrankarozprowadzająca wieczną zimę w Narnii, symbol zła"},
+      {"name": "Pan Tumnus", "description": "Faun, przyjaciel Łucji, uwięziony za pomoc dzieciom"}
+    ],
+    "themes": ["dobro i zło", "zdrada i przebaczenie", "poświęcenie", "odwaga", "wiara", "dojrzewanie"],
+    "questions": [
+      {"question": "Kto pierwszy odkrył drogę do Narnii?", "answer": "Łucja — przez starą szafę w domu profesora Kirke'a.", "difficulty": "easy", "questionType": "open"},
+      {"question": "Edmund zdradził rodzeństwo, skuszony tureckim rachatem.", "answer": "Prawda", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Kim był Aslan?\nA) Magicznym koniem\nB) Wielkim lwem, władcą Narnii\nC) Czarodziejem\nD) Starym profesorem", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Dlaczego Aslan poświęcił się za Edmunda?", "answer": "Zgodnie z pradawnym prawem Narnii zdrajca należał do Czarowicy. Aslan oddał życie zamiast Edmunda, ale zmartwychwstał dzięki jeszcze starszej magii.", "difficulty": "medium", "questionType": "open"},
+      {"question": "Biała Czarownica sprowadziła na Narnię wieczne lato.", "answer": "Fałsz (wieczną zimę)", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Czego uczy nas historia Edmunda?", "answer": "Że każdy może popełnić błąd (zdradę), ale ważne jest przyznanie się i naprawienie zła. Edmund dostał drugą szansę dzięki poświęceniu Aslana.", "difficulty": "medium", "questionType": "open"}
+    ]
+  },
+  {
+    "title": "Hobbit, czyli tam i z powrotem",
+    "author": "John Ronald Reuel Tolkien",
+    "classLevel": "5",
+    "epoch": "XX wiek",
+    "isObligatory": true,
+    "summary": "Bilbo Baggins — spokojny hobbit z Shire — wyrusza w nieoczekiwaną podróż z trzynastoma krasnoludami pod wodzą Thorina Dębowej Tarczy, by odzyskać skarb skradziony przez smoka Smauga. W drodze Bilbo spotyka trolle, gobliny, wilki warge, olbrzymie pająki i elfy. W jaskini Golluma znajduje magiczny pierścień niewidzialności. Podczas wyprawy Bilbo odkrywa w sobie odwagę i spryt, o które się nie podejrzewał.",
+    "characters": [
+      {"name": "Bilbo Baggins", "description": "Hobbit — z natury domator, który odkrywa w sobie odwagę i spryt podczas wyprawy"},
+      {"name": "Gandalf", "description": "Mądry czarodziej, inicjator wyprawy, mentor i opiekun drużyny"},
+      {"name": "Thorin Dębowa Tarcza", "description": "Przywódca krasnoludów, dumny i honorowy, chce odzyskać królestwo pod Ereborem"},
+      {"name": "Gollum", "description": "Istota żyjąca pod górami, uzależniona od pierścienia — \"swojego skarbu\""},
+      {"name": "Smaug", "description": "Potężny smok strzegący skradzionych skarbów pod Samotną Górą"}
+    ],
+    "themes": ["podróż", "odwaga", "przyjaźń", "chciwość", "dojrzewanie", "dobro i zło"],
+    "questions": [
+      {"question": "Jak nazywał się smok, którego drużyna chciała pokonać?\nA) Sauron\nB) Smaug\nC) Sheloba\nD) Balrog", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Co Bilbo znalazł w jaskini Golluma?", "answer": "Magiczny pierścień niewidzialności.", "difficulty": "easy", "questionType": "open"},
+      {"question": "Bilbo od początku chciał wyruszyć na wyprawę.", "answer": "Fałsz (nie chciał, Gandalf go namówił)", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Jak Bilbo zmienił się podczas wyprawy?", "answer": "Z lękliwego domoseda stał się odważnym i zaradnym bohaterem. Odkrył w sobie spryt, odwagę i zdolności przywódcze.", "difficulty": "medium", "questionType": "open"},
+      {"question": "Kto zainicjował wyprawę do Ereboru?\nA) Bilbo\nB) Thorin\nC) Gandalf\nD) Gollum", "answer": "C", "difficulty": "medium", "questionType": "closed"}
+    ]
+  },
+  {
+    "title": "Chłopcy z Placu Broni",
+    "author": "Ferenc Molnár",
+    "classLevel": "5",
+    "epoch": "XX wiek",
+    "isObligatory": true,
+    "summary": "Grupa chłopców z budapeszteńskiej szkoły broni placu zabaw — Placu Broni — przed bandą Czerwonych Koszul z ogrodu botanicznego. Centralna postać to mały, słaby Ernő Nemecsek — jedyny szeregowiec wśród oficerów. Nemecsek, choć wyśmiewany, okazuje się najodważniejszy — wielokrotnie ryzykuje zdrowie i życie dla grupy. Ostatecznie umiera na zapalenie płuc, które nabawił się, broniąc honoru drużyny. Powieść porusza temat lojalności, honoru i tego, kim jest prawdziwy bohater.",
+    "characters": [
+      {"name": "Ernő Nemecsek", "description": "Mały, słaby chłopiec — jedyny szeregowiec, ale najodważniejszy ze wszystkich, umiera za honor grupy"},
+      {"name": "Boka", "description": "Przywódca chłopców z Placu Broni, mądry i sprawiedliwy kapitan"},
+      {"name": "Geréb", "description": "Zdrajca, który przeszedł na stronę Czerwonych Koszul"},
+      {"name": "Feri Áts", "description": "Przywódca Czerwonych Koszul, silny i groźny przeciwnik"}
+    ],
+    "themes": ["honor", "lojalność", "przyjaźń", "bohaterstwo", "zdrada", "śmierć"],
+    "questions": [
+      {"question": "Kim był Nemecsek w hierarchii grupy?\nA) Kapitanem\nB) Porucznikiem\nC) Szeregowcem\nD) Generałem", "answer": "C", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Dlaczego Nemecsek zachorował?", "answer": "Wskoczył do zimnej wody, by obronić honor grupy, co doprowadziło do zapalenia płuc.", "difficulty": "easy", "questionType": "open"},
+      {"question": "Geréb zdradził chłopców z Placu Broni.", "answer": "Prawda", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Dlaczego Nemecsek jest prawdziwym bohaterem tej powieści?", "answer": "Choć był najsłabszy i najmniejsi, wielokrotnie ryzykował życie dla grupy. Jego poświęcenie i lojalność były większe niż siła fizyczna.", "difficulty": "medium", "questionType": "open"},
+      {"question": "Czy Plac Broni został ocalony?", "answer": "Tak, chłopcy wygrali bitwę z Czerwonymi Koszulami, ale na placu i tak wybudowano kamienicę.", "difficulty": "medium", "questionType": "open"}
+    ]
+  },
+  {
+    "title": "Mity greckie (wybór)",
+    "author": "Jan Parandowski (i inne opracowania)",
+    "classLevel": "5",
+    "epoch": "starożytność",
+    "isObligatory": true,
+    "summary": "Zbiór mitów starożytnej Grecji opowiadających o bogach olimpijskich, herosach i początkach świata. Mity o Prometeuszu, Demeter i Persefonie, Ikarze, Syzyfie, Heraklesie i Odyseuszu. Opowieści te tłumaczą zjawiska przyrody, uczą moralności i pokazują relacje między bogami a ludźmi. Mity są źródłem europejskiej kultury — wiele wyrażeń, symboli i motywów literackich pochodzi z mitologii greckiej.",
+    "characters": [
+      {"name": "Zeus", "description": "Najwyższy bóg olimpijski, władca piorunów i nieba"},
+      {"name": "Prometeusz", "description": "Tytan, który ukradł bogom ogień i dał go ludziom, ukarany wieczną męką"},
+      {"name": "Ikar", "description": "Syn Dedala, który poleciał za blisko słońca i zginął"},
+      {"name": "Odyseusz", "description": "Król Itaki, sprytny bohater, tułający się 10 lat po wojnie trojańskiej"},
+      {"name": "Herakles", "description": "Najsilniejszy heros, syn Zeusa, wykonał 12 prac"}
+    ],
+    "themes": ["bogowie i ludzie", "hybris (pycha)", "los i przeznaczenie", "odwaga", "spryt", "kara i nagroda"],
+    "questions": [
+      {"question": "Za co został ukarany Prometeusz?", "answer": "Za kradzież ognia z Olimpu i przekazanie go ludziom.", "difficulty": "easy", "questionType": "open"},
+      {"question": "Ikar zginął, bo poleciał za blisko słońca.", "answer": "Prawda", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Ile prac musiał wykonać Herakles?\nA) 6\nB) 10\nC) 12\nD) 20", "answer": "C", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Co symbolizuje mit o Ikarze?", "answer": "Ostrzeżenie przed pychą (hybris) i nieposłuszeństwem. Ikar zlekceważył przestrogę ojca i zapłacił za to życiem.", "difficulty": "medium", "questionType": "open"},
+      {"question": "Czym różni się mit od baśni?", "answer": "Mit wyjaśnia świat i zjawiska przyrody, opowiada o bogach i herosach, jest częścią religii i kultury. Baśń jest fikcją rozrywkową z morałem.", "difficulty": "medium", "questionType": "open"}
+    ]
+  },
+  {
+    "title": "Mały Książę",
+    "author": "Antoine de Saint-Exupéry",
+    "classLevel": "6",
+    "epoch": "XX wiek",
+    "isObligatory": true,
+    "summary": "Pilot ląduje awaryjnie na Saharze, gdzie spotyka tajemniczego chłopca — Małego Księcia, który opowiada o swojej małej planecie, róży, którą pielęgnował, i podróżach po asteroidach zamieszkanych przez dziwnych dorosłych. Przez znajomość z lisem uczy się, że \"dobrze widzi się tylko sercem\" i że jest odpowiedzialny za swoją różę. Książka to poetycka przypowieść o miłości, przyjaźni, odpowiedzialności i o tym, jak dorośli tracą zdolność dostrzegania tego, co naprawdę ważne.",
+    "characters": [
+      {"name": "Mały Książę", "description": "Tajemniczy chłopiec z asteroidy B-612, wrażliwy, ciekawy świata, szuka prawdziwych więzi z ludźmi"},
+      {"name": "Pilot (narrator)", "description": "Dorosły, który zachował dziecięcą wrażliwość, rozbił się na Saharze, zaprzyjaźnił się z Małym Księciem"},
+      {"name": "Róża", "description": "Piękny, ale kapryśny kwiat na planecie Księcia, symbol miłości i odpowiedzialności"},
+      {"name": "Lis", "description": "Mądre zwierzę, które nauczyło Księcia, czym jest oswajanie i prawdziwa przyjaźń"},
+      {"name": "Wąż", "description": "Tajemnicza postać z pustyni, symbol śmierci i przejścia do innego świata"}
+    ],
+    "themes": ["przyjaźń", "miłość", "odpowiedzialność", "dorastanie", "samotność", "świat dorosłych vs. świat dzieci", "oswajanie"],
+    "questions": [
+      {"question": "Na jakiej planecie mieszkał Mały Książę?", "answer": "Na asteroidy B-612", "difficulty": "easy", "questionType": "open"},
+      {"question": "Kto nauczył Małego Księcia, czym jest oswajanie?", "answer": "Lis", "difficulty": "easy", "questionType": "open"},
+      {"question": "Co znaczy słynne zdanie \"Dobrze widzi się tylko sercem\"?", "answer": "Najważniejsze wartości (miłość, przyjaźń) są niewidoczne dla oczu — można je dostrzec tylko uczuciem i wrażliwością.", "difficulty": "medium", "questionType": "open"},
+      {"question": "Mały Książę pochodzi z asteroidy B-612.", "answer": "Prawda", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Lis poprosił Małego Księcia, żeby go oswoił.", "answer": "Prawda", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Dlaczego Mały Książę opuścił swoją planetę?", "answer": "Ponieważ nie potrafił porozumieć się z Różą — jej kaprysy go raniły, a on nie rozumiał jeszcze, że za miłość trzeba walczyć.", "difficulty": "medium", "questionType": "open"},
+      {"question": "Która z postaci symbolizuje próżność i potrzebę podziwu?\nA) Lis\nB) Król\nC) Próżny\nD) Latarnik", "answer": "C", "difficulty": "medium", "questionType": "closed"},
+      {"question": "Jaką lekcję daje Mały Książę dorosłym czytelnikom?", "answer": "Że dorośli zatracają się w liczbach, władzy i rutynie, tracąc zdolność dostrzegania piękna, przyjaźni i miłości — rzeczy naprawdę ważnych.", "difficulty": "hard", "questionType": "open"},
+      {"question": "Wyjaśnij, dlaczego Mały Książę czuł się odpowiedzialny za Różę.", "answer": "Lis nauczył go, że \"stajesz się odpowiedzialny na zawsze za to, co oswoiłeś\" — Książę oswoił Różę, więc miał wobec niej zobowiązanie.", "difficulty": "medium", "questionType": "open"},
+      {"question": "Mały Książę odwiedził siedem planet. Na jednej z nich mieszkał człowiek, który zapalał i gasił latarnię co minutę. Kim był?\nA) Król\nB) Geograf\nC) Latarnik\nD) Biznesmen", "answer": "C", "difficulty": "easy", "questionType": "closed"}
+    ]
+  },
+  {
+    "title": "Hobbit, czyli tam i z powrotem",
+    "author": "J.R.R. Tolkien",
+    "classLevel": "6",
+    "epoch": "XX wiek",
+    "isObligatory": true,
+    "summary": "Bilbo Baggins, spokojny hobbit z Shire, zostaje namówiony przez czarodzieja Gandalfa do udziału w wyprawie 13 krasnoludów pod wodzą Thorina Dębowej Tarczy. Celem jest odzyskanie skarbu spod Samotnej Góry, strzeżonego przez smoka Smauga. W trakcie podróży Bilbo odnajduje magiczny pierścień, walczy z pająkami, ucieka z lochów elfów i rozmawia ze smokiem. Wyprawa kończy się Bitwą Pięciu Armii. Bilbo wraca do domu odmieniony — odważniejszy i mądrzejszy.",
+    "characters": [
+      {"name": "Bilbo Baggins", "description": "Hobbit z Shire, początkowo nieśmiały domator, w trakcie wyprawy odkrywa w sobie odwagę i spryt"},
+      {"name": "Gandalf", "description": "Potężny czarodziej, inicjator wyprawy, mądry mentor i przewodnik"},
+      {"name": "Thorin Dębowa Tarcza", "description": "Król krasnoludów, dumny przywódca wyprawy po skarb przodków, ginie w Bitwie Pięciu Armii"},
+      {"name": "Gollum", "description": "Dziwna istota żyjąca w podziemnych jaskiniach, dawny właściciel magicznego pierścienia"},
+      {"name": "Smaug", "description": "Potężny smok strzegący skarbu pod Samotną Górą, chciwy i próżny"}
+    ],
+    "themes": ["podróż i przygoda", "odwaga", "chciwość", "przyjaźń", "dojrzewanie", "dobro i zło", "dom i tęsknota"],
+    "questions": [
+      {"question": "Jak nazywa się kraina, z której pochodzi Bilbo?", "answer": "Shire (Shire/Hrabstwo)", "difficulty": "easy", "questionType": "open"},
+      {"question": "Kto namówił Bilba do udziału w wyprawie?", "answer": "Gandalf", "difficulty": "easy", "questionType": "open"},
+      {"question": "Co Bilbo znalazł w jaskini Golluma?\nA) Miecz elfów\nB) Magiczny pierścień\nC) Mapę Samotnej Góry\nD) Złoty klucz", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Jaki skarb chcieli odzyskać krasnoludy?", "answer": "Skarb przodków spod Samotnej Góry (Ereboru), zagrabiony przez smoka Smauga.", "difficulty": "easy", "questionType": "open"},
+      {"question": "Bilbo Baggins na początku książki był odważnym wojownikiem.", "answer": "Fałsz", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Jak Bilbo zmieniał się w trakcie wyprawy? Podaj przykłady.", "answer": "Z nieśmiałego domowego hobbita stał się odważnym i zaradnym towarzyszem — uwolnił krasnoludów od pająków, wymyślił ucieczkę z lochów elfów w beczkach, rozmawiał ze Smaugiem.", "difficulty": "hard", "questionType": "open"},
+      {"question": "Jak nazywał się smok strzegący skarbu?\nA) Sauron\nB) Smaug\nC) Shelob\nD) Azog", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Co Bilbo wygrał od Golluma w zagadkach?", "answer": "Drogę wyjścia z jaskini (Gollum miał go wyprowadzić).", "difficulty": "medium", "questionType": "open"},
+      {"question": "Dlaczego chciwość jest jednym z głównych motywów \"Hobbita\"?", "answer": "Chciwość dotyka wielu postaci: Smauga (gromadzi skarb), Thorina (opanowuje go żądza złota), a nawet ludzi i elfów walczących o skarb. Pokazuje, jak pragnienie bogactwa niszczy relacje.", "difficulty": "hard", "questionType": "open"},
+      {"question": "Bitwa Pięciu Armii toczyła się pod Samotną Górą.", "answer": "Prawda", "difficulty": "medium", "questionType": "true_false"}
+    ]
+  },
+  {
+    "title": "W pustyni i w puszczy",
+    "author": "Henryk Sienkiewicz",
+    "classLevel": "6",
+    "epoch": "Pozytywizm",
+    "isObligatory": true,
+    "summary": "Czternastoletni Staś Tarkowski i ośmioletnia Nel Rawlison, dzieci inżynierów pracujących przy budowie Kanału Sueskiego, zostają porwani przez Mahdystów. Staś, odważny i zaradny, ucieka z niewoli razem z Nel. Dzieci przemierzają Afrykę — pustynię, sawannę i dżunglę. Staś poluje, buduje schronienia i chroni Nel, która poważnie choruje na malarię. Zaprzyjaźniają się z wiernymi towarzyszami: Kalim, Meą i słoniem Kingiem. Po wielu przygodach docierają do wybrzeża i wracają do ojców.",
+    "characters": [
+      {"name": "Staś Tarkowski", "description": "14-letni Polak, odważny, zaradny, opiekuńczy wobec Nel, świetny strzelec"},
+      {"name": "Nel Rawlison", "description": "8-letnia Angielka, delikatna, wrażliwa, dzielna mimo młodego wieku, choruje na malarię"},
+      {"name": "Kali", "description": "Afrykański chłopiec uratowany przez Stasia, wierny towarzysz i przyjaciel"},
+      {"name": "Mea", "description": "Afrykańska dziewczynka, opiekunka Nel, oddana i pracowita"},
+      {"name": "King", "description": "Oswojony słoń afrykański, wierny towarzysz podróży dzieci"}
+    ],
+    "themes": ["odwaga", "przyjaźń", "odpowiedzialność", "podróż", "walka o przetrwanie", "kolonializm", "dojrzewanie"],
+    "questions": [
+      {"question": "Gdzie pracowali ojcowie Stasia i Nel?", "answer": "Przy budowie Kanału Sueskiego w Egipcie", "difficulty": "easy", "questionType": "open"},
+      {"question": "Kto porwał dzieci?\nA) Piraci\nB) Mahdsyści\nC) Beduini\nD) Żołnierze brytyjscy", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Na jaką chorobę zachorowała Nel?", "answer": "Na malarię (febrę)", "difficulty": "easy", "questionType": "open"},
+      {"question": "Staś miał 8 lat, a Nel 14 lat.", "answer": "Fałsz", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Jak Staś wykazywał się odpowiedzialnością podczas podróży?", "answer": "Opiekował się Nel, zdobywał jedzenie, budował schronienia, leczył chorą Nel chininą, podejmował trudne decyzje, chronił towarzyszy.", "difficulty": "medium", "questionType": "open"},
+      {"question": "Jak nazywał się słoń, który towarzyszył dzieciom?\nA) Jumbo\nB) King\nC) Tantor\nD) Babar", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Kim był Kali?", "answer": "Afrykański chłopiec uratowany przez Stasia z niewoli, który stał się ich wiernym towarzyszem i przyjacielem.", "difficulty": "easy", "questionType": "open"},
+      {"question": "Kali był wrogiem Stasia przez całą powieść.", "answer": "Fałsz", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Opisz, jak powieść przedstawia Afrykę i jej mieszkańców. Czy ten obraz jest obiektywny?", "answer": "Sienkiewicz przedstawia Afrykę jako egzotyczną, dziką krainę. Obraz mieszkańców jest stereotypowy i europocentryczny — Afrykanie są pokazani jako prości, wymagający opieki Europejczyków. Jest to typowe dla epoki kolonializmu.", "difficulty": "hard", "questionType": "open"},
+      {"question": "Dzieci przemierzały wyłącznie pustynię Sahara.", "answer": "Fałsz", "difficulty": "medium", "questionType": "true_false"}
+    ]
+  },
+  {
+    "title": "Opowieść wigilijna",
+    "author": "Charles Dickens",
+    "classLevel": "6",
+    "epoch": "XIX wiek",
+    "isObligatory": true,
+    "summary": "Ebenezer Scrooge, stary, chciwy i samotny londyński kupiec, w Wigilię Bożego Narodzenia otrzymuje wizytę ducha swojego zmarłego wspólnika Jacoba Marleya, a następnie trzech Duchów Świąt — Przeszłych, Teraźniejszych i Przyszłych. Każdy z duchów pokazuje mu sceny z jego życia: szczęśliwe dzieciństwo, moment gdy chciwość zniszczyła jego miłość, biedę rodziny Cratchitów z chorym Tymkiem, a wreszcie jego samotną śmierć. Scrooge budzi się odmieniony — staje się hojny, dobry i radosny.",
+    "characters": [
+      {"name": "Ebenezer Scrooge", "description": "Stary, chciwy kupiec londyński, który dzięki duchom przechodzi przemianę i staje się dobrym człowiekiem"},
+      {"name": "Jacob Marley", "description": "Duch zmarłego wspólnika Scrooge'a, skuły łańcuchami za życiową chciwość, ostrzega Scrooge'a"},
+      {"name": "Bob Cratchit", "description": "Biedny, ale dobry pracownik Scrooge'a, kochający ojciec chorego Tymka"},
+      {"name": "Malutki Tymek (Tiny Tim)", "description": "Chory syn Boba Cratchita, symbol niewinności, jego los zależy od hojności Scrooge'a"},
+      {"name": "Duch Świąt Przeszłych", "description": "Pierwszy z trzech duchów, pokazuje Scrooge'owi wspomnienia z dzieciństwa i młodości"}
+    ],
+    "themes": ["przemiana wewnętrzna", "chciwość i hojność", "samotność", "rodzina", "Boże Narodzenie", "odpowiedzialność społeczna", "miłosierdzie"],
+    "questions": [
+      {"question": "Kim z zawodu był Ebenezer Scrooge?", "answer": "Kupcem (bankierem/lichwiarzem)", "difficulty": "easy", "questionType": "open"},
+      {"question": "Ilu duchów odwiedziło Scrooge'a w Wigilię?\nA) Jednego\nB) Dwóch\nC) Trzech\nD) Czterech", "answer": "D", "difficulty": "medium", "questionType": "closed"},
+      {"question": "Kim był Jacob Marley?", "answer": "Zmarłym wspólnikiem Scrooge'a, który przyszedł go ostrzec jako duch.", "difficulty": "easy", "questionType": "open"},
+      {"question": "Scrooge od początku był dobrym i hojnym człowiekiem.", "answer": "Fałsz", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Co spowodowało przemianę Scrooge'a?", "answer": "Wizyty trzech Duchów Świąt, które pokazały mu konsekwencje chciwości — straconą miłość, cierpienie bliźnich i samotną śmierć. Scrooge zrozumiał, że może jeszcze zmienić swoją przyszłość.", "difficulty": "medium", "questionType": "open"},
+      {"question": "Jak nazywał się chory chłopiec z rodziny Cratchitów?\nA) Bobby\nB) Malutki Tymek\nC) Oliver\nD) David", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Malutki Tymek był synem Scrooge'a.", "answer": "Fałsz", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Jakie przesłanie niesie \"Opowieść wigilijna\"?", "answer": "Że nigdy nie jest za późno na przemianę, że hojność i troska o innych dają więcej szczęścia niż bogactwo, i że każdy człowiek może zmienić swoją przyszłość.", "difficulty": "hard", "questionType": "open"}
+    ]
+  },
+  {
+    "title": "Zemsta",
+    "author": "Aleksander Fredro",
+    "classLevel": "7",
+    "epoch": "Romantyzm",
+    "isObligatory": true,
+    "summary": "Komedia rozgrywająca się w zamku podzielonym murem na dwie części. Cześnik Raptusiewicz i Rejent Milczek toczą spór o mur graniczny. Cześnik chce wydać swoją krewną Klarę za starego Rejenta, a Rejent chce ożenić syna Wacława z bogatą wdową Podstolina. Tymczasem Klara i Wacław potajemnie się kochają. Po wielu intrygach, kłótniach i zabawnych scenach, Dyndalski (sługa Cześnika) i Papkin (samochwała) doprowadzają do pojednania — Klara wychodzi za Wacława, a Cześnik za Podstolina.",
+    "characters": [
+      {"name": "Cześnik Raptusiewicz", "description": "Porywczy szlachcic, właściciel połowy zamku, gwałtowny ale w gruncie rzeczy dobroduszny"},
+      {"name": "Rejent Milczek", "description": "Skryty, chytry prawnik, właściciel drugiej połowy zamku, ojciec Wacława"},
+      {"name": "Klara", "description": "Krewna Cześnika, piękna i rozsądna, potajemnie kocha Wacława"},
+      {"name": "Wacław", "description": "Syn Rejenta, zakochany w Klarze, odważny i uczciwy młodzieniec"},
+      {"name": "Papkin", "description": "Rezydent Cześnika, samochwała i tchórz, komiczna postać, pyszni się nieistniejącymi czynami"},
+      {"name": "Dyndalski", "description": "Wierny sługa Cześnika, spokojny i rozsądny"}
+    ],
+    "themes": ["zemsta i pojednanie", "miłość", "konflikt sąsiedzki", "pycha i próżność", "szlachta polska", "komizm"],
+    "questions": [
+      {"question": "O co toczył się spór między Cześnikiem a Rejentem?", "answer": "O mur graniczny dzielący zamek na dwie części.", "difficulty": "easy", "questionType": "open"},
+      {"question": "Kim był Papkin?\nA) Synem Rejenta\nB) Rezydentem Cześnika, samochwałą\nC) Sługą Rejenta\nD) Bratem Klary", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Kto kogo kochał potajemnie?", "answer": "Klara (krewna Cześnika) i Wacław (syn Rejenta) potajemnie się kochali.", "difficulty": "easy", "questionType": "open"},
+      {"question": "\"Zemsta\" to dramat tragiczny.", "answer": "Fałsz", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Dlaczego postać Papkina jest komiczna?", "answer": "Papkin przechwala się nieistniejącymi czynami heroicznymi, udaje odważnego, a w rzeczywistości jest tchórzem. Kontrast między jego słowami a czynami wywołuje śmiech.", "difficulty": "medium", "questionType": "open"},
+      {"question": "Jak kończy się \"Zemsta\"?\nA) Cześnik zabija Rejenta\nB) Podwójnym ślubem i pojednaniem\nC) Klara ucieka z zamku\nD) Mur zostaje zburzony", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Jaki gatunek literacki reprezentuje \"Zemsta\"?", "answer": "Komedię (komedię klasyczną / komedię szlachecką)", "difficulty": "easy", "questionType": "open"},
+      {"question": "Czy konflikt Cześnika z Rejentem był poważny, czy raczej śmieszny? Uzasadnij.", "answer": "Spór był błahy (dotyczył muru), ale obie strony traktowały go śmiertelnie poważnie, co tworzy komizm sytuacyjny. Fredro wyśmiewa szlachecką skłonność do pieniactwa.", "difficulty": "hard", "questionType": "open"},
+      {"question": "Cześnik Raptusiewicz był spokrewniony z Klarą.", "answer": "Prawda", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Rejent Milczek chciał ożenić Wacława z Klarą.", "answer": "Fałsz", "difficulty": "medium", "questionType": "true_false"}
+    ]
+  },
+  {
+    "title": "Kamienie na szaniec",
+    "author": "Aleksander Kamiński",
+    "classLevel": "7",
+    "epoch": "XX wiek (II wojna światowa)",
+    "isObligatory": true,
+    "summary": "Oparta na faktach opowieść o trzech harcerzach z Szarych Szeregów: Janie Bytnarze (\"Rudy\"), Tadeuszu Zawadzkim (\"Zośka\") i Macieju Aleksym Dawidowskim (\"Alek\"). W okupowanej Warszawie prowadzą tajne nauczanie, mały sabotaż i akcje zbrojne. Po aresztowaniu i torturowaniu Rudego przez Gestapo, Zośka organizuje brawurową akcję odbicia go z rąk Niemców (\"Akcja pod Arsenałem\"). Rudy umiera w wyniku tortur, Alek ginie w walce, Zośka — w późniejszej akcji. Książka jest hołdem dla młodych bohaterów, którzy poświęcili życie za ojczyznę.",
+    "characters": [
+      {"name": "Jan Bytnar \"Rudy\"", "description": "Harcerz Szarych Szeregów, syn profesora, aresztowany i torturowany przez Gestapo, umiera w wyniku obrażeń"},
+      {"name": "Tadeusz Zawadzki \"Zośka\"", "description": "Dowódca grupy bojowej, organizator Akcji pod Arsenałem, odważny i charyzmatyczny przywódca"},
+      {"name": "Maciej Aleksy Dawidowski \"Alek\"", "description": "Harcerz, przyjaciel Rudego i Zośki, ginie w jednej z akcji zbrojnych"},
+      {"name": "Aleksander Kamiński", "description": "Autor, harcmistrz Szarych Szeregów, napisał książkę ku czci poległych"}
+    ],
+    "themes": ["patriotyzm", "przyjaźń", "poświęcenie", "odwaga", "okupacja", "harcerstwo", "walka o wolność", "śmierć młodych"],
+    "questions": [
+      {"question": "Jak nazywały się pseudonimy trzech głównych bohaterów?", "answer": "Rudy (Jan Bytnar), Zośka (Tadeusz Zawadzki) i Alek (Maciej Aleksy Dawidowski)", "difficulty": "easy", "questionType": "open"},
+      {"question": "Czym były Szare Szeregi?\nA) Oddziałem partyzanckim\nB) Tajną organizacją harcerską\nC) Grupą żołnierzy AK\nD) Drużyną sportową", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Na czym polegała Akcja pod Arsenałem?", "answer": "Na odbicia Jana Bytnara (Rudego) z rąk Gestapo podczas transportu więziennego pod budynkiem Arsenału w Warszawie.", "difficulty": "medium", "questionType": "open"},
+      {"question": "\"Kamienie na szaniec\" to powieść fikcyjna.", "answer": "Fałsz", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Dlaczego ta książka jest ważna dla polskiej pamięci historycznej?", "answer": "Upamiętnia prawdziwych młodych bohaterów, którzy w czasie okupacji walczyli o wolność Polski. Pokazuje heroizm zwykłych nastolatków i cenę, jaką płacili za opór wobec okupanta.", "difficulty": "hard", "questionType": "open"},
+      {"question": "Kto aresztował i torturował Rudego?\nA) Sowieckie NKWD\nB) Gestapo\nC) Polska policja\nD) Wehrmacht", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Co oznaczał \"mały sabotaż\" w działalności Szarych Szeregów?", "answer": "Drobne akcje dywersyjne: malowanie na murach symboli oporu (kotwica Polski Walczącej), zrywanie niemieckich plakatów, drukowanie i kolportowanie ulotek.", "difficulty": "medium", "questionType": "open"},
+      {"question": "Wszyscy trzej główni bohaterowie przeżyli wojnę.", "answer": "Fałsz", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Wyjaśnij znaczenie tytułu \"Kamienie na szaniec\".", "answer": "Tytuł nawiązuje do wiersza Słowackiego \"Testament mój\" — bohaterowie swoim poświęceniem i śmiercią kładą fundament (kamienie) pod szaniec (umocnienie) walki o wolność.", "difficulty": "hard", "questionType": "open"}
+    ]
+  },
+  {
+    "title": "Chłopcy z Placu Broni",
+    "author": "Ferenc Molnár",
+    "classLevel": "7",
+    "epoch": "XX wiek",
+    "isObligatory": true,
+    "summary": "Grupa budapeszteńskich chłopców broni swojego placu zabaw — Placu Broni — przed rywalizującą bandą z ogrodu botanicznego (\"czerwonymi koszulami\" pod wodzą Ferenca Ácsa). Głównym bohaterem jest mały, słaby Ernő Nemecsek, który mimo że jest najsłabszym członkiem grupy (jedynym szeregowcem), okazuje się najodważniejszy. Zostaje zdrajcą Geréb, toczy się \"bitwa\" o plac. Nemecsek, chory po kąpieli w zimnej wodzie, umiera — staje się symbolem honoru, lojalności i poświęcenia.",
+    "characters": [
+      {"name": "Ernő Nemecsek", "description": "Jedyny szeregowiec w grupie, mały i słaby fizycznie, ale najodważniejszy i najlojalniejszy ze wszystkich"},
+      {"name": "János Boka", "description": "Rozsądny przywódca chłopców z Placu Broni, szanowany dowódca"},
+      {"name": "Ferenc Ács", "description": "Przywódca \"czerwonych koszul\" z ogrodu botanicznego, silny rywal"},
+      {"name": "Geréb", "description": "Zdrajca, który przeszedł na stronę czerwonych koszul"}
+    ],
+    "themes": ["honor", "lojalność", "przyjaźń", "odwaga", "poświęcenie", "sprawiedliwość", "dorastanie", "utrata dzieciństwa"],
+    "questions": [
+      {"question": "O co walczyli chłopcy z Placu Broni?", "answer": "O swój plac zabaw (Plac Broni), który chcieli zająć \"czerwone koszule\".", "difficulty": "easy", "questionType": "open"},
+      {"question": "Jaką rangę miał Nemecsek w grupie?\nA) Generała\nB) Kapitana\nC) Szeregowca\nD) Porucznika", "answer": "C", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Kto zdradził grupę z Placu Broni?", "answer": "Geréb — przeszedł na stronę czerwonych koszul.", "difficulty": "easy", "questionType": "open"},
+      {"question": "Nemecsek był najsilniejszym chłopcem w grupie.", "answer": "Fałsz", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Dlaczego Nemecsek jest prawdziwym bohaterem tej powieści?", "answer": "Mimo że był najsłabszy i najniższy rangą, okazał największą odwagę i lojalność. Poświęcił zdrowie i życie dla przyjaciół, udowadniając, że bohaterstwo nie zależy od siły fizycznej.", "difficulty": "hard", "questionType": "open"},
+      {"question": "Co stało się z Nemecsekiem na końcu powieści?", "answer": "Zmarł z powodu choroby (zapalenia płuc) po tym, jak wielokrotnie narażał zdrowie dla sprawy grupy.", "difficulty": "medium", "questionType": "open"},
+      {"question": "Kto był przywódcą chłopców z Placu Broni?\nA) Nemecsek\nB) Boka\nC) Geréb\nD) Ács", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Akcja powieści rozgrywa się w Warszawie.", "answer": "Fałsz", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Jakie wartości są najważniejsze w tej powieści?", "answer": "Honor, lojalność wobec przyjaciół, odwaga w obliczu przeciwności i gotowość do poświęceń. Powieść uczy, że prawdziwa wielkość nie wynika z siły, ale z charakteru.", "difficulty": "medium", "questionType": "open"}
+    ]
+  },
+  {
+    "title": "Balladyna",
+    "author": "Juliusz Słowacki",
+    "classLevel": "8",
+    "epoch": "Romantyzm",
+    "isObligatory": true,
+    "summary": "Dramat romantyczny o zbrodniczej drodze do władzy. Balladyna i Alina to siostry, córki wdowy. Rywalizują o względy rycerza Kirkora — wygra ta, która pierwsza nazbiera dzban malin. Balladyna zabija Alinę i wychodzi za Kirkora. Potem kolejno morduje: matkę, Grabca (chłopa) i Kirkora, by zdobyć koronę. Zostaje królową, ale Goplana (nimfa jeziora) i siły natury wymierzają sprawiedliwość — piorun uderza w Balladynę na tronie. Dramat łączy elementy baśniowe, ludowe i polityczne.",
+    "characters": [
+      {"name": "Balladyna", "description": "Starsza siostra, bezwzględna i ambitna, morduje kolejne osoby na drodze do tronu, ginie rażona piorunem"},
+      {"name": "Alina", "description": "Młodsza siostra, dobra, niewinna, pierwsza ofiara Balladyny"},
+      {"name": "Kirkor", "description": "Bogaty rycerz, mąż Balladyny, naiwny i szlachetny"},
+      {"name": "Goplana", "description": "Nimfa jeziora Gopło, zakochana w Grabcu, reprezentuje siły natury"},
+      {"name": "Grabiec", "description": "Prosty chłop, kochany przez Goplanę, leniwy ale dobroduszny"},
+      {"name": "Wdowa", "description": "Matka Balladyny i Aliny, rozpoznaje zbrodnię córki, zostaje przez nią zamordowana"}
+    ],
+    "themes": ["zbrodnia i kara", "ambicja i władza", "rywalizacja", "sprawiedliwość", "baśniowość", "natura jako siła sprawiedliwości"],
+    "questions": [
+      {"question": "Jaki był warunek konkursu o rękę Kirkora?", "answer": "Ta z sióstr, która pierwsza nazbiera pełen dzban malin, wyjdzie za Kirkora.", "difficulty": "easy", "questionType": "open"},
+      {"question": "Kto zabił Alinę?\nA) Grabiec\nB) Goplana\nC) Balladyna\nD) Kirkor", "answer": "C", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Jak zginęła Balladyna?", "answer": "Została rażona piorunem na tronie — siły natury wymierzyły sprawiedliwość.", "difficulty": "easy", "questionType": "open"},
+      {"question": "Balladyna była dobrą i sprawiedliwą królową.", "answer": "Fałsz", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Wymień ofiary Balladyny w kolejności.", "answer": "Alina (siostra), matka (Wdowa), Grabiec, Kirkor (mąż).", "difficulty": "medium", "questionType": "open"},
+      {"question": "Kim była Goplana?\nA) Służącą Balladyny\nB) Nimfą jeziora Gopło\nC) Matką Kirkora\nD) Siostrą Grabca", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Co symbolizuje malinowa plama na czole Balladyny?", "answer": "Symbolizuje zbrodnię i winę — jest niezmazalnym znakiem morderstwa Aliny, niczym biblijna pieczęć Kaina.", "difficulty": "hard", "questionType": "open"},
+      {"question": "Goplana była nimfą jeziora Gopło.", "answer": "Prawda", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Czy piorun na końcu dramatu to przypadek, czy symbol? Uzasadnij.", "answer": "To symbol sprawiedliwości — w dramacie natura i siły nadprzyrodzone wymierzają karę, której nie wymierzyli ludzie. Piorun jest wyrokiem za zbrodnie Balladyny.", "difficulty": "hard", "questionType": "open"}
+    ]
+  },
+  {
+    "title": "Medaliony",
+    "author": "Zofia Nałkowska",
+    "classLevel": "8",
+    "epoch": "XX wiek (po II wojnie)",
+    "isObligatory": true,
+    "summary": "Zbiór ośmiu krótkich opowiadań dokumentujących zbrodnie nazistowskie podczas II wojny światowej. Nałkowska, jako członkini Komisji Badania Zbrodni Hitlerowskich, zebrała relacje świadków i ocalałych. Opowiadania są oszczędne w formie, pozbawione emocji autora — tym mocniej uderzają. \"Profesor Spanner\" opisuje produkcję mydła z ludzkiego tłuszczu, \"Dno\" — życie w obozie, \"Przy torze kolejowym\" — obojętność ludzi wobec uciekinierki z transportu. Motto: \"Ludzie ludziom zgotowali ten los\".",
+    "characters": [
+      {"name": "Narratorka", "description": "Zofia Nałkowska — oszczędna, reporterska narracja, bez emocji, co wzmacnia przekaz"},
+      {"name": "Bohaterowie opowiadań", "description": "Ofiary nazizmu — więźniowie obozów, uciekinierzy, ludzie poddani eksperymentom, świadkowie zbrodni"}
+    ],
+    "themes": ["zbrodnia i dehumanizacja", "Holocaust", "obojętność", "pamięć", "ludzie ludziom", "cierpienie", "świadectwo"],
+    "questions": [
+      {"question": "Jaki jest podtytuł lub motto \"Medalionów\"?", "answer": "\"Ludzie ludziom zgotowali ten los\"", "difficulty": "easy", "questionType": "open"},
+      {"question": "Kim była Zofia Nałkowska w kontekście tej książki?\nA) Więźniarką obozu\nB) Członkinią Komisji Badania Zbrodni Hitlerowskich\nC) Żołnierką AK\nD) Historykiem", "answer": "B", "difficulty": "medium", "questionType": "closed"},
+      {"question": "O czym opowiada \"Profesor Spanner\"?", "answer": "O produkcji mydła z ludzkiego tłuszczu w Instytucie Anatomicznym w Gdańsku.", "difficulty": "medium", "questionType": "open"},
+      {"question": "\"Medaliony\" to powieść fikcyjna.", "answer": "Fałsz", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Dlaczego Nałkowska pisze tak oszczędnie, bez emocji?", "answer": "Oszczędna, reporterska forma wzmacnia przekaz — fakty mówią same za siebie. Brak emocji autora zmusza czytelnika do samodzielnego przeżycia grozy. Emocjonalny komentarz osłabiłby siłę świadectwa.", "difficulty": "hard", "questionType": "open"},
+      {"question": "O czym opowiada \"Przy torze kolejowym\"?", "answer": "O kobiecie, która wyskoczyła z transportu do obozu i leżała ranna przy torach. Okoliczni ludzie nie pomogli jej — w końcu ktoś ją zastrzelił \"z litości\". Opowiadanie mówi o obojętności.", "difficulty": "medium", "questionType": "open"},
+      {"question": "\"Medaliony\" opisują wydarzenia z I wojny światowej.", "answer": "Fałsz", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Wyjaśnij sens motto \"Ludzie ludziom zgotowali ten los\".", "answer": "Motto podkreśla, że zbrodni nie dokonali potwory czy abstrakcyjne siły — to zwykli ludzie byli katami innych ludzi. Nałkowska ukazuje, do czego zdolny jest człowiek, gdy zanikają normy moralne.", "difficulty": "hard", "questionType": "open"}
+    ]
+  },
+  {
+    "title": "Zdążyć przed Panem Bogiem",
+    "author": "Hanna Krall",
+    "classLevel": "8",
+    "epoch": "XX wiek",
+    "isObligatory": true,
+    "summary": "Reportaż literacki będący zapisem rozmowy Hanny Krall z Markiem Edelmanem — ostatnim żyjącym przywódcą powstania w getcie warszawskim. Edelman opowiada o życiu i śmierci w getcie, o codzienności Holocaustu, o powstaniu 1943 roku i o swoim późniejszym życiu jako kardiolog. Tytuł nawiązuje do jego pracy lekarza — ratowanie życia to wyścig z Bogiem, który \"decyduje o śmierci\". Książka jest świadectwem, ale i refleksją o tym, czym jest bohaterstwo, śmierć i wybór.",
+    "characters": [
+      {"name": "Marek Edelman", "description": "Ostatni przywódca powstania w getcie warszawskim, po wojnie kardiolog, antybohater — odrzuca patos i heroizację"},
+      {"name": "Hanna Krall", "description": "Autorka-dziennikarka prowadząca wywiad, organizuje i komentuje słowa Edelmana"}
+    ],
+    "themes": ["Holocaust", "bohaterstwo i antybohaterstwo", "pamięć", "śmierć i życie", "wybór moralny", "świadectwo", "godność"],
+    "questions": [
+      {"question": "Kim był Marek Edelman?", "answer": "Ostatnim żyjącym przywódcą powstania w getcie warszawskim, po wojnie kardiologiem.", "difficulty": "easy", "questionType": "open"},
+      {"question": "Jaki gatunek literacki reprezentuje ta książka?\nA) Powieść\nB) Reportaż literacki\nC) Pamiętnik\nD) Dramat", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Co oznacza tytuł \"Zdążyć przed Panem Bogiem\"?", "answer": "Nawiązuje do pracy Edelmana jako kardiologa — ratowanie życia pacjentów to wyścig ze śmiercią, wyścig z Bogiem, który \"zabiera\" ludzi.", "difficulty": "medium", "questionType": "open"},
+      {"question": "Powstanie w getcie warszawskim wybuchło w 1944 roku.", "answer": "Fałsz (1943)", "difficulty": "medium", "questionType": "true_false"},
+      {"question": "Dlaczego Edelman odrzucał heroizację powstania?", "answer": "Uważał, że walka w getcie nie była bohaterstwem w tradycyjnym sensie — to był wybór sposobu śmierci (z bronią, nie w komorze gazowej). Odrzucał patos, bo prawda o getcie była zbyt straszna na heroiczne opowieści.", "difficulty": "hard", "questionType": "open"},
+      {"question": "Czym jest ta książka — autobiografią czy wywiadem?\nA) Autobiografią Edelmana\nB) Wywiadem-rzeką / reportażem\nC) Powieścią historyczną\nD) Zbiorem listów", "answer": "B", "difficulty": "easy", "questionType": "closed"},
+      {"question": "Marek Edelman po wojnie został politykiem.", "answer": "Fałsz (został kardiologiem)", "difficulty": "easy", "questionType": "true_false"},
+      {"question": "Jak Edelman rozumiał bohaterstwo?", "answer": "Nie jako walkę zbrojną, ale jako każdy akt godności — kontrabandę jedzenia, organizowanie szkoły w getcie, pomaganie innym. Bohaterstwo to też decyzja, jak umrzeć — stojąc, nie klęcząc.", "difficulty": "hard", "questionType": "open"}
+    ]
+  }
+]

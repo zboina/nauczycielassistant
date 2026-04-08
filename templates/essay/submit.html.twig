@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ essay.topic|u.truncate(50) }} — Wypracowanie</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@1.2.0/dist/css/tabler.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" rel="stylesheet">
+    <style>
+        body { background: #f1f5f9; }
+        .submit-container { max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    </style>
+</head>
+<body>
+<div class="submit-container">
+    {# Header #}
+    <div class="text-center mb-4">
+        <img src="/images/logo.png" alt="Logo" style="height:3rem;width:auto;">
+        <h2 class="mt-2 mb-1">Wypracowanie</h2>
+        <div class="text-secondary">Nauczyciel Assistant</div>
+    </div>
+
+    {% if submitted %}
+        {# Success #}
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <div class="mb-3"><i class="ti ti-circle-check text-success" style="font-size:3rem;"></i></div>
+                <h2 class="text-success">Praca wysłana!</h2>
+                <p class="text-secondary">Twoja praca została przesłana do nauczyciela. Możesz zamknąć tę stronę.</p>
+            </div>
+        </div>
+    {% else %}
+        {# Flash messages #}
+        {% for message in app.flashes('error') %}
+            <div class="alert alert-danger">{{ message }}</div>
+        {% endfor %}
+
+        {# Assignment info #}
+        <div class="card mb-3">
+            <div class="card-status-top bg-primary"></div>
+            <div class="card-body">
+                <h3 class="mb-2">{{ essay.topic }}</h3>
+                <div class="d-flex gap-2 flex-wrap mb-2">
+                    <span class="badge bg-primary-lt">Klasa {{ essay.classLevel }}</span>
+                    <span class="badge bg-blue-lt">{{ essay.writingFormLabel }}</span>
+                    {% if essay.minWords %}
+                        <span class="badge bg-orange-lt">Min. {{ essay.minWords }} słów</span>
+                    {% endif %}
+                    {% if essay.deadline %}
+                        <span class="badge bg-red-lt"><i class="ti ti-clock me-1"></i>Termin: {{ essay.deadline|date('d.m.Y H:i') }}</span>
+                    {% endif %}
+                </div>
+                {% if essay.instructions %}
+                    <div class="alert alert-info mb-0 mt-2">
+                        <i class="ti ti-info-circle me-1"></i>{{ essay.instructions }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Submission form #}
+        <div class="card">
+            <div class="card-body" x-data="{text: '', get wordCount() { return this.text.trim() === '' ? 0 : this.text.trim().split(/\s+/).length; }}">
+                <form method="post" action="{{ path('app_essay_submit', {code: essay.accessCode}) }}">
+                    <div class="mb-3">
+                        <label class="form-label required">Imię i nazwisko</label>
+                        <input type="text" name="studentName" class="form-control" required placeholder="np. Jan Kowalski" autocomplete="name">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label required d-flex justify-content-between">
+                            <span>Treść pracy</span>
+                            <span class="fw-normal" :class="{'text-danger': wordCount < {{ essay.minWords ?? 0 }}, 'text-success': wordCount >= {{ essay.minWords ?? 0 }} && wordCount > 0}">
+                                <span x-text="wordCount">0</span> słów
+                                {% if essay.minWords %}<span class="text-secondary"> / min. {{ essay.minWords }}</span>{% endif %}
+                            </span>
+                        </label>
+                        <textarea name="content" class="form-control" rows="18" required
+                                  placeholder="Wpisz tutaj swoją pracę..."
+                                  style="font-family:Georgia,serif; line-height:2; font-size:.95rem;"
+                                  x-model="text"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 btn-lg"
+                            onclick="if(!confirm('Czy na pewno chcesz wysłać pracę? Nie będzie można jej edytować.')) return false;">
+                        <i class="ti ti-send me-2"></i>Wyślij pracę
+                    </button>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+</div>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+</body>
+</html>

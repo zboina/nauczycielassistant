@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Wpisz kod — Wypracowanie</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@1.2.0/dist/css/tabler.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" rel="stylesheet">
+    <style>body { background: #f1f5f9; }</style>
+</head>
+<body>
+<div style="max-width:440px;margin:6rem auto;padding:0 1rem;">
+    <div class="text-center mb-4">
+        <img src="/images/logo.png" alt="Logo" style="height:3.5rem;width:auto;">
+        <h2 class="mt-2 mb-1">Wypracowanie</h2>
+        <div class="text-secondary">Wpisz kod od nauczyciela</div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <form method="get" action="{{ path('app_essay_join') }}">
+                <div class="mb-3">
+                    <input type="text" name="code" class="form-control form-control-lg text-center font-monospace"
+                           placeholder="XXXXXX" maxlength="6" required autofocus
+                           style="letter-spacing:.2em;font-size:1.5rem;"
+                           oninput="this.value=this.value.toUpperCase()">
+                </div>
+                <button type="submit" class="btn btn-primary w-100 btn-lg">
+                    <i class="ti ti-arrow-right me-2"></i>Dalej
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>

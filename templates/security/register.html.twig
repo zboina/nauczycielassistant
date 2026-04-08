@@ -1,0 +1,84 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Rejestracja — Nauczyciel Assistant{% endblock %}
+
+{% block layout %}
+<div class="d-flex flex-column min-vh-100 bg-white">
+    <div class="row g-0 flex-fill">
+        <div class="col-12 col-lg-6 d-flex align-items-center justify-content-center">
+            <div class="container container-tight py-4" style="max-width: 420px;">
+                <div class="text-center mb-4">
+                    <img src="/images/logo.png" alt="Nauczyciel Assistant" style="height:5rem;width:auto;" class="mb-3">
+                    <h1 class="fw-bold">Nauczyciel Assistant</h1>
+                    <p class="text-secondary">Utwórz konto nauczyciela</p>
+                </div>
+                <div class="card card-md">
+                    <div class="card-body">
+                        <h2 class="h2 text-center mb-4">Rejestracja</h2>
+
+                        {{ form_start(form, {'attr': {'novalidate': 'novalidate', 'data-turbo': 'false'}}) }}
+                            <div class="mb-3">
+                                {{ form_label(form.fullName) }}
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="ti ti-user"></i></span>
+                                    {{ form_widget(form.fullName, {'attr': {'class': 'form-control'}}) }}
+                                </div>
+                                {{ form_errors(form.fullName) }}
+                            </div>
+                            <div class="mb-3">
+                                {{ form_label(form.email) }}
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="ti ti-mail"></i></span>
+                                    {{ form_widget(form.email, {'attr': {'class': 'form-control'}}) }}
+                                </div>
+                                {{ form_errors(form.email) }}
+                            </div>
+                            <div class="mb-3">
+                                {{ form_label(form.plainPassword.first) }}
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="ti ti-lock"></i></span>
+                                    {{ form_widget(form.plainPassword.first, {'attr': {'class': 'form-control'}}) }}
+                                </div>
+                                {{ form_errors(form.plainPassword.first) }}
+                            </div>
+                            <div class="mb-3">
+                                {{ form_label(form.plainPassword.second) }}
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="ti ti-lock-check"></i></span>
+                                    {{ form_widget(form.plainPassword.second, {'attr': {'class': 'form-control'}}) }}
+                                </div>
+                                {{ form_errors(form.plainPassword) }}
+                            </div>
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    {{ form_label(form.schoolName) }}
+                                    {{ form_widget(form.schoolName, {'attr': {'class': 'form-control'}}) }}
+                                </div>
+                                <div class="col-6 mb-3">
+                                    {{ form_label(form.city) }}
+                                    {{ form_widget(form.city, {'attr': {'class': 'form-control'}}) }}
+                                </div>
+                            </div>
+                            <div class="form-footer">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="ti ti-user-plus me-2"></i> Zarejestruj się
+                                </button>
+                            </div>
+                        {{ form_end(form) }}
+                    </div>
+                </div>
+                <div class="text-center text-secondary mt-3">
+                    Masz już konto? <a href="{{ path('app_login') }}" class="fw-medium">Zaloguj się</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="text-center text-white px-5">
+                <img src="/images/logo.png" alt="Logo" style="height:8rem;width:auto;filter:brightness(0) invert(1);" class="mb-3">
+                <h2 class="fw-bold mb-3">Twój asystent w szkole</h2>
+                <p class="opacity-75" style="font-size: 1.1rem;">Generuj sprawdziany, karty pracy i informacje dla rodziców z pomocą AI. Zarządzaj lekturami i korzystaj z narzędzi lekcyjnych.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

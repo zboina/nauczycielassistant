@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<style>
+@page { margin: 15mm 18mm; }
+body { font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; line-height: 1.5; color: #000; }
+
+.ws-header { border: 2px solid #000; padding: 10px 15px; margin-bottom: 15px; }
+.ws-title { font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+.ws-meta { font-size: 9pt; }
+.ws-meta-row { display: table; width: 100%; }
+.ws-meta-cell { display: table-cell; padding: 3px 0; }
+.ws-meta-cell.right { text-align: right; }
+.dotted { border-bottom: 1px dotted #000; display: inline-block; min-width: 120px; }
+.points-box { border: 1.5px solid #000; padding: 4px 12px; font-weight: bold; font-size: 11pt; display: inline-block; }
+
+.exercise { margin-bottom: 14px; page-break-inside: avoid; }
+.ex-header { font-weight: bold; margin-bottom: 4px; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+.ex-points { float: right; font-weight: normal; font-size: 9pt; color: #555; }
+.ex-instruction { margin-bottom: 6px; font-style: italic; font-size: 9.5pt; }
+
+.answer-line { border-bottom: 1px dotted #999; height: 22px; }
+.content-box { border: 1px solid #ccc; padding: 8px; margin-bottom: 6px; font-size: 9.5pt; line-height: 1.8; }
+.text-box { border: 1px solid #ccc; padding: 10px; margin-bottom: 8px; font-style: italic; line-height: 1.8; font-size: 9.5pt; }
+
+/* Choice */
+.option-row { padding: 3px 0; font-size: 9.5pt; }
+.checkbox { display: inline-block; width: 13px; height: 13px; border: 1.5px solid #000; margin-right: 5px; vertical-align: middle; }
+
+/* True/False table */
+.tf-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 4px; }
+.tf-table td, .tf-table th { border: 1px solid #999; padding: 5px 8px; }
+.tf-table th { background: #f0f0f0; font-size: 9pt; }
+.tf-box { display: inline-block; width: 13px; height: 13px; border: 1.5px solid #000; vertical-align: middle; }
+
+/* Match */
+.match-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+.match-table td { border: 1px solid #999; padding: 5px 8px; width: 45%; }
+.match-table td.arrow { border: none; width: 10%; text-align: center; }
+
+/* Order */
+.order-item { display: inline-block; border: 1px solid #999; padding: 3px 10px; margin: 2px; font-size: 9.5pt; }
+.order-slot { display: inline-block; border-bottom: 1px dotted #000; width: 60px; margin: 2px 4px; font-size: 9.5pt; }
+
+/* Transform */
+.transform-source { border: 1px solid #ccc; padding: 5px 8px; margin-bottom: 2px; font-size: 9.5pt; background: #fafafa; }
+
+/* Answer key */
+.key-header { font-size: 13pt; font-weight: bold; text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 15px; page-break-before: always; }
+.key-item { margin-bottom: 5px; padding: 3px 0; border-bottom: 1px dotted #ddd; font-size: 9.5pt; }
+.key-num { font-weight: bold; display: inline-block; width: 25px; }
+
+.ws-footer { margin-top: 15px; text-align: center; font-size: 7pt; color: #999; border-top: 1px solid #ddd; padding-top: 5px; }
+</style>
+</head>
+<body>
+
+{% if wsData %}
+
+<div class="ws-header">
+    <div class="ws-title">{{ wsData.title | default('Karta pracy — ' ~ topic) }}</div>
+    <div class="ws-meta">
+        <div class="ws-meta-row">
+            <div class="ws-meta-cell">Imię i nazwisko: <span class="dotted">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+            <div class="ws-meta-cell right">Klasa: <span class="dotted">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> &nbsp; Data: <span class="dotted">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+        </div>
+    </div>
+    <div style="text-align:right;margin-top:6px;"><span class="points-box">......... / {{ wsData.totalPoints }} pkt</span></div>
+</div>
+
+{% for i, ex in wsData.exercises %}
+<div class="exercise">
+    <div class="ex-header">Zadanie {{ i + 1 }}. <span class="ex-points">({{ ex.points }} pkt)</span></div>
+    <div class="ex-instruction">{{ ex.instruction }}</div>
+
+    {% if ex.type == 'fill_blanks' %}
+        <div class="content-box">{{ ex.content }}</div>
+
+    {% elseif ex.type == 'open' %}
+        <div style="margin-bottom:4px;">{{ ex.content | default('') }}</div>
+        {% for l in range(1, ex.lines|default(3)) %}
+            <div class="answer-line"></div>
+        {% endfor %}
+
+    {% elseif ex.type == 'choice' and ex.options is defined %}
+        <div style="margin-bottom:4px;">{{ ex.content | default('') }}</div>
+        {% for opt in ex.options %}
+            <div class="option-row"><span class="checkbox"></span> {{ opt }}</div>
+        {% endfor %}
+
+    {% elseif ex.type == 'true_false' and ex.statements is defined %}
+        <table class="tf-table">
+            <tr><th>Stwierdzenie</th><th style="width:35px;text-align:center;">P</th><th style="width:35px;text-align:center;">F</th></tr>
+            {% for st in ex.statements %}
+                <tr><td>{{ st.text }}</td><td style="text-align:center;"><span class="tf-box"></span></td><td style="text-align:center;"><span class="tf-box"></span></td></tr>
+            {% endfor %}
+        </table>
+
+    {% elseif ex.type == 'match' and ex.pairs is defined %}
+        <table class="match-table">
+            {% for p in ex.pairs %}
+                <tr><td>{{ loop.index }}. {{ p.left }}</td><td class="arrow">........</td><td>{{ ['a','b','c','d','e','f','g','h'][loop.index0] }}. {{ p.right }}</td></tr>
+            {% endfor %}
+        </table>
+
+    {% elseif ex.type == 'transform' and ex.sentences is defined %}
+        {% for s in ex.sentences %}
+            <div class="transform-source">{{ loop.index }}. {{ s }}</div>
+            <div class="answer-line"></div>
+            <div style="height:4px;"></div>
+        {% endfor %}
+
+    {% elseif ex.type == 'order' and ex.items is defined %}
+        <div style="margin-bottom:6px;">
+            {% for item in ex.items %}
+                <span class="order-item">{{ item }}</span>
+            {% endfor %}
+        </div>
+        <div>Prawidłowa kolejność:
+            {% for n in range(1, ex.items|length) %}
+                {{ n }}. <span class="order-slot"></span>
+            {% endfor %}
+        </div>
+
+    {% elseif ex.type == 'text_analysis' %}
+        {% if ex.text is defined %}
+            <div class="text-box">{{ ex.text }}</div>
+        {% endif %}
+        {% if ex.questions is defined %}
+            {% for q in ex.questions %}
+                <div style="margin-bottom:6px;">
+                    <div style="font-weight:bold;margin-bottom:2px;">{{ loop.index }}. {{ q }}</div>
+                    {% for l in range(1, ex.lines_per_question|default(3)) %}
+                        <div class="answer-line"></div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+    {% else %}
+        <div class="content-box">{{ ex.content | default('') }}</div>
+    {% endif %}
+</div>
+{% endfor %}
+
+<div class="ws-footer">Wygenerowano w Nauczyciel Assistant</div>
+
+{% if includeAnswers is defined and includeAnswers %}
+<div class="key-header">KLUCZ ODPOWIEDZI — {{ wsData.title }}</div>
+{% for i, ex in wsData.exercises %}
+    <div class="key-item">
+        <span class="key-num">{{ i + 1 }}.</span>
+        {% if ex.type == 'true_false' and ex.statements is defined %}
+            {% for st in ex.statements %}{{ loop.index }}. {{ st.correct }}{% if not loop.last %}, {% endif %}{% endfor %}
+        {% else %}
+            {{ ex.answer | default('—') }}
+        {% endif %}
+    </div>
+{% endfor %}
+<div class="ws-footer">Klucz odpowiedzi — do użytku nauczyciela</div>
+{% endif %}
+
+{% else %}
+{# Fallback — plain text #}
+<div style="text-align:center;margin-bottom:15px;">
+    <div style="font-size:14pt;font-weight:bold;">Karta pracy — {{ topic | default('') }}</div>
+    <div style="font-size:9pt;color:#555;">Klasa: {{ classLevel | default('') }}</div>
+</div>
+<div style="white-space:pre-wrap;font-size:10pt;">{{ wsRaw | default('') }}</div>
+{% endif %}
+
+</body>
+</html>

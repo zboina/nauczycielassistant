@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Błąd — Wypracowanie</title>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@1.2.0/dist/css/tabler.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" rel="stylesheet">
+    <style>body { background: #f1f5f9; }</style>
+</head>
+<body>
+<div style="max-width:500px;margin:4rem auto;padding:0 1rem;">
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <div class="mb-3"><i class="ti ti-alert-circle text-danger" style="font-size:3rem;"></i></div>
+            <h2>Nie można wysłać pracy</h2>
+            <p class="text-secondary">{{ message }}</p>
+            <a href="{{ path('app_essay_join') }}" class="btn btn-outline-primary mt-2">
+                <i class="ti ti-arrow-left me-1"></i>Wróć
+            </a>
+        </div>
+    </div>
+</div>
+</body>
+</html>

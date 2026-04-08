@@ -1,0 +1,109 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Rodzaje i gatunki literackie — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Teoria{% endblock %}
+{% block title_text %}Rodzaje i gatunki literackie{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_theory_index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Teoria</a>
+{% endblock %}
+
+{% set colors = {'epic': 'blue', 'lyric': 'purple', 'drama': 'orange'} %}
+{% set icons = {'epic': 'ti-book', 'lyric': 'ti-music', 'drama': 'ti-masks-theater'} %}
+
+{% block body %}
+{% for key, type in genres %}
+    {% set color = colors[key] %}
+    <div class="card mb-4">
+        <div class="card-status-start bg-{{ color }}"></div>
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="{{ icons[key] }} me-2"></i>{{ type.label }}
+            </h3>
+            <div class="card-actions">
+                <span class="text-secondary" style="font-size:.85rem;">{{ type.description }}</span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                    <thead>
+                        <tr>
+                            <th style="width:160px;">Gatunek</th>
+                            <th>Cechy charakterystyczne</th>
+                            <th style="width:80px;" class="text-center">Klasa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for genre in type.genres %}
+                            <tr>
+                                <td class="fw-medium">{{ genre.name }}</td>
+                                <td>{{ genre.features }}</td>
+                                <td class="text-center"><span class="badge bg-{{ color }}-lt">{{ genre.level }}</span></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% if type.elements is defined %}
+            <div class="card-footer">
+                <h4 class="mb-2 small fw-bold text-uppercase text-secondary">Elementy dramatu</h4>
+                <div class="row g-2">
+                    {% for element in type.elements %}
+                        <div class="col-md-6">
+                            <div class="d-flex gap-2 align-items-start">
+                                <i class="ti ti-point-filled text-{{ color }} flex-shrink-0" style="margin-top:2px;"></i>
+                                <div style="font-size:.88rem;">{{ element }}</div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% endfor %}
+
+{# Quick reference card #}
+<div class="card">
+    <div class="card-header"><h3 class="card-title"><i class="ti ti-info-circle me-2"></i>Jak rozpoznać rodzaj literacki?</h3></div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="border rounded p-3 h-100 bg-blue-lt">
+                    <h4 class="fw-bold mb-2"><i class="ti ti-book me-1"></i>Epika</h4>
+                    <ul class="mb-0" style="padding-left:1.2rem;font-size:.88rem;">
+                        <li>Jest narrator</li>
+                        <li>Opowiada historię</li>
+                        <li>Są bohaterowie i fabuła</li>
+                        <li>Proza (zwykle)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-3 h-100 bg-purple-lt">
+                    <h4 class="fw-bold mb-2"><i class="ti ti-music me-1"></i>Liryka</h4>
+                    <ul class="mb-0" style="padding-left:1.2rem;font-size:.88rem;">
+                        <li>Jest podmiot liryczny</li>
+                        <li>Wyraża uczucia/przeżycia</li>
+                        <li>Pisana wierszem (zwykle)</li>
+                        <li>Brak fabuły</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-3 h-100 bg-orange-lt">
+                    <h4 class="fw-bold mb-2"><i class="ti ti-masks-theater me-1"></i>Dramat</h4>
+                    <ul class="mb-0" style="padding-left:1.2rem;font-size:.88rem;">
+                        <li>Dialogi postaci</li>
+                        <li>Brak narratora</li>
+                        <li>Didaskalia (wskazówki)</li>
+                        <li>Przeznaczony na scenę</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

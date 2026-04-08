@@ -1,0 +1,409 @@
+{% extends 'generator/_layout.html.twig' %}
+
+{% block title %}Generator kart pracy — Nauczyciel Assistant{% endblock %}
+{% block title_text %}Generator kart pracy{% endblock %}
+{% block form_title %}Parametry karty pracy{% endblock %}
+{% block back_button %}<a href="{{ path('app_generate_worksheet_index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Karty pracy</a>{% endblock %}
+
+{% block form_content %}
+<div x-data="worksheetFormApp()">
+    {{ form_start(form, {'attr': {'novalidate': 'novalidate', 'data-ai-loading': 'Trwa generowanie karty pracy...'}}) }}
+
+    <div class="mb-3">
+        {{ form_label(form.classLevel) }}
+        {{ form_widget(form.classLevel, {'attr': {'class': 'form-control', 'x-model': 'classInput', '@input': 'onClassChange()'}}) }}
+        {{ form_errors(form.classLevel) }}
+        <div class="d-flex gap-1 mt-2 flex-wrap">
+            <button type="button" class="btn btn-sm btn-outline-primary" @click="setClass('4')">Kl. 4</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" @click="setClass('5')">Kl. 5</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" @click="setClass('6')">Kl. 6</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" @click="setClass('7')">Kl. 7</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" @click="setClass('8')">Kl. 8</button>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        {{ form_label(form.topic) }}
+        {{ form_widget(form.topic, {'attr': {'class': 'form-control', 'x-ref': 'topicInput'}}) }}
+        {{ form_errors(form.topic) }}
+    </div>
+
+    {# Topic suggestions #}
+    <div x-show="suggestions.length > 0" x-transition class="mb-3">
+        <label class="form-label text-primary">
+            <i class="ti ti-bulb me-1"></i>Propozycje tematów (PP MEN)
+        </label>
+        <div class="d-flex flex-wrap gap-1">
+            <template x-for="(topic, i) in suggestions" :key="i">
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary text-start"
+                        style="font-size:.78rem;"
+                        @click="pickTopic(topic)"
+                        x-text="topic">
+                </button>
+            </template>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        {{ form_label(form.exerciseTypes) }}
+        <div class="d-flex gap-3 flex-wrap">
+            {% for child in form.exerciseTypes %}
+                <label class="form-check">
+                    {{ form_widget(child, {'attr': {'class': 'form-check-input'}}) }}
+                    <span class="form-check-label">{{ child.vars.label }}</span>
+                </label>
+            {% endfor %}
+        </div>
+        {{ form_errors(form.exerciseTypes) }}
+    </div>
+
+    <div class="row">
+        <div class="col-6 mb-3">
+            {{ form_label(form.taskCount) }}
+            {{ form_widget(form.taskCount, {'attr': {'class': 'form-select'}}) }}
+        </div>
+        <div class="col-6 mb-3">
+            {{ form_label(form.duration) }}
+            {{ form_widget(form.duration, {'attr': {'class': 'form-select'}}) }}
+        </div>
+    </div>
+
+    <div class="mb-3">
+        {{ form_label(form.baseText) }}
+        {{ form_widget(form.baseText, {'attr': {'class': 'form-control'}}) }}
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100">
+        <i class="ti ti-sparkles me-2"></i> Generuj kartę pracy
+    </button>
+
+    {{ form_end(form) }}
+</div>
+
+<script>
+function worksheetFormApp() {
+    const topicsByClass = {
+        '4': [
+            // Gramatyka
+            'Części mowy — rozpoznawanie rzeczownika, przymiotnika, czasownika',
+            'Rzeczownik — odmiana przez przypadki',
+            'Czasownik — czasy: przeszły, teraźniejszy, przyszły',
+            'Zdanie oznajmujące, pytające, rozkazujące',
+            'Głoski, sylaby, litery — ćwiczenia fonetyczne',
+            // Ortografia
+            'Pisownia ó/u — ćwiczenia z regułami',
+            'Pisownia rz/ż — podstawowe zasady',
+            'Wielka litera — imiona, nazwy geograficzne, święta',
+            // Lektury i teksty
+            '"W pustyni i w puszczy" — praca z fragmentem tekstu',
+            '"Akademia Pana Kleksa" — świat fantazji w literaturze',
+            'Baśnie — rozpoznawanie cech gatunku',
+            'Legendy polskie — streszczanie i analiza',
+            'Mity greckie — bogowie i ich atrybuty',
+            // Formy wypowiedzi
+            'Opowiadanie — układanie planu wydarzeń',
+            'Opis przedmiotu — schemat i słownictwo',
+            'Opis krajobrazu — przymiotniki i porównania',
+            'Życzenia i zaproszenie — redagowanie tekstów użytkowych',
+        ],
+        '5': [
+            // Gramatyka
+            'Przymiotnik — stopniowanie regularne i nieregularne',
+            'Przysłówek — rozpoznawanie i tworzenie',
+            'Zdanie pojedyncze — podmiot i orzeczenie',
+            'Zdanie pojedyncze rozwinięte — przydawka, dopełnienie, okolicznik',
+            'Liczebnik — główny i porządkowy',
+            // Ortografia
+            'Pisownia ch/h — zasady i wyjątki',
+            'Pisownia nie z przymiotnikami i przysłówkami',
+            'Wielka i mała litera — pełny zakres zasad',
+            'Interpunkcja — przecinek przed spójnikami',
+            // Lektury
+            '"Opowieści z Narnii" — analiza postaci (praca z tekstem)',
+            '"Hobbit" — mapa podróży Bilba',
+            '"Chłopcy z Placu Broni" — bohaterowie i ich cechy',
+            'Baśnie Andersena — morał i symbolika',
+            'Mity greckie — podróże Odyseusza',
+            // Formy wypowiedzi
+            'List prywatny — redagowanie z zachowaniem formy',
+            'Opis postaci — wygląd i charakter bohatera',
+            'Sprawozdanie z wydarzenia — schemat',
+            'Charakterystyka bohatera literackiego — wprowadzenie',
+        ],
+        '6': [
+            // Gramatyka
+            'Części mowy — rozpoznawanie i funkcje w zdaniu',
+            'Rzeczownik — odmiana przez przypadki i liczby',
+            'Przymiotnik i przysłówek — stopniowanie',
+            'Czasownik — czas, osoba, tryb, strona czynna i bierna',
+            'Zdanie pojedyncze — podmiot, orzeczenie, dopełnienie, okolicznik, przydawka',
+            'Zdanie złożone — współrzędnie i podrzędnie',
+            // Ortografia i interpunkcja
+            'Pisownia ó/u — ćwiczenia z regułami',
+            'Pisownia rz/ż — ćwiczenia z wymianą głosek',
+            'Pisownia ch/h — zasady i wyjątki',
+            'Przecinek w zdaniu złożonym',
+            'Wielka i mała litera — zasady pisowni',
+            // Figury stylistyczne
+            'Środki stylistyczne: epitet, porównanie, metafora, personifikacja',
+            'Wyrazy dźwiękonaśladowcze i ich funkcja w tekście',
+            // Lektury i teksty
+            '"Hobbit" — mapa podróży Bilba (praca z tekstem)',
+            '"Chłopcy z Placu Broni" — charakterystyka bohaterów',
+            'Mity greckie — bohaterowie i ich cechy',
+            // Formy wypowiedzi
+            'Opowiadanie twórcze — plan i pisanie',
+            'Opis postaci — schemat charakterystyki',
+            'List oficjalny i prywatny — różnice',
+        ],
+        '7': [
+            // Gramatyka i język
+            'Rodzaje literackie: epika, liryka, dramat — rozpoznawanie',
+            'Elementy dramatu: akt, scena, didaskalia, monolog, dialog',
+            'Wyraz podstawowy i pochodny — słowotwórstwo',
+            'Związki frazeologiczne — znaczenie i stosowanie',
+            'Synonimy i antonimy — ćwiczenia leksykalne',
+            'Słownictwo wartościujące i neutralne',
+            // Ortografia
+            'Pisownia nie z różnymi częściami mowy',
+            'Pisownia partykuł -bym, -byś, -by',
+            // Lektury
+            '"Mały Książę" — analiza symboli (róża, lis, baobaby)',
+            '"Zemsta" — komizm sytuacyjny, słowny, postaci',
+            '"Kamienie na szaniec" — analiza fragmentu (Akcja pod Arsenałem)',
+            '"Opowieść wigilijna" — motyw przemiany Scrooge\'a',
+            '"Świtezianka" — cechy ballady romantycznej',
+            // Formy wypowiedzi
+            'Rozprawka — budowa: teza, argumenty, podsumowanie',
+            'Charakterystyka porównawcza dwóch bohaterów',
+            'Recenzja filmu lub książki — struktura',
+            'Streszczenie tekstu — skracanie i parafrazowanie',
+        ],
+        '8': [
+            // Gramatyka zaawansowana
+            'Imiesłowy przymiotnikowe i przysłówkowe',
+            'Mowa zależna i niezależna — przekształcanie',
+            'Wypowiedzenia wielokrotnie złożone — schemat',
+            'Style funkcjonalne: potoczny, urzędowy, naukowy, artystyczny',
+            'Archaizmy i neologizmy — rozpoznawanie w tekście',
+            // Retoryka i argumentacja
+            'Argumentowanie — rozróżnianie argumentów od przykładów',
+            'Manipulacja językowa — rozpoznawanie technik perswazji',
+            'Środki retoryczne — pytanie retoryczne, anafora, gradacja',
+            // Lektury
+            '"Balladyna" — analiza motywu zbrodni i kary',
+            '"Dziady" cz. II — obrzędowość ludowa i świat duchów',
+            '"Latarnik" — tęsknota za ojczyzną (analiza fragmentu)',
+            'Treny Kochanowskiego — wyrażanie żalu i bólu',
+            '"Pan Tadeusz" — opis przyrody (analiza Inwokacji)',
+            'Poezja Szymborskiej lub Herberta — interpretacja wiersza',
+            // Formy — egzamin ósmoklasisty
+            'Rozprawka egzaminacyjna — ćwiczenie z tezą i argumentami',
+            'Opowiadanie twórcze — narracja, dialogi, opis',
+            'Analiza i interpretacja wiersza — schemat odpowiedzi',
+        ],
+    };
+
+    return {
+        classInput: '',
+        suggestions: [],
+
+        onClassChange() {
+            const num = this.classInput.replace(/\D/g, '');
+            this.suggestions = topicsByClass[num] || [];
+        },
+
+        setClass(n) {
+            this.classInput = n;
+            const input = document.querySelector('[name*="classLevel"]');
+            if (input) { input.value = n; input.dispatchEvent(new Event('input')); }
+            this.suggestions = topicsByClass[n] || [];
+        },
+
+        pickTopic(topic) {
+            this.$refs.topicInput.value = topic;
+            this.$refs.topicInput.dispatchEvent(new Event('input'));
+            this.$refs.topicInput.focus();
+        }
+    };
+}
+</script>
+{% endblock %}
+
+{% block results_content %}
+    {% if wsData %}
+        <div class="card mb-3">
+            <div class="card-stamp"><div class="card-stamp-icon bg-green"><i class="ti ti-notebook"></i></div></div>
+            <div class="card-header">
+                <h3 class="card-title">{{ wsData.title }}</h3>
+                <div class="card-actions">
+                    <form method="post" action="{{ path('app_generate_worksheet_save') }}" class="d-inline">
+                        <input type="hidden" name="_token" value="{{ csrf_token('save') }}">
+                        <button type="submit" class="btn btn-ghost-success btn-sm"><i class="ti ti-device-floppy me-1"></i>Zapisz</button>
+                    </form>
+                    <a href="{{ path('app_generate_worksheet_pdf') }}" class="btn btn-ghost-primary btn-sm" target="_blank"><i class="ti ti-file-type-pdf me-1"></i>PDF (uczeń)</a>
+                    <a href="{{ path('app_generate_worksheet_pdf', {answers: 1}) }}" class="btn btn-ghost-primary btn-sm" target="_blank"><i class="ti ti-file-type-pdf me-1"></i>PDF + klucz</a>
+                </div>
+            </div>
+            <div class="card-body">
+                {# Header #}
+                <div class="border rounded p-3 mb-3 bg-light">
+                    <div class="fw-bold text-center mb-2" style="font-size:1.1rem;">{{ wsData.title }}</div>
+                    <div class="row text-secondary" style="font-size:.85rem;">
+                        <div class="col">Imię i nazwisko: ..........................</div>
+                        <div class="col-auto">Klasa: ........</div>
+                        <div class="col-auto">Data: ............</div>
+                    </div>
+                    <div class="text-end text-secondary mt-1" style="font-size:.85rem;">Suma punktów: ..... / {{ wsData.totalPoints }} pkt</div>
+                </div>
+
+                {# Exercises #}
+                {% for i, ex in wsData.exercises %}
+                    <div class="border rounded p-3 mb-2">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-bold">Zadanie {{ i + 1 }}.</span>
+                            <span class="badge bg-green-lt">{{ ex.points }} pkt</span>
+                        </div>
+                        <div class="mb-2 fw-medium">{{ ex.instruction }}</div>
+
+                        {% if ex.type == 'fill_blanks' %}
+                            <div class="p-2 border rounded bg-white" style="line-height:2;">{{ ex.content }}</div>
+
+                        {% elseif ex.type == 'open' %}
+                            <div class="mb-2">{{ ex.content }}</div>
+                            {% for line in range(1, ex.lines|default(3)) %}
+                                <div style="border-bottom:1px dotted #ccc;height:1.8em;"></div>
+                            {% endfor %}
+
+                        {% elseif ex.type == 'choice' and ex.options is defined %}
+                            <div class="mb-2">{{ ex.content }}</div>
+                            {% set letters = ['A','B','C','D'] %}
+                            <div class="row g-2">
+                                {% for key, opt in ex.options %}
+                                    {% set letter = opt | split(')') | first | trim %}
+                                    {% set isCorrect = ex.correct is defined and (letters[key] == ex.correct or letter == ex.correct) %}
+                                    <div class="col-6">
+                                        <div class="d-flex align-items-center gap-2 p-2 border rounded {{ isCorrect ? 'border-success bg-success-lt' : '' }}">
+                                            <span class="avatar avatar-xs rounded fw-bold {{ isCorrect ? 'bg-success text-white' : 'bg-primary-lt' }}" style="font-size:.7rem;">{{ letters[key] }}</span>
+                                            <span style="font-size:.9rem;">{{ opt | split(') ') | last }}</span>
+                                            {% if isCorrect %}<i class="ti ti-check ms-auto text-success"></i>{% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                        {% elseif ex.type == 'true_false' and ex.statements is defined %}
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0">
+                                    <thead><tr><th>Stwierdzenie</th><th style="width:80px;" class="text-center">P / F</th></tr></thead>
+                                    <tbody>
+                                    {% for st in ex.statements %}
+                                        <tr>
+                                            <td>{{ st.text }}</td>
+                                            <td class="text-center">
+                                                <span class="fw-bold {{ st.correct == 'P' ? 'text-success' : 'text-danger' }}">{{ st.correct }}</span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        {% elseif ex.type == 'match' and ex.pairs is defined %}
+                            <div class="row g-3">
+                                <div class="col-5">
+                                    {% for p in ex.pairs %}
+                                        <div class="p-2 border rounded mb-1 bg-primary-lt text-center">{{ p.left }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-2 d-flex align-items-center justify-content-center text-secondary"><i class="ti ti-arrows-right-left" style="font-size:1.5rem;"></i></div>
+                                <div class="col-5">
+                                    {% for p in ex.pairs | reverse %}
+                                        <div class="p-2 border rounded mb-1 bg-green-lt text-center">{{ p.right }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                        {% elseif ex.type == 'transform' and ex.sentences is defined %}
+                            {% for s in ex.sentences %}
+                                <div class="mb-2">
+                                    <div class="p-2 border rounded bg-white mb-1">{{ s }}</div>
+                                    <div style="border-bottom:1px dotted #ccc;height:1.8em;"></div>
+                                </div>
+                            {% endfor %}
+
+                        {% elseif ex.type == 'order' and ex.items is defined %}
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for item in ex.items %}
+                                    <span class="badge bg-secondary-lt p-2" style="font-size:.85rem;">{{ item }}</span>
+                                {% endfor %}
+                            </div>
+                            <div class="mt-2">
+                                {% for n in range(1, ex.items|length) %}
+                                    <span class="d-inline-block border rounded px-2 py-1 me-1 mb-1" style="min-width:30px;">{{ n }}. ___</span>
+                                {% endfor %}
+                            </div>
+
+                        {% elseif ex.type == 'text_analysis' %}
+                            {% if ex.text is defined %}
+                                <div class="p-3 border rounded bg-white mb-3" style="font-style:italic;line-height:1.8;">{{ ex.text }}</div>
+                            {% endif %}
+                            {% if ex.questions is defined %}
+                                {% for q in ex.questions %}
+                                    <div class="mb-2">
+                                        <div class="fw-medium mb-1">{{ loop.index }}. {{ q }}</div>
+                                        {% for line in range(1, ex.lines_per_question|default(3)) %}
+                                            <div style="border-bottom:1px dotted #ccc;height:1.8em;"></div>
+                                        {% endfor %}
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+
+                        {% else %}
+                            <div class="p-2 border rounded bg-white">{{ ex.content | default('') }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# Answer key #}
+        <div class="card">
+            <div class="card-stamp"><div class="card-stamp-icon bg-green"><i class="ti ti-key"></i></div></div>
+            <div class="card-header"><h3 class="card-title">Klucz odpowiedzi</h3></div>
+            <div class="card-body">
+                {% for i, ex in wsData.exercises %}
+                    <div class="d-flex gap-2 mb-2 align-items-start">
+                        <span class="badge bg-secondary-lt">{{ i + 1 }}</span>
+                        <div class="text-secondary">{{ ex.answer | default('—') }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    {% elseif wsRaw %}
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Karta pracy (tekst)</h3>
+                <div class="card-actions">
+                    <form method="post" action="{{ path('app_generate_worksheet_save') }}" class="d-inline">
+                        <input type="hidden" name="_token" value="{{ csrf_token('save') }}">
+                        <button type="submit" class="btn btn-ghost-success btn-sm"><i class="ti ti-device-floppy me-1"></i>Zapisz</button>
+                    </form>
+                </div>
+            </div>
+            <div class="card-body"><div class="result-box">{{ wsRaw }}</div></div>
+        </div>
+    {% else %}
+        <div class="card border-0 bg-transparent shadow-none">
+            <div class="card-body">
+                <div class="empty">
+                    <div class="empty-icon"><i class="ti ti-notebook" style="font-size: 3rem;"></i></div>
+                    <p class="empty-title">Podgląd karty pracy</p>
+                    <p class="empty-subtitle text-secondary">Wybierz klasę, aby zobaczyć propozycje tematów z podstawy programowej MEN.</p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

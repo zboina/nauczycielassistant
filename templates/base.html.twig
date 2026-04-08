@@ -1,17 +1,296 @@
 <!DOCTYPE html>
-<html>
+<html lang="pl">
     <head>
         <meta charset="UTF-8">
-        <title>{% block title %}Welcome!{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
-        {% block stylesheets %}
-        {% endblock %}
-
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#1a56db">
+        <title>{% block title %}Nauczyciel Assistant{% endblock %}</title>
+        <link rel="icon" type="image/png" href="/images/logo.png">
+        <link href="https://cdn.jsdelivr.net/npm/@tabler/core@1.2.0/dist/css/tabler.min.css" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css" rel="stylesheet">
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+        <style>
+            :root {
+                --tblr-primary: #1a56db;
+                --tblr-primary-rgb: 26, 86, 219;
+                --tblr-body-bg: #f1f5f9;
+                --tblr-font-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            }
+            body { background-color: #f1f5f9 !important; }
+            .navbar-brand-image { height: 2rem; }
+            .nav-link-icon { opacity: .7; }
+            .nav-item.active .nav-link-icon { opacity: 1; }
+            .page-pretitle { text-transform: uppercase; letter-spacing: .04em; font-size: .625rem; font-weight: 600; color: #626976; }
+            .card { box-shadow: 0 0 4px rgba(0,0,0,.04); transition: box-shadow .2s; }
+            .card:hover { box-shadow: 0 1px 8px rgba(0,0,0,.08); }
+            .card-link { text-decoration: none; color: inherit; }
+            .card-link:hover { color: inherit; }
+            .page-wrapper { min-height: 100vh; }
+            .navbar-vertical .navbar-nav .nav-link { padding: .5rem .75rem; border-radius: .375rem; margin: 1px 0; }
+            .navbar-vertical .navbar-nav .nav-link:hover { background: rgba(var(--tblr-primary-rgb), .04); }
+            .navbar-vertical .navbar-nav .nav-item.active > .nav-link { background: rgba(var(--tblr-primary-rgb), .08); color: var(--tblr-primary); font-weight: 600; }
+            .result-box { white-space: pre-wrap; font-family: Georgia, serif; line-height: 1.8; background: #fff; border: 1px solid #e6e8eb; border-radius: .5rem; padding: 1.25rem; }
+            .empty-icon i { color: #626976; }
+        </style>
+        {% block stylesheets %}{% endblock %}
         {% block javascripts %}
             {% block importmap %}{{ importmap('app') }}{% endblock %}
         {% endblock %}
     </head>
-    <body>
-        {% block body %}{% endblock %}
+    <body class="d-flex flex-column">
+        <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.2.0/dist/js/tabler.min.js" defer></script>
+        {% block layout %}
+        <div class="page">
+            {# ── SIDEBAR ─────────────────────────────── #}
+            <aside class="navbar navbar-vertical navbar-expand-lg">
+                <div class="container-fluid">
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-menu">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <h1 class="navbar-brand navbar-brand-autodark">
+                        <a href="{{ path('app_dashboard') }}" class="d-flex align-items-center gap-2 text-decoration-none">
+                            <img src="/images/logo.png" alt="Logo" style="height:2.2rem;width:auto;">
+                            <span>Nauczyciel<br><small class="fw-normal" style="font-size:.65rem;opacity:.7;">Assistant</small></span>
+                        </a>
+                    </h1>
+                    <div class="collapse navbar-collapse" id="sidebar-menu">
+                        <ul class="navbar-nav pt-lg-3">
+                            {# Dashboard #}
+                            <li class="nav-item {{ app.request.attributes.get('_route') == 'app_dashboard' ? 'active' }}">
+                                <a class="nav-link" href="{{ path('app_dashboard') }}">
+                                    <span class="nav-link-icon"><i class="ti ti-layout-dashboard"></i></span>
+                                    <span class="nav-link-title">Dashboard</span>
+                                </a>
+                            </li>
+
+                            <li class="nav-item mt-2"><span class="nav-link text-uppercase small fw-bold text-secondary px-2" style="font-size:.625rem;letter-spacing:.05em;">Generatory AI</span></li>
+
+                            <li class="nav-item {{ app.request.attributes.get('_route') starts with 'app_generate_test' ? 'active' }}">
+                                <a class="nav-link" href="{{ path('app_generate_test_index') }}">
+                                    <span class="nav-link-icon"><i class="ti ti-file-text"></i></span>
+                                    <span class="nav-link-title">Sprawdziany</span>
+                                </a>
+                            </li>
+                            <li class="nav-item {{ app.request.attributes.get('_route') starts with 'app_generate_worksheet' ? 'active' }}">
+                                <a class="nav-link" href="{{ path('app_generate_worksheet_index') }}">
+                                    <span class="nav-link-icon"><i class="ti ti-notebook"></i></span>
+                                    <span class="nav-link-title">Karty pracy</span>
+                                </a>
+                            </li>
+                            <li class="nav-item {{ app.request.attributes.get('_route') starts with 'app_generate_parent_info' ? 'active' }}">
+                                <a class="nav-link" href="{{ path('app_generate_parent_info_index') }}">
+                                    <span class="nav-link-icon"><i class="ti ti-mail-forward"></i></span>
+                                    <span class="nav-link-title">Info dla rodziców</span>
+                                </a>
+                            </li>
+
+                            <li class="nav-item {{ app.request.attributes.get('_route') starts with 'app_essay' ? 'active' }}">
+                                <a class="nav-link" href="{{ path('app_essay_index') }}">
+                                    <span class="nav-link-icon"><i class="ti ti-writing"></i></span>
+                                    <span class="nav-link-title">Wypracowania</span>
+                                </a>
+                            </li>
+                            <li class="nav-item {{ app.request.attributes.get('_route') starts with 'app_exam8' ? 'active' }}">
+                                <a class="nav-link" href="{{ path('app_exam8_index') }}">
+                                    <span class="nav-link-icon"><i class="ti ti-certificate"></i></span>
+                                    <span class="nav-link-title">Egzamin 8-klasisty</span>
+                                </a>
+                            </li>
+
+                            <li class="nav-item mt-2"><span class="nav-link text-uppercase small fw-bold text-secondary px-2" style="font-size:.625rem;letter-spacing:.05em;">Lektury</span></li>
+
+                            <li class="nav-item {{ app.request.attributes.get('_route') starts with 'app_literature' ? 'active' }}">
+                                <a class="nav-link" href="{{ path('app_literature_index') }}">
+                                    <span class="nav-link-icon"><i class="ti ti-book-2"></i></span>
+                                    <span class="nav-link-title">Baza lektur kl. 4-8</span>
+                                </a>
+                            </li>
+                            <li class="nav-item {{ app.request.attributes.get('_route') starts with 'app_lesson_plan' ? 'active' }}">
+                                <a class="nav-link" href="{{ path('app_lesson_plan_index') }}">
+                                    <span class="nav-link-icon"><i class="ti ti-clipboard-text"></i></span>
+                                    <span class="nav-link-title">Konspekty lekcji</span>
+                                </a>
+                            </li>
+
+                            <li class="nav-item mt-2"><span class="nav-link text-uppercase small fw-bold text-secondary px-2" style="font-size:.625rem;letter-spacing:.05em;">Teoria</span></li>
+
+                            <li class="nav-item {{ app.request.attributes.get('_route') starts with 'app_theory' ? 'active' }}">
+                                <a class="nav-link" href="{{ path('app_theory_index') }}">
+                                    <span class="nav-link-icon"><i class="ti ti-school"></i></span>
+                                    <span class="nav-link-title">Materiały teoretyczne</span>
+                                </a>
+                            </li>
+
+                            <li class="nav-item mt-2"><span class="nav-link text-uppercase small fw-bold text-secondary px-2" style="font-size:.625rem;letter-spacing:.05em;">Narzędzia lekcyjne</span></li>
+
+                            <li class="nav-item {{ app.request.attributes.get('_route') starts with 'app_scanner' ? 'active' }}">
+                                <a class="nav-link" href="{{ path('app_scanner_index') }}">
+                                    <span class="nav-link-icon"><i class="ti ti-scan"></i></span>
+                                    <span class="nav-link-title">Skaner odpowiedzi</span>
+                                </a>
+                            </li>
+                            <li class="nav-item {{ app.request.attributes.get('_route') == 'app_classroom_timer' ? 'active' }}">
+                                <a class="nav-link" href="{{ path('app_classroom_timer') }}">
+                                    <span class="nav-link-icon"><i class="ti ti-clock-hour-3"></i></span>
+                                    <span class="nav-link-title">Timer</span>
+                                </a>
+                            </li>
+                            <li class="nav-item {{ app.request.attributes.get('_route') == 'app_classroom_random' ? 'active' }}">
+                                <a class="nav-link" href="{{ path('app_classroom_random') }}">
+                                    <span class="nav-link-icon"><i class="ti ti-dice-5"></i></span>
+                                    <span class="nav-link-title">Losowanie</span>
+                                </a>
+                            </li>
+<li class="nav-item {{ app.request.attributes.get('_route') == 'app_classroom_dictation' ? 'active' }}">
+                                <a class="nav-link" href="{{ path('app_classroom_dictation') }}">
+                                    <span class="nav-link-icon"><i class="ti ti-microphone"></i></span>
+                                    <span class="nav-link-title">Dyktowanie</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </aside>
+
+            {# ── MAIN CONTENT ────────────────────────── #}
+            <div class="page-wrapper">
+                {# Top header bar #}
+                <header class="page-header d-print-none">
+                    <div class="container-xl">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                {% block page_pretitle %}<div class="page-pretitle">{{ block('pretitle_text') is defined ? block('pretitle_text') : '' }}</div>{% endblock %}
+                                {% block page_title %}<h2 class="page-title">{{ block('title_text') is defined ? block('title_text') : '' }}</h2>{% endblock %}
+                            </div>
+                            <div class="col-auto">
+                                {% block page_actions %}{% endblock %}
+                            </div>
+                            <div class="col-auto ms-2">
+                                <div class="nav-item dropdown">
+                                    <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown">
+                                        <span class="avatar avatar-sm rounded" style="background-image: url('https://ui-avatars.com/api/?name={{ app.user.fullName|url_encode }}&background=1a56db&color=fff&size=64')"></span>
+                                        <div class="d-none d-xl-block ps-2">
+                                            <div class="fw-medium">{{ app.user.fullName }}</div>
+                                            <div class="mt-1 small text-secondary">{{ app.user.email }}</div>
+                                        </div>
+                                    </a>
+                                    <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+                                        <a href="{{ path('app_logout') }}" class="dropdown-item text-danger">
+                                            <i class="ti ti-logout me-2"></i> Wyloguj
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                {# Flash messages #}
+                <div class="container-xl">
+                    {% for type in ['success', 'error', 'warning', 'info'] %}
+                        {% for message in app.flashes(type) %}
+                            <div class="alert alert-{{ type == 'error' ? 'danger' : type }} alert-dismissible mt-3 mb-0" role="alert">
+                                <div class="d-flex">
+                                    <div>
+                                        {% if type == 'success' %}<i class="ti ti-check me-2"></i>
+                                        {% elseif type == 'error' %}<i class="ti ti-alert-circle me-2"></i>
+                                        {% elseif type == 'warning' %}<i class="ti ti-alert-triangle me-2"></i>
+                                        {% else %}<i class="ti ti-info-circle me-2"></i>{% endif %}
+                                        {{ message }}
+                                    </div>
+                                </div>
+                                <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
+                            </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+
+                {# Page body #}
+                <div class="page-body">
+                    <div class="container-xl">
+                        {% block body %}{% endblock %}
+                    </div>
+                </div>
+
+                {# Footer #}
+                <footer class="footer footer-transparent d-print-none">
+                    <div class="container-xl">
+                        <div class="row text-center align-items-center">
+                            <div class="col-12">
+                                <span class="text-secondary">Nauczyciel Assistant &copy; {{ 'now'|date('Y') }} &mdash; Narzędzia AI dla nauczyciela</span>
+                            </div>
+                        </div>
+                    </div>
+                </footer>
+            </div>
+        </div>
+
+        {# ── AI Loading Modal ──────────────────────────── #}
+        <div class="modal modal-blur fade" id="aiLoadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+            <div class="modal-dialog modal-sm modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-body text-center py-4">
+                        <div class="mb-3">
+                            <div class="spinner-border text-primary" style="width:3rem;height:3rem;" role="status"></div>
+                        </div>
+                        <h3 class="mb-1">Przetwarzanie AI</h3>
+                        <div class="text-secondary" id="aiLoadingMessage">Trwa generowanie treści...</div>
+                        <div class="text-secondary mt-2" style="font-size:.8rem;">
+                            <i class="ti ti-clock me-1"></i><span id="aiLoadingTimer">0</span>s &mdash; zwykle 10-30 sekund
+                        </div>
+                        <div class="progress progress-sm mt-3">
+                            <div class="progress-bar progress-bar-indeterminate bg-primary"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script defer>
+        document.addEventListener('DOMContentLoaded', function() {
+            var timer = null, modalInstance = null;
+            var modalEl = document.getElementById('aiLoadingModal');
+
+            function showAiLoading(message) {
+                document.getElementById('aiLoadingMessage').textContent = message || 'Trwa generowanie treści...';
+                var timerEl = document.getElementById('aiLoadingTimer');
+                var sec = 0; timerEl.textContent = '0';
+                clearInterval(timer);
+                timer = setInterval(function(){ sec++; timerEl.textContent = sec; }, 1000);
+                if (!modalInstance) modalInstance = new bootstrap.Modal(modalEl, {backdrop:'static', keyboard:false});
+                modalInstance.show();
+            }
+
+            function hideAiLoading() {
+                clearInterval(timer);
+                if (modalInstance) try { modalInstance.hide(); } catch(e) {}
+            }
+
+            // Listen for both native submit and Turbo submit
+            function onFormSubmit(e) {
+                var form = e.target;
+                if (!form.matches || !form.matches('form')) form = form.closest ? form.closest('form') : null;
+                if (form && form.hasAttribute('data-ai-loading')) {
+                    showAiLoading(form.getAttribute('data-ai-loading'));
+                }
+            }
+
+            document.addEventListener('submit', onFormSubmit, true);
+            document.addEventListener('turbo:submit-start', function(e) {
+                var form = e.target;
+                if (form && form.hasAttribute && form.hasAttribute('data-ai-loading')) {
+                    showAiLoading(form.getAttribute('data-ai-loading'));
+                }
+            });
+
+            // Hide on page load (after redirect)
+            document.addEventListener('turbo:before-render', hideAiLoading);
+            document.addEventListener('turbo:load', hideAiLoading);
+
+            window.showAiLoading = showAiLoading;
+            window.hideAiLoading = hideAiLoading;
+        });
+        </script>
+        {% endblock %}
     </body>
 </html>

@@ -1,0 +1,159 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Skaner odpowiedzi — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Narzędzia lekcyjne{% endblock %}
+{% block title_text %}Skaner kart odpowiedzi{% endblock %}
+
+{% block body %}
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-stamp"><div class="card-stamp-icon bg-red"><i class="ti ti-camera"></i></div></div>
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-scan me-2"></i>Skanuj kartę odpowiedzi</h3></div>
+            <div class="card-body">
+                <form method="post" action="{{ path('app_scanner_scan') }}" enctype="multipart/form-data"
+                      data-ai-loading="Trwa rozpoznawanie odpowiedzi ze zdjęcia..." data-turbo="false"
+                      x-data="scannerForm()">
+
+                    {# Source selection #}
+                    <div class="mb-3">
+                        <label class="form-label required">Wybierz sprawdzian / arkusz</label>
+                        <div class="mb-2">
+                            <select x-model="sourceType" @change="sourceId=''" class="form-select form-select-sm mb-2">
+                                <option value="test">Sprawdzian (generator)</option>
+                                <option value="exam">Arkusz próbny (egzamin 8-kl.)</option>
+                            </select>
+                            <input type="hidden" name="sourceType" :value="sourceType">
+                        </div>
+
+                        {# Test select #}
+                        <div x-show="sourceType==='test'">
+                            <select :name="sourceType==='test' ? 'sourceId' : ''" x-model="sourceId" class="form-select">
+                                <option value="">— wybierz sprawdzian —</option>
+                                {% for t in tests %}
+                                    <option value="{{ t.id }}">{{ t.title }} (kl. {{ t.classLevel }}, {{ t.createdAt|date('d.m') }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        {# Exam select #}
+                        <div x-show="sourceType==='exam'">
+                            <select :name="sourceType==='exam' ? 'sourceId' : ''" x-model="sourceId" class="form-select">
+                                <option value="">— wybierz arkusz —</option>
+                                {% for e in exams %}
+                                    <option value="{{ e.id }}">{{ e.title }} (kl. {{ e.classLevel }}, {{ e.createdAt|date('d.m') }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    {# Photo upload #}
+                    <div class="mb-3">
+                        <label class="form-label required">Zdjęcie karty odpowiedzi</label>
+
+                        {# Hidden actual input #}
+                        <input type="file" name="photo" accept="image/*" class="d-none" x-ref="photoInput" @change="onFileSelect($event)" required>
+
+                        {# Camera / file buttons #}
+                        <div class="d-flex gap-2 mb-2">
+                            <button type="button" class="btn btn-outline-primary flex-fill" @click="$refs.photoInput.setAttribute('capture','environment'); $refs.photoInput.click()">
+                                <i class="ti ti-camera me-1"></i>Zrób zdjęcie
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary flex-fill" @click="$refs.photoInput.removeAttribute('capture'); $refs.photoInput.click()">
+                                <i class="ti ti-upload me-1"></i>Wybierz plik
+                            </button>
+                        </div>
+
+                        {# Preview #}
+                        <div x-show="preview" class="border rounded p-2 text-center bg-light">
+                            <img :src="preview" style="max-width:100%;max-height:300px;" class="rounded">
+                            <div class="text-secondary small mt-1" x-text="fileName"></div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 btn-lg" :disabled="!sourceId || !preview">
+                        <i class="ti ti-scan me-2"></i>Skanuj i sprawdź
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        {# Instructions #}
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-info-circle me-2"></i>Jak to działa?</h3></div>
+            <div class="card-body">
+                <div class="steps steps-vertical">
+                    <div class="step-item">
+                        <div class="step-content">
+                            <div class="step-title">Wydrukuj sprawdzian z kartą odpowiedzi</div>
+                            <div class="text-secondary small">Generuj sprawdzian lub arkusz próbny — PDF zawiera kratki ABCD</div>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-content">
+                            <div class="step-title">Uczeń zaznacza odpowiedzi</div>
+                            <div class="text-secondary small">Uczeń zakreśla lub zaznacza X w kratkach A, B, C lub D</div>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-content">
+                            <div class="step-title">Zrób zdjęcie telefonem</div>
+                            <div class="text-secondary small">Skieruj aparat na kartkę — zdjęcie powinno być wyraźne i dobrze oświetlone</div>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-content">
+                            <div class="step-title">AI odczytuje i sprawdza</div>
+                            <div class="text-secondary small">System rozpoznaje zaznaczenia, porównuje z kluczem i podlicza punkty</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-bulb me-2"></i>Wskazówki</h3></div>
+            <div class="card-body">
+                <div class="d-flex gap-2 mb-2 align-items-start">
+                    <i class="ti ti-point-filled text-green flex-shrink-0" style="margin-top:2px;"></i>
+                    <div style="font-size:.88rem;">Uczeń powinien wyraźnie zaznaczać odpowiedzi (X lub wypełnienie)</div>
+                </div>
+                <div class="d-flex gap-2 mb-2 align-items-start">
+                    <i class="ti ti-point-filled text-green flex-shrink-0" style="margin-top:2px;"></i>
+                    <div style="font-size:.88rem;">Zdjęcie powinno być ostre, dobrze oświetlone, bez cieni</div>
+                </div>
+                <div class="d-flex gap-2 mb-2 align-items-start">
+                    <i class="ti ti-point-filled text-green flex-shrink-0" style="margin-top:2px;"></i>
+                    <div style="font-size:.88rem;">Kartka powinna być na płaskim podłożu, nie pomięta</div>
+                </div>
+                <div class="d-flex gap-2 align-items-start">
+                    <i class="ti ti-point-filled text-orange flex-shrink-0" style="margin-top:2px;"></i>
+                    <div style="font-size:.88rem;">Zawsze weryfikuj wynik — AI może się mylić przy nieczytelnych zaznaczeniach</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function scannerForm() {
+    return {
+        sourceType: 'test',
+        sourceId: '',
+        preview: null,
+        fileName: '',
+        onFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                this.fileName = file.name;
+                const reader = new FileReader();
+                reader.onload = (ev) => { this.preview = ev.target.result; };
+                reader.readAsDataURL(file);
+            }
+        }
+    };
+}
+</script>
+{% endblock %}

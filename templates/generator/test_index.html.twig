@@ -1,0 +1,30 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Sprawdziany — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Generatory AI{% endblock %}
+{% block title_text %}Sprawdziany i testy{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_generate_test') }}" class="btn btn-primary btn-sm">
+        <i class="ti ti-sparkles me-1"></i>Generuj nowy
+    </a>
+{% endblock %}
+
+{% block body %}
+<div class="d-flex gap-2 mb-3">
+    <a href="{{ path('app_generate_test_index') }}" class="btn btn-sm {{ currentClass is null ? 'btn-primary' : 'btn-outline-primary' }}">Wszystkie</a>
+    {% for cl in ['4','5','6','7','8'] %}
+        <a href="{{ path('app_generate_test_index', {class: cl}) }}" class="btn btn-sm {{ currentClass == cl ? 'btn-primary' : 'btn-outline-primary' }}">Kl. {{ cl }}</a>
+    {% endfor %}
+</div>
+
+{% include 'generator/_material_list.html.twig' with {
+    materials: materials,
+    typeLabel: 'sprawdzian',
+    typeIcon: 'ti-file-text',
+    typeColor: 'primary',
+    generateRoute: 'app_generate_test',
+    showRoute: 'app_generate_history_show',
+    pdfRoute: 'app_generate_history_pdf',
+} %}
+{% endblock %}

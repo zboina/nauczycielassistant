@@ -1,0 +1,59 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Historia materiałów — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Generatory AI{% endblock %}
+{% block title_text %}Historia wygenerowanych materiałów{% endblock %}
+
+{% block body %}
+<div class="card">
+    {% if materials|length > 0 %}
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-hover">
+                <thead>
+                    <tr>
+                        <th>Typ</th>
+                        <th>Tytuł</th>
+                        <th>Klasa</th>
+                        <th>Data</th>
+                        <th class="w-1"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in materials %}
+                        <tr>
+                            <td>
+                                {% if m.type == 'test' %}
+                                    <span class="badge bg-primary-lt"><i class="ti ti-file-text me-1"></i>Sprawdzian</span>
+                                {% elseif m.type == 'worksheet' %}
+                                    <span class="badge bg-green-lt"><i class="ti ti-notebook me-1"></i>Karta pracy</span>
+                                {% elseif m.type == 'parent_info' %}
+                                    <span class="badge bg-orange-lt"><i class="ti ti-mail me-1"></i>Info</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ m.title ?? m.subjectContext|u.truncate(60) }}</td>
+                            <td><span class="text-secondary">{{ m.classLevel }}</span></td>
+                            <td><span class="text-secondary">{{ m.createdAt|date('d.m.Y H:i') }}</span></td>
+                            <td class="text-nowrap">
+                                <a href="{{ path('app_generate_history_pdf', {id: m.id}) }}" class="btn btn-ghost-primary btn-sm" target="_blank" title="PDF">
+                                    <i class="ti ti-file-type-pdf"></i>
+                                </a>
+                                <a href="{{ path('app_generate_history_show', {id: m.id}) }}" class="btn btn-ghost-primary btn-sm" title="Podgląd">
+                                    <i class="ti ti-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="card-body">
+            <div class="empty">
+                <div class="empty-icon"><i class="ti ti-history" style="font-size: 2.5rem;"></i></div>
+                <p class="empty-title">Brak materiałów</p>
+                <p class="empty-subtitle text-secondary">Nie wygenerowałeś jeszcze żadnych materiałów.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

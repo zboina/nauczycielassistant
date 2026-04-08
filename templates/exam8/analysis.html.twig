@@ -1,0 +1,155 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Analiza — {{ exam.title }} — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Egzamin ósmoklasisty{% endblock %}
+{% block title_text %}Analiza wyników{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_exam8_results', {id: exam.id}) }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Wyniki</a>
+    <a href="{{ path('app_exam8_show', {id: exam.id}) }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-eye me-1"></i>Arkusz</a>
+{% endblock %}
+
+{% block body %}
+{# Summary stats #}
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="text-secondary small mb-1">Uczniów</div>
+                <div class="display-6 fw-bold">{{ results|length }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="text-secondary small mb-1">Średnia</div>
+                <div class="display-6 fw-bold text-primary">{{ exam.averagePercent }}%</div>
+                <div class="text-secondary small">{{ exam.averageScore }} / {{ exam.maxPoints }} pkt</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                {% set best = null %}
+                {% for r in results %}{% if best is null or r.totalScore > best.totalScore %}{% set best = r %}{% endif %}{% endfor %}
+                <div class="text-secondary small mb-1">Najlepszy</div>
+                <div class="h2 fw-bold text-green mb-0">{{ best ? best.percent ~ '%' : '—' }}</div>
+                <div class="text-secondary small">{{ best ? best.studentName : '' }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                {% set worst = null %}
+                {% for r in results %}{% if worst is null or r.totalScore < worst.totalScore %}{% set worst = r %}{% endif %}{% endfor %}
+                <div class="text-secondary small mb-1">Najsłabszy</div>
+                <div class="h2 fw-bold text-red mb-0">{{ worst ? worst.percent ~ '%' : '—' }}</div>
+                <div class="text-secondary small">{{ worst ? worst.studentName : '' }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    {# Score distribution #}
+    <div class="col-lg-6">
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-chart-bar me-2"></i>Rozkład wyników</h3></div>
+            <div class="card-body">
+                {% set labels = ['0-19%', '20-39%', '40-59%', '60-79%', '80-100%'] %}
+                {% set colors = ['red', 'orange', 'yellow', 'blue', 'green'] %}
+                {% set maxDist = max(distribution[0], distribution[1], distribution[2], distribution[3], distribution[4]) %}
+                {% for i in 0..4 %}
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-{{ colors[i] }}-lt me-2" style="min-width:65px;">{{ labels[i] }}</span>
+                        <div class="flex-fill">
+                            <div class="progress progress-sm">
+                                <div class="progress-bar bg-{{ colors[i] }}" style="width: {{ maxDist > 0 ? distribution[i] / maxDist * 100 : 0 }}%"></div>
+                            </div>
+                        </div>
+                        <span class="ms-2 fw-bold" style="min-width:25px;">{{ distribution[i] }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# Weakest areas #}
+        <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-alert-triangle me-2 text-warning"></i>Najsłabsze obszary</h3></div>
+            <div class="card-body">
+                {% for key, stat in weakest %}
+                    {% set pctColor = stat.pct >= 70 ? 'green' : (stat.pct >= 50 ? 'yellow' : (stat.pct >= 30 ? 'orange' : 'red')) %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span style="font-size:.88rem;">{{ stat.label }}</span>
+                            <span class="fw-bold text-{{ pctColor }}">{{ stat.avg }}/{{ stat.max }} ({{ stat.pct }}%)</span>
+                        </div>
+                        <div class="progress progress-sm">
+                            <div class="progress-bar bg-{{ pctColor }}" style="width: {{ stat.pct }}%"></div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    {# Per-category breakdown #}
+    <div class="col-lg-6">
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-list-details me-2"></i>Wyniki wg kategorii</h3></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table">
+                        <thead>
+                            <tr>
+                                <th>Kategoria</th>
+                                <th class="text-center">Max</th>
+                                <th class="text-center">Średnia</th>
+                                <th class="text-center">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for key, stat in categoryStats %}
+                                {% set pctColor = stat.pct >= 70 ? 'green' : (stat.pct >= 50 ? 'yellow' : (stat.pct >= 30 ? 'orange' : 'red')) %}
+                                <tr>
+                                    <td style="font-size:.85rem;">{{ stat.label }}</td>
+                                    <td class="text-center">{{ stat.max }}</td>
+                                    <td class="text-center fw-bold">{{ stat.avg }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-{{ pctColor }}-lt">{{ stat.pct }}%</span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {# Ranking #}
+        <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-trophy me-2"></i>Ranking uczniów</h3></div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% set sorted = results|sort((a, b) => b.totalScore <=> a.totalScore) %}
+                    {% for result in sorted %}
+                        <div class="list-group-item d-flex align-items-center">
+                            <span class="avatar avatar-sm rounded me-3 {{ loop.index <= 3 ? 'bg-yellow-lt text-yellow fw-bold' : 'bg-secondary-lt' }}" style="font-size:.8rem;">
+                                {{ loop.index }}
+                            </span>
+                            <div class="flex-fill">
+                                <div class="fw-medium">{{ result.studentName }}</div>
+                            </div>
+                            <span class="badge bg-{{ result.gradeColor }}-lt me-2">{{ result.percent }}%</span>
+                            <strong>{{ result.totalScore }}/{{ exam.maxPoints }}</strong>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

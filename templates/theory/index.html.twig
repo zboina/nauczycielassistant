@@ -1,0 +1,94 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Teoria — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Teoria{% endblock %}
+{% block title_text %}Materiały teoretyczne dla nauczyciela{% endblock %}
+
+{% block body %}
+<div class="row row-cards">
+    <div class="col-md-6 col-xl-4">
+        <a href="{{ path('app_theory_curriculum', {group: '4-6'}) }}" class="card card-link card-link-pop">
+            <div class="card-status-start bg-blue"></div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="avatar avatar-lg rounded bg-blue-lt"><i class="ti ti-certificate" style="font-size:1.5rem;"></i></span>
+                    </div>
+                    <div class="col">
+                        <h3 class="card-title">Podstawa programowa</h3>
+                        <p class="text-secondary mb-0">Wymagania MEN 2024 kl. IV-VIII, lektury obowiązkowe</p>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-xl-4">
+        <a href="{{ path('app_theory_genres') }}" class="card card-link card-link-pop">
+            <div class="card-status-start bg-green"></div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="avatar avatar-lg rounded bg-green-lt"><i class="ti ti-category" style="font-size:1.5rem;"></i></span>
+                    </div>
+                    <div class="col">
+                        <h3 class="card-title">Rodzaje i gatunki literackie</h3>
+                        <p class="text-secondary mb-0">Epika, liryka, dramat — cechy, gatunki, elementy</p>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-xl-4">
+        <a href="{{ path('app_theory_stylistics') }}" class="card card-link card-link-pop">
+            <div class="card-status-start bg-purple"></div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="avatar avatar-lg rounded bg-purple-lt"><i class="ti ti-wand" style="font-size:1.5rem;"></i></span>
+                    </div>
+                    <div class="col">
+                        <h3 class="card-title">Środki stylistyczne</h3>
+                        <p class="text-secondary mb-0">Epitet, metafora, symbol, ironia — definicje i przykłady</p>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-xl-4">
+        <a href="{{ path('app_theory_writing_forms') }}" class="card card-link card-link-pop">
+            <div class="card-status-start bg-orange"></div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="avatar avatar-lg rounded bg-orange-lt"><i class="ti ti-writing" style="font-size:1.5rem;"></i></span>
+                    </div>
+                    <div class="col">
+                        <h3 class="card-title">Formy wypowiedzi</h3>
+                        <p class="text-secondary mb-0">Opowiadanie, rozprawka, recenzja — budowa i wskazówki</p>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-xl-4">
+        <a href="{{ path('app_theory_grammar') }}" class="card card-link card-link-pop">
+            <div class="card-status-start bg-red"></div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <span class="avatar avatar-lg rounded bg-red-lt"><i class="ti ti-abc" style="font-size:1.5rem;"></i></span>
+                    </div>
+                    <div class="col">
+                        <h3 class="card-title">Gramatyka i ortografia</h3>
+                        <p class="text-secondary mb-0">Części mowy, zasady ortografii, interpunkcja</p>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

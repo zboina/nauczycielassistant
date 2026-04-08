@@ -1,0 +1,81 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Wypracowania — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Wypracowania{% endblock %}
+{% block title_text %}Sprawdzanie wypracowań{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_essay_create') }}" class="btn btn-primary btn-sm">
+        <i class="ti ti-plus me-1"></i>Nowe zadanie
+    </a>
+{% endblock %}
+
+{% block body %}
+{# Filters #}
+<div class="d-flex gap-2 mb-3">
+    <a href="{{ path('app_essay_index') }}" class="btn btn-sm {{ currentClass is null ? 'btn-primary' : 'btn-outline-primary' }}">Wszystkie</a>
+    {% for cl in ['4','5','6','7','8'] %}
+        <a href="{{ path('app_essay_index', {class: cl}) }}" class="btn btn-sm {{ currentClass == cl ? 'btn-primary' : 'btn-outline-primary' }}">Kl. {{ cl }}</a>
+    {% endfor %}
+</div>
+
+{% if essays|length > 0 %}
+    <div class="row row-cards">
+        {% for essay in essays %}
+            <div class="col-md-6 col-xl-4">
+                <div class="card">
+                    {% if essay.isAccepting %}
+                        <div class="card-status-start bg-green"></div>
+                    {% else %}
+                        <div class="card-status-start bg-secondary"></div>
+                    {% endif %}
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h3 class="card-title mb-0">
+                                <a href="{{ path('app_essay_show', {id: essay.id}) }}" class="text-reset">{{ essay.topic }}</a>
+                            </h3>
+                            <span class="badge {{ essay.isAccepting ? 'bg-green-lt' : 'bg-secondary-lt' }}">
+                                {{ essay.isAccepting ? 'Aktywne' : 'Zamknięte' }}
+                            </span>
+                        </div>
+                        <div class="text-secondary mb-3" style="font-size:.85rem;">{{ essay.writingFormLabel }}</div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <span class="badge bg-primary-lt">Kl. {{ essay.classLevel }}</span>
+                            <span class="badge bg-blue-lt">
+                                <i class="ti ti-file-text me-1"></i>{{ essay.submissionCount }} prac
+                            </span>
+                            <span class="badge bg-green-lt">
+                                <i class="ti ti-check me-1"></i>{{ essay.reviewedCount }} ocenionych
+                            </span>
+                            {% if essay.deadline %}
+                                <span class="badge {{ essay.isExpired ? 'bg-red-lt' : 'bg-orange-lt' }}">
+                                    <i class="ti ti-clock me-1"></i>{{ essay.deadline|date('d.m.Y') }}
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-footer d-flex justify-content-between">
+                        <span class="text-secondary small">Kod: <strong class="text-primary">{{ essay.accessCode }}</strong></span>
+                        <a href="{{ path('app_essay_show', {id: essay.id}) }}" class="btn btn-primary btn-sm">
+                            <i class="ti ti-eye me-1"></i>Otwórz
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="card">
+        <div class="card-body">
+            <div class="empty">
+                <div class="empty-icon"><i class="ti ti-writing" style="font-size: 2.5rem;"></i></div>
+                <p class="empty-title">Brak zadań</p>
+                <p class="empty-subtitle text-secondary">Utwórz pierwsze zadanie pisemne dla swoich uczniów.</p>
+                <div class="empty-action">
+                    <a href="{{ path('app_essay_create') }}" class="btn btn-primary"><i class="ti ti-plus me-2"></i>Nowe zadanie</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

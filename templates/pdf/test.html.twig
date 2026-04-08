@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<style>
+@page { margin: 15mm 18mm; }
+body {
+    font-family: 'DejaVu Sans', sans-serif;
+    font-size: 10pt;
+    line-height: 1.5;
+    color: #000;
+}
+
+/* Header */
+.test-header {
+    border: 2px solid #000;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+}
+.test-title {
+    font-size: 14pt;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.test-meta {
+    display: table;
+    width: 100%;
+    font-size: 9pt;
+}
+.test-meta-row {
+    display: table-row;
+}
+.test-meta-cell {
+    display: table-cell;
+    padding: 3px 0;
+    vertical-align: bottom;
+}
+.test-meta-cell.right {
+    text-align: right;
+}
+.dotted-line {
+    border-bottom: 1px dotted #000;
+    display: inline-block;
+    min-width: 120px;
+}
+.points-box {
+    border: 1.5px solid #000;
+    padding: 4px 12px;
+    font-weight: bold;
+    font-size: 11pt;
+    display: inline-block;
+    text-align: center;
+}
+
+/* Questions */
+.question {
+    margin-bottom: 14px;
+    page-break-inside: avoid;
+}
+.question-header {
+    font-weight: bold;
+    margin-bottom: 4px;
+    font-size: 10pt;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 2px;
+}
+.question-points {
+    float: right;
+    font-weight: normal;
+    font-size: 9pt;
+    color: #555;
+}
+.question-text {
+    margin-bottom: 6px;
+    font-size: 10pt;
+}
+
+/* Closed questions — ABCD boxes */
+.options-grid {
+    display: table;
+    width: 100%;
+}
+.option-row {
+    display: table-row;
+}
+.option-cell {
+    display: table-cell;
+    width: 50%;
+    padding: 3px 5px;
+    vertical-align: top;
+}
+.option-box {
+    padding: 4px 0;
+    font-size: 9.5pt;
+    min-height: 20px;
+}
+.option-checkbox {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid #000;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+.option-letter {
+    font-weight: bold;
+    display: inline-block;
+    width: 16px;
+    font-size: 9.5pt;
+    margin-right: 3px;
+    vertical-align: middle;
+}
+.option-letter-correct {
+    background: #000;
+    color: #fff;
+}
+
+/* True/False */
+.tf-boxes {
+    margin: 4px 0;
+}
+.tf-box {
+    display: inline-block;
+    border: 1.5px solid #000;
+    width: 28px;
+    height: 28px;
+    text-align: center;
+    line-height: 26px;
+    font-weight: bold;
+    font-size: 11pt;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+.tf-box-filled {
+    background: #000;
+    color: #fff;
+}
+.tf-label {
+    font-size: 9pt;
+    margin-right: 12px;
+    vertical-align: middle;
+}
+
+/* Open questions — answer lines */
+.answer-line {
+    border-bottom: 1px dotted #999;
+    height: 22px;
+    margin: 0;
+}
+
+/* Answer key page */
+.answer-key-header {
+    font-size: 13pt;
+    font-weight: bold;
+    text-align: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+    page-break-before: always;
+}
+.answer-key-item {
+    margin-bottom: 6px;
+    padding: 4px 0;
+    border-bottom: 1px dotted #ddd;
+    font-size: 9.5pt;
+}
+.answer-num {
+    font-weight: bold;
+    display: inline-block;
+    width: 30px;
+}
+.answer-correct {
+    font-weight: bold;
+}
+.answer-model {
+    color: #333;
+    font-style: italic;
+    margin-left: 30px;
+    display: block;
+}
+
+/* Answer card */
+.answer-card { border: 2px solid #000; padding: 8px 12px; margin-top: 20px; page-break-inside: avoid; }
+.answer-card-title { font-size: 10pt; font-weight: bold; text-align: center; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #000; padding-bottom: 4px; }
+.answer-card-info { font-size: 7.5pt; text-align: center; color: #555; margin-bottom: 8px; }
+.ac-table { width: 100%; border-collapse: collapse; }
+.ac-table th, .ac-table td { border: 1px solid #000; text-align: center; padding: 4px 2px; font-size: 9pt; }
+.ac-table th { background: #eee; font-weight: bold; font-size: 8pt; }
+.ac-bubble { display: inline-block; width: 16px; height: 16px; border: 1.5px solid #000; border-radius: 50%; vertical-align: middle; }
+.ac-bubble-filled { background: #000; }
+.ac-nr { font-weight: bold; width: 30px; }
+
+/* Footer */
+.test-footer {
+    margin-top: 15px;
+    text-align: center;
+    font-size: 7pt;
+    color: #999;
+    border-top: 1px solid #ddd;
+    padding-top: 5px;
+}
+</style>
+</head>
+<body>
+
+{% if testData %}
+
+{# ═══════ STUDENT SHEET ═══════ #}
+<div class="test-header">
+    <div class="test-title">{{ testData.title | default('Sprawdzian — ' ~ subject) }}</div>
+    <div class="test-meta">
+        <div class="test-meta-row">
+            <div class="test-meta-cell">
+                Imię i nazwisko: <span class="dotted-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+            </div>
+            <div class="test-meta-cell right">
+                Klasa: <span class="dotted-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                &nbsp;&nbsp;
+                Data: <span class="dotted-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+            </div>
+        </div>
+    </div>
+    <div style="text-align:right;margin-top:6px;">
+        <span class="points-box">......... / {{ testData.totalPoints }} pkt</span>
+    </div>
+</div>
+
+{% for i, q in testData.questions %}
+<div class="question">
+    <div class="question-header">
+        Zadanie {{ i + 1 }}.
+        <span class="question-points">({{ q.points }} {{ q.points == 1 ? 'pkt' : 'pkt' }})</span>
+    </div>
+    <div class="question-text">{{ q.text }}</div>
+
+    {% if q.type == 'closed' and q.options is defined %}
+        {% set letters = ['A','B','C','D'] %}
+        {% for key, opt in q.options %}
+            <div class="option-box">
+                <span class="option-checkbox"></span>
+                <span class="option-letter">{{ letters[key] }}.</span>
+                {{ opt }}
+            </div>
+        {% endfor %}
+
+    {% elseif q.type == 'true_false' %}
+        <div class="tf-boxes">
+            <span class="option-checkbox"></span> <span class="tf-label">PRAWDA</span>
+            &nbsp;&nbsp;&nbsp;
+            <span class="option-checkbox"></span> <span class="tf-label">FAŁSZ</span>
+        </div>
+
+    {% elseif q.type == 'open' %}
+        {% for line in range(1, q.lines | default(3)) %}
+            <div class="answer-line"></div>
+        {% endfor %}
+    {% endif %}
+</div>
+{% endfor %}
+
+{# ═══════ ANSWER CARD — bubble sheet ═══════ #}
+{% set closedQuestions = [] %}
+{% for i, q in testData.questions %}
+    {% if q.type == 'closed' %}
+        {% set closedQuestions = closedQuestions|merge([{num: i + 1, correct: q.correct|default(null)}]) %}
+    {% endif %}
+{% endfor %}
+
+{% if closedQuestions|length > 0 %}
+<div class="answer-card">
+    <div class="answer-card-title">Karta odpowiedzi — pytania zamknięte</div>
+    <div class="answer-card-info">Zaznacz wybraną odpowiedź wypełniając kółko (●) lub stawiając X</div>
+    <table class="ac-table">
+        <thead>
+            <tr>
+                <th class="ac-nr">Nr</th>
+                <th style="width:60px;">A</th>
+                <th style="width:60px;">B</th>
+                <th style="width:60px;">C</th>
+                <th style="width:60px;">D</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cq in closedQuestions %}
+                <tr>
+                    <td class="ac-nr">{{ cq.num }}</td>
+                    {% for letter in ['A','B','C','D'] %}
+                        <td>
+                            {% if includeAnswers is defined and includeAnswers and cq.correct == letter %}
+                                <span class="ac-bubble ac-bubble-filled"></span>
+                            {% else %}
+                                <span class="ac-bubble"></span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="test-footer">Wygenerowano w Nauczyciel Assistant</div>
+
+{% if includeAnswers %}
+{# ═══════ ANSWER KEY (separate page) ═══════ #}
+<div class="answer-key-header">KLUCZ ODPOWIEDZI — {{ testData.title }}</div>
+
+{% for i, q in testData.questions %}
+<div class="answer-key-item">
+    <span class="answer-num">{{ i + 1 }}.</span>
+    {% if q.type == 'closed' %}
+        <span class="answer-correct">{{ q.correct }}</span>
+        {% if q.options is defined and q.correct is defined %}
+            — {{ q.options[{'A':0,'B':1,'C':2,'D':3}[q.correct]] | default('') }}
+        {% endif %}
+        <span style="color:#888;"> ({{ q.points }} pkt)</span>
+    {% elseif q.type == 'true_false' %}
+        <span class="answer-correct">{{ q.correct == 'P' ? 'PRAWDA' : 'FAŁSZ' }}</span>
+        <span style="color:#888;"> ({{ q.points }} pkt)</span>
+    {% elseif q.type == 'open' %}
+        <span style="color:#888;">({{ q.points }} pkt)</span>
+        <span class="answer-model">{{ q.answer | default('') }}</span>
+    {% endif %}
+</div>
+{% endfor %}
+
+<div class="test-footer">Klucz odpowiedzi — do użytku nauczyciela</div>
+{% endif %}
+
+{% else %}
+{# Fallback — plain text #}
+<div style="white-space:pre-wrap;font-size:10pt;">{{ testRaw }}</div>
+{% endif %}
+
+</body>
+</html>

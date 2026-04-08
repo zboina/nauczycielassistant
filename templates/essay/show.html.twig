@@ -1,0 +1,186 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ essay.topic|u.truncate(50) }} — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Wypracowania{% endblock %}
+{% block title_text %}{{ essay.topic }}{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_essay_index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Lista</a>
+{% endblock %}
+
+{% block body %}
+<div class="row g-4">
+    {# Left: submissions list #}
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h3 class="card-title"><i class="ti ti-file-text me-2"></i>Prace uczniów ({{ essay.submissionCount }})</h3>
+                <div class="card-actions">
+                    <span class="badge {{ essay.isAccepting ? 'bg-green' : 'bg-secondary' }}">
+                        {{ essay.isAccepting ? 'Przyjmuje prace' : 'Zamknięte' }}
+                    </span>
+                </div>
+            </div>
+            {% if essay.submissions|length > 0 %}
+                <div class="table-responsive">
+                    <table class="table table-vcenter card-table">
+                        <thead>
+                            <tr>
+                                <th>Uczeń</th>
+                                <th>Słów</th>
+                                <th>Data</th>
+                                <th>Status</th>
+                                <th>Wynik AI</th>
+                                <th>Ocena</th>
+                                <th class="text-end">Akcje</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sub in essay.submissions %}
+                                <tr>
+                                    <td class="fw-medium">{{ sub.studentName }}</td>
+                                    <td>
+                                        <span class="{{ essay.minWords and sub.wordCount < essay.minWords ? 'text-danger fw-bold' : '' }}">
+                                            {{ sub.wordCount }}
+                                        </span>
+                                        {% if essay.minWords and sub.wordCount < essay.minWords %}
+                                            <i class="ti ti-alert-triangle text-danger ms-1" title="Poniżej minimum ({{ essay.minWords }})"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-secondary">{{ sub.submittedAt|date('d.m H:i') }}</td>
+                                    <td><span class="badge bg-{{ sub.statusColor }}-lt">{{ sub.statusLabel }}</span></td>
+                                    <td>
+                                        {% if sub.totalAiScore is not null %}
+                                            <span class="fw-bold">{{ sub.totalAiScore }}/{{ sub.maxAiScore }}</span>
+                                        {% else %}
+                                            <span class="text-secondary">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if sub.aiDetectionScore is not null %}
+                                            {% set dScore = sub.aiDetectionScore %}
+                                            {% set dColor = dScore <= 25 ? 'green' : (dScore <= 50 ? 'blue' : (dScore <= 75 ? 'orange' : 'red')) %}
+                                            <span class="badge bg-{{ dColor }}-lt" title="AI-autorstwo: {{ sub.aiDetectionVerdict }}">
+                                                <i class="ti ti-robot me-1"></i>{{ dScore }}%
+                                            </span>
+                                        {% endif %}
+                                        {% if sub.aiAnalysis and sub.aiAnalysis.suggestedGrade is defined %}
+                                            <span class="badge bg-blue-lt">{{ sub.aiAnalysis.suggestedGrade }}</span>
+                                        {% endif %}
+                                        {% if sub.totalTeacherScore is not null %}
+                                            <span class="badge bg-green">{{ sub.totalTeacherScore }} pkt</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group">
+                                            {% if sub.status == 'pending' %}
+                                                <form method="post" action="{{ path('app_essay_ai_review', {id: sub.id}) }}" class="d-inline" data-ai-loading="Trwa analiza wypracowania...">
+                                                    <button type="submit" class="btn btn-sm btn-warning">
+                                                        <i class="ti ti-sparkles me-1"></i>Sprawdź AI
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                            <a href="{{ path('app_essay_review', {id: sub.id}) }}" class="btn btn-sm btn-primary">
+                                                <i class="ti ti-eye me-1"></i>Recenzja
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="card-body">
+                    <div class="empty py-4">
+                        <div class="empty-icon"><i class="ti ti-clock" style="font-size:2rem;"></i></div>
+                        <p class="empty-title">Brak prac</p>
+                        <p class="empty-subtitle text-secondary">Podziel się kodem z uczniami — prace pojawią się tutaj.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Right: essay info + share #}
+    <div class="col-lg-4">
+        {# Share card #}
+        <div class="card mb-3">
+            <div class="card-status-top bg-primary"></div>
+            <div class="card-body text-center">
+                <div class="mb-2 text-uppercase small fw-bold text-secondary">Kod dostępu dla uczniów</div>
+                <div class="display-6 fw-bold text-primary mb-3 font-monospace" style="letter-spacing: .15em;">{{ essay.accessCode }}</div>
+                <div class="mb-3">
+                    <input type="text" class="form-control text-center" id="shareLink"
+                           value="{{ url('app_essay_submit', {code: essay.accessCode}) }}" readonly
+                           onclick="this.select();">
+                </div>
+                <button class="btn btn-primary w-100" onclick="navigator.clipboard.writeText(document.getElementById('shareLink').value).then(()=>{this.innerHTML='<i class=\'ti ti-check me-1\'></i>Skopiowano!';setTimeout(()=>{this.innerHTML='<i class=\'ti ti-copy me-1\'></i>Kopiuj link'},1500)})">
+                    <i class="ti ti-copy me-1"></i>Kopiuj link
+                </button>
+            </div>
+        </div>
+
+        {# Details #}
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title">Szczegóły</h3></div>
+            <div class="card-body">
+                <div class="datagrid">
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Forma</div>
+                        <div class="datagrid-content">{{ essay.writingFormLabel }}</div>
+                    </div>
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Klasa</div>
+                        <div class="datagrid-content"><span class="badge bg-primary-lt">{{ essay.classLevel }}</span></div>
+                    </div>
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Kryteria</div>
+                        <div class="datagrid-content">{{ essay.criteriaType == 'cke' ? 'CKE (egzamin)' : 'Ogólne' }}</div>
+                    </div>
+                    {% if essay.minWords %}
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Min. słów</div>
+                        <div class="datagrid-content">{{ essay.minWords }}</div>
+                    </div>
+                    {% endif %}
+                    {% if essay.deadline %}
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Termin</div>
+                        <div class="datagrid-content">
+                            <span class="{{ essay.isExpired ? 'text-danger' : '' }}">{{ essay.deadline|date('d.m.Y H:i') }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="datagrid-item">
+                        <div class="datagrid-title">Utworzono</div>
+                        <div class="datagrid-content">{{ essay.createdAt|date('d.m.Y') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if essay.instructions %}
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title">Wskazówki</h3></div>
+            <div class="card-body" style="font-size:.9rem;">{{ essay.instructions }}</div>
+        </div>
+        {% endif %}
+
+        {# Actions #}
+        <div class="card">
+            <div class="card-body d-flex flex-column gap-2">
+                <form method="post" action="{{ path('app_essay_toggle', {id: essay.id}) }}">
+                    <button type="submit" class="btn w-100 {{ essay.isActive ? 'btn-outline-warning' : 'btn-outline-success' }}">
+                        <i class="ti {{ essay.isActive ? 'ti-lock' : 'ti-lock-open' }} me-1"></i>
+                        {{ essay.isActive ? 'Zamknij przyjmowanie prac' : 'Otwórz przyjmowanie prac' }}
+                    </button>
+                </form>
+                <form method="post" action="{{ path('app_essay_delete', {id: essay.id}) }}" onsubmit="return confirm('Na pewno usunąć zadanie i wszystkie prace?')">
+                    <button type="submit" class="btn btn-outline-danger w-100"><i class="ti ti-trash me-1"></i>Usuń zadanie</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,128 @@
+{# Structured lesson plan view — used in generate, show, and PDF #}
+
+{# Curriculum references #}
+{% if lpData.curriculumRef is defined and lpData.curriculumRef %}
+<div class="mb-3">
+    <h4 class="text-uppercase text-secondary small fw-bold mb-2"><i class="ti ti-book me-1"></i>Podstawa programowa</h4>
+    <div class="d-flex flex-wrap gap-1">
+        {% for ref in lpData.curriculumRef %}
+            <span class="badge bg-purple-lt" style="font-size:.75rem;">{{ ref }}</span>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{# Goals #}
+<div class="row g-3 mb-3">
+    {% if lpData.goalsGeneral is defined and lpData.goalsGeneral %}
+    <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+            <h4 class="text-uppercase text-secondary small fw-bold mb-2"><i class="ti ti-target me-1"></i>Cele ogólne</h4>
+            <ul class="mb-0" style="padding-left:1.2rem;">
+                {% for g in lpData.goalsGeneral %}
+                    <li style="font-size:.9rem;">{{ g }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+    {% if lpData.goalsSpecific is defined and lpData.goalsSpecific %}
+    <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+            <h4 class="text-uppercase text-secondary small fw-bold mb-2"><i class="ti ti-target-arrow me-1"></i>Cele szczegółowe</h4>
+            <ul class="mb-0" style="padding-left:1.2rem;">
+                {% for g in lpData.goalsSpecific %}
+                    <li style="font-size:.9rem;">{{ g }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{# Methods & Materials #}
+<div class="row g-3 mb-3">
+    {% if lpData.methods is defined and lpData.methods %}
+    <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+            <h4 class="text-uppercase text-secondary small fw-bold mb-2"><i class="ti ti-tools me-1"></i>Metody i formy</h4>
+            <div class="d-flex flex-wrap gap-1">
+                {% for m in lpData.methods %}
+                    <span class="badge bg-blue-lt">{{ m }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% if lpData.materials is defined and lpData.materials %}
+    <div class="col-md-6">
+        <div class="border rounded p-3 h-100">
+            <h4 class="text-uppercase text-secondary small fw-bold mb-2"><i class="ti ti-package me-1"></i>Środki dydaktyczne</h4>
+            <div class="d-flex flex-wrap gap-1">
+                {% for m in lpData.materials %}
+                    <span class="badge bg-green-lt">{{ m }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{# Lesson phases — timeline #}
+{% if lpData.phases is defined %}
+<h4 class="text-uppercase text-secondary small fw-bold mb-2"><i class="ti ti-clock me-1"></i>Przebieg lekcji</h4>
+{% set phaseColors = {'Faza wstępna': 'blue', 'Faza realizacji': 'green', 'Faza podsumowująca': 'orange'} %}
+{% for phase in lpData.phases %}
+    {% set color = phaseColors[phase.name] | default('primary') %}
+    <div class="card mb-2">
+        <div class="card-status-start bg-{{ color }}"></div>
+        <div class="card-header py-2">
+            <h3 class="card-title" style="font-size:.9rem;">
+                {{ phase.name }}
+                <span class="badge bg-{{ color }}-lt ms-2">{{ phase.duration }}</span>
+            </h3>
+        </div>
+        <div class="card-body py-2">
+            {% if phase.activities is defined %}
+                {% for act in phase.activities %}
+                    <div class="d-flex gap-2 mb-2 {{ not loop.last ? 'pb-2 border-bottom' : '' }}">
+                        <span class="badge bg-secondary-lt flex-shrink-0" style="min-width:50px;">{{ act.time }}</span>
+                        <div style="font-size:.88rem;">{{ act.description }}</div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+{% endfor %}
+{% endif %}
+
+{# Homework, Evaluation, Notes #}
+<div class="row g-3 mt-1">
+    {% if lpData.homework is defined and lpData.homework %}
+    <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+            <h4 class="text-uppercase text-secondary small fw-bold mb-2"><i class="ti ti-home me-1"></i>Praca domowa</h4>
+            <div style="font-size:.88rem;">{{ lpData.homework }}</div>
+        </div>
+    </div>
+    {% endif %}
+    {% if lpData.evaluation is defined and lpData.evaluation %}
+    <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+            <h4 class="text-uppercase text-secondary small fw-bold mb-2"><i class="ti ti-chart-bar me-1"></i>Ewaluacja</h4>
+            <div style="font-size:.88rem;">{{ lpData.evaluation }}</div>
+        </div>
+    </div>
+    {% endif %}
+    <div class="col-md-4">
+        <div class="border rounded p-3 h-100">
+            <h4 class="text-uppercase text-secondary small fw-bold mb-2"><i class="ti ti-info-circle me-1"></i>Uwagi</h4>
+            {% if lpData.notesForSPE is defined %}
+                <div class="mb-1" style="font-size:.82rem;"><span class="badge bg-orange-lt me-1">SPE</span>{{ lpData.notesForSPE }}</div>
+            {% endif %}
+            {% if lpData.notesForGifted is defined %}
+                <div style="font-size:.82rem;"><span class="badge bg-purple-lt me-1">Zdolni</span>{{ lpData.notesForGifted }}</div>
+            {% endif %}
+        </div>
+    </div>
+</div>

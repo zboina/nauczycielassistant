@@ -1,0 +1,88 @@
+{% extends 'generator/_layout.html.twig' %}
+
+{% block title %}Info dla rodziców — Nauczyciel Assistant{% endblock %}
+{% block title_text %}Generator informacji dla rodziców{% endblock %}
+{% block form_title %}Parametry informacji{% endblock %}
+{% block back_button %}<a href="{{ path('app_generate_parent_info_index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Informacje</a>{% endblock %}
+
+{% block form_content %}
+    {{ form_start(form, {'attr': {'novalidate': 'novalidate', 'data-ai-loading': 'Trwa generowanie informacji...'}}) }}
+    <div class="mb-3">
+        {{ form_label(form.infoType) }}
+        {{ form_widget(form.infoType, {'attr': {'class': 'form-select'}}) }}
+    </div>
+    <div class="mb-3">
+        {{ form_label(form.details) }}
+        {{ form_widget(form.details, {'attr': {'class': 'form-control'}}) }}
+        {{ form_errors(form.details) }}
+    </div>
+    <div class="mb-3">
+        {{ form_label(form.tone) }}
+        <div class="d-flex gap-3">
+            {% for child in form.tone %}
+                <label class="form-check">
+                    {{ form_widget(child, {'attr': {'class': 'form-check-input'}}) }}
+                    <span class="form-check-label">{{ child.vars.label }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary w-100">
+        <i class="ti ti-sparkles me-2"></i> Generuj informację
+    </button>
+    {{ form_end(form) }}
+{% endblock %}
+
+{% block results_content %}
+    {% if resultFull %}
+        <div class="card mb-3">
+            <div class="card-stamp">
+                <div class="card-stamp-icon bg-orange"><i class="ti ti-mail"></i></div>
+            </div>
+            <div class="card-header">
+                <h3 class="card-title">Wersja pełna</h3>
+                <div class="card-actions">
+                    <form method="post" action="{{ path('app_generate_parent_info_save') }}" class="d-inline">
+                        <input type="hidden" name="_token" value="{{ csrf_token('save') }}">
+                        <button type="submit" class="btn btn-ghost-success btn-sm"><i class="ti ti-device-floppy me-1"></i>Zapisz</button>
+                    </form>
+                    <button class="btn btn-ghost-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('fullText').innerText).then(()=>{this.innerHTML='<i class=\'ti ti-check me-1\'></i>Skopiowano'})">
+                        <i class="ti ti-copy me-1"></i>Kopiuj
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="fullText" class="result-box">{{ resultFull }}</div>
+            </div>
+        </div>
+
+        {% if resultShort %}
+            <div class="card">
+                <div class="card-stamp">
+                    <div class="card-stamp-icon bg-cyan"><i class="ti ti-message"></i></div>
+                </div>
+                <div class="card-header">
+                    <h3 class="card-title">Wersja krótka (SMS)</h3>
+                    <div class="card-actions">
+                        <button class="btn btn-ghost-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('shortText').innerText).then(()=>{this.innerHTML='<i class=\'ti ti-check me-1\'></i>Skopiowano'})">
+                            <i class="ti ti-copy me-1"></i>Kopiuj
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="shortText" class="result-box">{{ resultShort }}</div>
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="card border-0 bg-transparent shadow-none">
+            <div class="card-body">
+                <div class="empty">
+                    <div class="empty-icon"><i class="ti ti-mail-forward" style="font-size: 3rem;"></i></div>
+                    <p class="empty-title">Podgląd informacji</p>
+                    <p class="empty-subtitle text-secondary">Wypełnij formularz i kliknij "Generuj", aby AI napisało informację.</p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

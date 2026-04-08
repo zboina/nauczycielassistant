@@ -196,11 +196,11 @@ body {
 .answer-card-student .dotted-line { min-width: 220px; }
 .answer-card-info { font-size: 8pt; text-align: center; color: #333; margin: 8px 0; padding: 4px; background: #f0f0f0; border: 1px solid #ccc; }
 .ac-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-.ac-table th, .ac-table td { border: 1.5px solid #000; text-align: center; padding: 6px 3px; font-size: 10pt; }
-.ac-table th { background: #ddd; font-weight: bold; font-size: 9pt; }
-.ac-bubble { display: inline-block; width: 18px; height: 18px; border: 2px solid #000; vertical-align: middle; }
-.ac-bubble-filled { background: #000; }
-.ac-nr { font-weight: bold; width: 35px; font-size: 11pt; }
+.ac-table th, .ac-table td { border: 1.5px solid #000; text-align: center; padding: 5px 4px; font-size: 10pt; }
+.ac-table th { background: #ddd; font-weight: bold; font-size: 10pt; }
+.ac-cell { display: inline-block; width: 28px; height: 28px; border: 2.5px solid #000; text-align: center; line-height: 24px; font-weight: bold; font-size: 12pt; }
+.ac-cell-filled { background: #000; color: #fff; }
+.ac-nr { font-weight: bold; width: 35px; font-size: 12pt; }
 
 /* Footer */
 .test-footer {
@@ -303,7 +303,7 @@ body {
         </div>
 
         <div class="answer-card-info">
-            ✎ Zaznacz wybraną odpowiedź stawiając wyraźny X w kratce.
+            ✎ Zaznacz wybraną odpowiedź przekreślając literę w kratce (np. <span style="display:inline-block;width:20px;height:20px;border:2px solid #000;text-align:center;line-height:17px;font-weight:bold;font-size:10pt;text-decoration:line-through;">B</span>).
             Zaznacz TYLKO JEDNĄ odpowiedź w każdym wierszu.
         </div>
 
@@ -311,22 +311,22 @@ body {
             <thead>
                 <tr>
                     <th class="ac-nr">Nr</th>
-                    <th>A</th>
-                    <th>B</th>
-                    <th>C</th>
-                    <th>D</th>
+                    <th style="width:50px;">A</th>
+                    <th style="width:50px;">B</th>
+                    <th style="width:50px;">C</th>
+                    <th style="width:50px;">D</th>
                 </tr>
             </thead>
             <tbody>
                 {% for cq in closedQuestions %}
-                    <tr style="height: 32px;">
+                    <tr>
                         <td class="ac-nr">{{ cq.num }}</td>
                         {% for letter in ['A','B','C','D'] %}
                             <td>
                                 {% if includeAnswers is defined and includeAnswers and cq.correct == letter %}
-                                    <span class="ac-bubble ac-bubble-filled"></span>
+                                    <span class="ac-cell ac-cell-filled">{{ letter }}</span>
                                 {% else %}
-                                    <span class="ac-bubble"></span>
+                                    <span class="ac-cell">{{ letter }}</span>
                                 {% endif %}
                             </td>
                         {% endfor %}

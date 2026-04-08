@@ -1,0 +1,98 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Korekta odpowiedzi — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Skaner odpowiedzi{% endblock %}
+{% block title_text %}Sprawdź i popraw odczytane odpowiedzi{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_scanner_index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Skanuj ponownie</a>
+{% endblock %}
+
+{% block body %}
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="ti ti-edit me-2"></i>Odczytane odpowiedzi — sprawdź i popraw</h3>
+                {% if sourceTitle %}
+                    <div class="card-actions"><span class="badge bg-primary-lt">{{ sourceTitle }}</span></div>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if scanned.studentName %}
+                    <div class="mb-3">
+                        <span class="text-secondary">Uczeń:</span> <strong>{{ scanned.studentName }}</strong>
+                        {% if scanned.examCode %}
+                            <span class="badge bg-blue-lt ms-2">{{ scanned.examCode }}</span>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                <div class="alert alert-info py-2 mb-3">
+                    <i class="ti ti-info-circle me-1"></i>
+                    <strong>Porównaj odpowiedzi ze zdjęciem po prawej.</strong> Kliknij literę, aby zmienić odpowiedź. Potem kliknij "Sprawdź wynik".
+                </div>
+
+                <form method="post" action="{{ path('app_scanner_grade') }}" data-turbo="false">
+                    <table class="table table-vcenter">
+                        <thead>
+                            <tr>
+                                <th class="text-center" style="width:50px;">Nr</th>
+                                <th class="text-center">Odpowiedź AI</th>
+                                <th>Twoja korekta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for qNum, ans in scanned.answers %}
+                                <tr>
+                                    <td class="text-center fw-bold">{{ qNum }}</td>
+                                    <td class="text-center">
+                                        {% if ans %}
+                                            <span class="badge bg-blue-lt fs-6">{{ ans }}</span>
+                                        {% else %}
+                                            <span class="text-secondary">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group w-100" role="group">
+                                            {% for letter in ['A','B','C','D'] %}
+                                                <input type="radio" class="btn-check" name="answer[{{ qNum }}]" id="q{{ qNum }}_{{ letter }}" value="{{ letter }}" {{ ans == letter ? 'checked' : '' }}>
+                                                <label class="btn btn-outline-primary" for="q{{ qNum }}_{{ letter }}">{{ letter }}</label>
+                                            {% endfor %}
+                                            <input type="radio" class="btn-check" name="answer[{{ qNum }}]" id="q{{ qNum }}_none" value="" {{ ans is null or ans == '' ? 'checked' : '' }}>
+                                            <label class="btn btn-outline-secondary" for="q{{ qNum }}_none">—</label>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    <button type="submit" class="btn btn-success btn-lg w-100 mt-3">
+                        <i class="ti ti-check me-2"></i>Sprawdź wynik
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        {# Photo reference #}
+        <div class="card sticky-top" style="top:1rem;">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-photo me-2"></i>Zeskanowane zdjęcie</h3></div>
+            <div class="card-body text-center p-2">
+                <img src="{{ imageData }}" style="max-width:100%;max-height:70vh;" class="rounded border">
+            </div>
+            {% if scanned.confidence is defined %}
+                <div class="card-footer text-center">
+                    {% set confColor = scanned.confidence == 'wysoka' ? 'green' : (scanned.confidence == 'średnia' ? 'yellow' : 'red') %}
+                    Pewność AI: <span class="badge bg-{{ confColor }}-lt">{{ scanned.confidence }}</span>
+                    {% if scanned.notes is defined and scanned.notes %}
+                        <div class="text-secondary small mt-1">{{ scanned.notes }}</div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

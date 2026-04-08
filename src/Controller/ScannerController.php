@@ -113,30 +113,18 @@ class ScannerController extends AbstractController
             }
 
             if (empty($answerKey)) {
-                // Store scanned data without grading — show with warning
-                $request->getSession()->set('scanner_result', [
-                    'scanned' => $scanned,
-                    'grading' => null,
-                    'sourceTitle' => $scanned['examCode'] ?? 'Nierozpoznany',
-                    'answerKey' => [],
-                    'imageData' => $base64,
-                ]);
-                $this->addFlash('warning', 'Nie znaleziono sprawdzianu z kodem "' . ($scanned['examCode'] ?? '?') . '". Odpowiedzi odczytane, ale nie sprawdzone.');
-                return $this->redirectToRoute('app_scanner_result');
+                $this->addFlash('warning', 'Nie znaleziono sprawdzianu z kodem "' . ($scanned['examCode'] ?? '?') . '".');
             }
 
-            // Grade answers
-            $grading = AnswerScannerPromptBuilder::gradeAnswers($scanned['answers'], $answerKey);
-
-            $request->getSession()->set('scanner_result', [
+            // Store scanned data — go to correction screen
+            $request->getSession()->set('scanner_data', [
                 'scanned' => $scanned,
-                'grading' => $grading,
                 'sourceTitle' => $sourceTitle,
                 'answerKey' => $answerKey,
                 'imageData' => $base64,
             ]);
 
-            return $this->redirectToRoute('app_scanner_result');
+            return $this->redirectToRoute('app_scanner_correct');
 
         } catch (\RuntimeException $e) {
             $this->addFlash('error', $e->getMessage());
@@ -174,5 +162,55 @@ class ScannerController extends AbstractController
             'answerKey' => $data['answerKey'],
             'imageData' => $data['imageData'],
         ]);
+    }
+
+    // ─── Correction screen ──────────────────────────────
+
+    #[Route('/correct', name: 'app_scanner_correct')]
+    public function correct(Request $request): Response
+    {
+        $data = $request->getSession()->get('scanner_data');
+        if (!$data) {
+            return $this->redirectToRoute('app_scanner_index');
+        }
+
+        return $this->render('scanner/correct.html.twig', [
+            'scanned' => $data['scanned'],
+            'answerKey' => $data['answerKey'],
+            'sourceTitle' => $data['sourceTitle'],
+            'imageData' => $data['imageData'],
+        ]);
+    }
+
+    // ─── Grade after correction ─────────────────────────
+
+    #[Route('/grade', name: 'app_scanner_grade', methods: ['POST'])]
+    public function grade(Request $request): Response
+    {
+        $data = $request->getSession()->get('scanner_data');
+        if (!$data) {
+            return $this->redirectToRoute('app_scanner_index');
+        }
+
+        // Get corrected answers from form
+        $correctedAnswers = [];
+        foreach ($request->request->all('answer') as $qNum => $value) {
+            $correctedAnswers[(string) $qNum] = $value ?: null;
+        }
+
+        $answerKey = $data['answerKey'];
+        $grading = !empty($answerKey)
+            ? AnswerScannerPromptBuilder::gradeAnswers($correctedAnswers, $answerKey)
+            : null;
+
+        $request->getSession()->set('scanner_result', [
+            'scanned' => array_merge($data['scanned'], ['answers' => $correctedAnswers]),
+            'grading' => $grading,
+            'sourceTitle' => $data['sourceTitle'],
+            'answerKey' => $answerKey,
+            'imageData' => $data['imageData'],
+        ]);
+
+        return $this->redirectToRoute('app_scanner_result');
     }
 }

@@ -468,11 +468,10 @@ class GeneratorController extends AbstractController
 
         // Fallback — generic text PDF
         return $this->pdf->generateResponse(
-            'pdf/worksheet.html.twig',
+            'pdf/generic.html.twig',
             [
+                'title' => $material->getTitle(),
                 'content' => $material->getContent(),
-                'topic' => $material->getTitle(),
-                'classLevel' => $material->getClassLevel() ?? '',
             ],
             'material_' . date('Y-m-d_His') . '.pdf',
         );

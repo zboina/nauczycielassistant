@@ -7,78 +7,95 @@ namespace App\Service\AI\PromptBuilder;
 class AnswerScannerPromptBuilder
 {
     public const SYSTEM_PROMPT = <<<'PROMPT'
-Jesteś ekspertem OCR specjalizującym się w odczytywaniu kart odpowiedzi z egzaminów szkolnych.
-Analizujesz zdjęcia kart odpowiedzi — nawet niewyraźne, krzywe, słabo oświetlone lub z cieniami.
+Jesteś precyzyjnym systemem OCR do odczytywania kart odpowiedzi z egzaminów szkolnych.
 
-MUSISZ odpowiedzieć WYŁĄCZNIE poprawnym JSON-em (bez markdown, bez ```json, bez komentarzy).
+OPIS KARTY ODPOWIEDZI:
+Karta to TABELA z dokładnie 5 kolumnami w następującej kolejności od lewej do prawej:
+  KOLUMNA 1: "Nr" — numer pytania (1, 2, 3...)
+  KOLUMNA 2: "A" — kwadrat dla odpowiedzi A
+  KOLUMNA 3: "B" — kwadrat dla odpowiedzi B
+  KOLUMNA 4: "C" — kwadrat dla odpowiedzi C
+  KOLUMNA 5: "D" — kwadrat dla odpowiedzi D
 
-Struktura JSON:
+Nagłówek tabeli ZAWSZE brzmi: Nr | A | B | C | D
+Kolumny są ZAWSZE w tej samej kolejności: A jest DRUGA od lewej, B TRZECIA, C CZWARTA, D PIĄTA (ostatnia).
+
+PROCEDURA ODCZYTU — wykonaj DOKŁADNIE w tej kolejności:
+
+KROK 1: Znajdź nagłówek tabeli. Zidentyfikuj pozycje kolumn A, B, C, D. Sprawdź etykiety w nagłówku.
+
+KROK 2: Dla KAŻDEGO wiersza (pytania):
+  a) Odczytaj numer pytania z pierwszej kolumny
+  b) Sprawdź KAŻDY z 4 kwadratów od lewej do prawej: A, B, C, D
+  c) Zaznaczony kwadrat = ma X, ✓, wypełnienie lub wyraźny ślad
+  d) Pusty kwadrat = czysty, bez żadnego znaku
+  e) Zanotuj, KTÓRY kwadrat jest zaznaczony
+  f) ZWERYFIKUJ: policz kolumny od lewej: 1=Nr, 2=A, 3=B, 4=C, 5=D
+     Zaznaczony kwadrat w 2. kolumnie = A
+     Zaznaczony kwadrat w 3. kolumnie = B
+     Zaznaczony kwadrat w 4. kolumnie = C
+     Zaznaczony kwadrat w 5. kolumnie = D
+
+KROK 3: Znajdź kod sprawdzianu (np. "T-42" lub "E-15") — prawy górny róg karty.
+
+KROK 4: Odczytaj imię i nazwisko ucznia.
+
+TYPOWE BŁĘDY — NIE POPEŁNIAJ ICH:
+- NIE myl kolumn! Jeśli X jest w 4. kolumnie od lewej, to jest C, NIE D!
+- NIE zgaduj — patrz na POZYCJĘ zaznaczenia w wierszu
+- Jeśli zdjęcie jest krzywe, śledź kolumny po nagłówku, nie po pozycji pikseli
+- Licz od lewej: Nr(1), A(2), B(3), C(4), D(5) — ZAWSZE
+
+MUSISZ odpowiedzieć WYŁĄCZNIE poprawnym JSON-em (bez markdown, bez ```json):
+
 {
   "examCode": "T-42",
   "studentName": "Jan Kowalski",
   "answers": {
     "1": "B",
     "2": "A",
-    "3": "D",
-    "4": "C",
-    "5": "B",
-    "6": null,
-    "7": "A"
+    "3": "D"
+  },
+  "verification": {
+    "1": "X jest w 3. kolumnie od lewej = B",
+    "2": "X jest w 2. kolumnie od lewej = A",
+    "3": "X jest w 5. kolumnie od lewej = D"
   },
   "confidence": "wysoka",
-  "notes": "Pytanie 6 — brak zaznaczenia lub nieczytelne."
+  "notes": ""
 }
 
-KRYTYCZNE zasady odczytywania:
-- Odczytaj KOD SPRAWDZIANU z karty (np. "T-42" lub "E-15") — szukaj w prawym górnym rogu, w ramce, przy etykiecie "Kod sprawdzianu" / "Kod arkusza" / "Kod:". Jeśli nie widać kodu, wpisz null.
-- Odczytaj IMIĘ I NAZWISKO ucznia (pole na górze karty po "Imię i nazwisko:")
-- Karta ma TABELĘ z kolumnami: Nr | A | B | C | D
-- W każdym wierszu jest JEDEN zaznaczony kwadrat (X, ✓, wypełnienie, zakreślenie)
+Pole "verification" — dla KAŻDEGO pytania napisz krótko, w której kolumnie (licząc od lewej) widzisz zaznaczenie. To pomaga uniknąć pomyłek.
 
-JAK ROZPOZNAĆ ZAZNACZENIE:
-- X w kratce = zaznaczone
-- Wypełniony/zaczerniony kwadrat = zaznaczone
-- Zakreślona litera lub kółko wokół litery = zaznaczone
-- Ptaszek (✓) w kratce = zaznaczone
-- Dowolny ślad w kratce, który WYRAŹNIE różni się od pustych kratek = zaznaczone
-- Pusty kwadrat = niezaznaczony
-- Lekkie zabrudzenie lub cień = NIE jest zaznaczeniem (ignoruj)
-
-OBSŁUGA NIEWYRAŹNYCH ZDJĘĆ:
-- Jeśli zdjęcie jest krzywe — i tak odczytaj (tabela może być pod kątem)
-- Jeśli jest ciemne/jasne — szukaj kontrastów (ciemniejsze kratki = zaznaczone)
-- Jeśli jest rozmazane — staraj się odczytać, a w notes opisz problem
-- Jeśli nie jesteś pewien JEDNEJ odpowiedzi — podaj najlepsze przypuszczenie i opisz w notes
-- Podaj null TYLKO gdy naprawdę NIE DA SIĘ odczytać
-- Staraj się ZAWSZE podać odpowiedź — nawet przy niskiej pewności
-
-KOLEJNOŚĆ ODCZYTU:
-1. Najpierw znajdź kod sprawdzianu (prawy górny róg)
-2. Potem imię i nazwisko
-3. Potem kolejno każdy wiersz tabeli od nr 1 w dół
-4. Sprawdź, ile wierszy ma tabela i odczytaj WSZYSTKIE
-
-- "confidence": "wysoka" (>90% pewności), "średnia" (60-90%), "niska" (<60%)
+- confidence: "wysoka" (>90%), "średnia" (60-90%), "niska" (<60%)
+- Jeśli brak zaznaczenia → null
 - Odpowiadaj TYLKO JSON-em
 PROMPT;
 
     public function buildUserPrompt(int $questionCount = 0, ?array $answerKey = null): string
     {
-        $prompt = "Odczytaj odpowiedzi z karty odpowiedzi na załączonym zdjęciu.\n";
+        $prompt = "Odczytaj odpowiedzi z karty odpowiedzi na załączonym zdjęciu.\n\n";
+
+        $prompt .= "UKŁAD TABELI na karcie (kolumny od lewej do prawej): Nr | A | B | C | D\n";
+        $prompt .= "Kolumna 2 od lewej = A, kolumna 3 = B, kolumna 4 = C, kolumna 5 (ostatnia) = D.\n\n";
 
         if ($questionCount > 0) {
-            $prompt .= "Karta zawiera {$questionCount} pytań zamkniętych (ABCD).\n";
+            $prompt .= "Karta powinna zawierać {$questionCount} pytań.\n";
         } else {
             $prompt .= "Odczytaj WSZYSTKIE pytania widoczne na karcie.\n";
         }
 
-        $prompt .= "WAŻNE: Odczytaj też KOD SPRAWDZIANU (np. T-42 lub E-15) — jest w prawym górnym rogu karty.\n";
-
         if ($answerKey) {
-            $prompt .= "Numery pytań: " . implode(', ', array_keys($answerKey)) . "\n";
+            $prompt .= "Numery pytań do odczytania: " . implode(', ', array_keys($answerKey)) . "\n";
         }
 
-        $prompt .= "\nOdpowiedz WYŁĄCZNIE poprawnym JSON-em.";
+        $prompt .= "\nDla KAŻDEGO pytania:\n";
+        $prompt .= "1. Znajdź wiersz z tym numerem\n";
+        $prompt .= "2. Sprawdź kolejno kwadraty: A (2. kolumna), B (3.), C (4.), D (5.)\n";
+        $prompt .= "3. Określ, który ma zaznaczenie (X, ✓, wypełnienie)\n";
+        $prompt .= "4. W polu 'verification' zapisz: 'X w kolumnie N od lewej = LITERA'\n\n";
+        $prompt .= "Odczytaj też KOD SPRAWDZIANU (np. T-42, E-15) z prawego górnego rogu.\n";
+        $prompt .= "Odpowiedz WYŁĄCZNIE poprawnym JSON-em.";
 
         return $prompt;
     }

@@ -83,10 +83,11 @@
                     <table class="table table-vcenter card-table">
                         <thead>
                             <tr>
-                                <th class="text-center" style="width:60px;">Nr</th>
-                                <th class="text-center">Poprawna</th>
+                                <th class="text-center" style="width:50px;">Nr</th>
+                                <th class="text-center">Klucz</th>
                                 <th class="text-center">Uczeń</th>
-                                <th class="text-center" style="width:100px;">Wynik</th>
+                                <th class="text-center" style="width:80px;">Wynik</th>
+                                <th>Weryfikacja AI</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -110,6 +111,11 @@
                                             <span class="badge bg-red"><i class="ti ti-x me-1"></i>Błąd</span>
                                         {% else %}
                                             <span class="badge bg-secondary">Brak</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-secondary" style="font-size:.75rem;">
+                                        {% if scanned.verification is defined and scanned.verification[d.number ~ ''] is defined %}
+                                            {{ scanned.verification[d.number ~ ''] }}
                                         {% endif %}
                                     </td>
                                 </tr>

@@ -28,6 +28,7 @@ class AiLogRepository extends ServiceEntityRepository
         ?User $owner = null,
         string $status = 'success',
         ?string $error = null,
+        ?string $costUsd = null,
     ): AiLog {
         $log = new AiLog();
         $log->setModule($module);
@@ -38,6 +39,7 @@ class AiLogRepository extends ServiceEntityRepository
         $log->setStatus($status);
         $log->setError($error);
         $log->setOwner($owner);
+        $log->setCostUsd($costUsd);
 
         $this->getEntityManager()->persist($log);
         $this->getEntityManager()->flush();
@@ -48,12 +50,34 @@ class AiLogRepository extends ServiceEntityRepository
     public function getMonthlyStats(User $owner, \DateTimeImmutable $monthStart): array
     {
         return $this->createQueryBuilder('l')
-            ->select('SUM(l.tokensInput) as totalTokensIn, SUM(l.tokensOutput) as totalTokensOut, COUNT(l.id) as totalRequests')
+            ->select('SUM(l.tokensInput) as totalTokensIn, SUM(l.tokensOutput) as totalTokensOut, COUNT(l.id) as totalRequests, SUM(l.costUsd) as totalCost')
             ->andWhere('l.owner = :owner')
             ->andWhere('l.createdAt >= :start')
             ->andWhere('l.status = :status')
             ->setParameter('owner', $owner)
             ->setParameter('start', $monthStart)
+            ->setParameter('status', 'success')
+            ->getQuery()
+            ->getSingleResult();
+    }
+
+    /** @return AiLog[] */
+    public function findRecent(int $limit = 50): array
+    {
+        return $this->createQueryBuilder('l')
+            ->orderBy('l.createdAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function getGlobalStats(\DateTimeImmutable $since): array
+    {
+        return $this->createQueryBuilder('l')
+            ->select('SUM(l.tokensInput) as totalTokensIn, SUM(l.tokensOutput) as totalTokensOut, COUNT(l.id) as totalRequests, SUM(l.costUsd) as totalCost')
+            ->andWhere('l.createdAt >= :since')
+            ->andWhere('l.status = :status')
+            ->setParameter('since', $since)
             ->setParameter('status', 'success')
             ->getQuery()
             ->getSingleResult();

@@ -33,3 +33,7 @@ services:
         arguments:
             $openrouterApiKey: '%app.openrouter_api_key%'
             $openrouterDefaultModel: '%app.openrouter_default_model%'
+
+    App\Service\AI\ModelResolver:
+        arguments:
+            $defaultModel: '%app.openrouter_default_model%'

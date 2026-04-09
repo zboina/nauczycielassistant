@@ -73,6 +73,9 @@
                         <button class="btn btn-outline-orange btn-sm" @click="sendMessage('Jak motywować uczniów do czytania lektur? Podaj praktyczne metody.')">
                             <i class="ti ti-heart me-1"></i>Porady dydaktyczne
                         </button>
+                        <button class="btn btn-outline-teal btn-sm" @click="sendMessage('Przeanalizuj tę stronę i zrób streszczenie: https://pl.wikipedia.org/wiki/Adam_Mickiewicz')">
+                            <i class="ti ti-world me-1"></i>Analizuj stronę WWW
+                        </button>
                     </div>
                 </div>
             {% endif %}
@@ -136,13 +139,13 @@
         <div class="chat-input-bar">
             <form @submit.prevent="send()" class="d-flex gap-2">
                 <input type="text" class="form-control" x-model="input" x-ref="chatInput"
-                       placeholder="Zadaj pytanie lub poproś o obrazek..." :disabled="loading" autofocus>
+                       placeholder="Zadaj pytanie, wklej URL strony lub poproś o obrazek..." :disabled="loading" autofocus>
                 <button type="submit" class="btn btn-primary" :disabled="loading || !input.trim()">
                     <i class="ti ti-send"></i>
                 </button>
             </form>
             <div class="text-center mt-2" style="font-size:.7rem;color:#aaa;">
-                <i class="ti ti-info-circle me-1"></i>Poproś o "plakat", "schemat", "ilustrację" — AI wygeneruje obrazek
+                <i class="ti ti-info-circle me-1"></i>Wklej URL — AI przeanalizuje stronę | Poproś o "plakat" — AI wygeneruje obrazek
             </div>
         </div>
     </div>

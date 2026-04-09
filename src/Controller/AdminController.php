@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Repository\AiLogRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -156,5 +157,17 @@ class AdminController extends AbstractController
         $this->em->flush();
         $this->addFlash('success', 'Użytkownik ' . $name . ' usunięty.');
         return $this->redirectToRoute('app_admin_index');
+    }
+
+    #[Route('/ai-logs', name: 'app_admin_ai_logs')]
+    public function aiLogs(AiLogRepository $logRepo): Response
+    {
+        $monthStart = new \DateTimeImmutable('first day of this month midnight');
+        $stats = $logRepo->getGlobalStats($monthStart);
+
+        return $this->render('admin/ai_logs.html.twig', [
+            'logs' => $logRepo->findRecent(100),
+            'stats' => $stats,
+        ]);
     }
 }

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<style>
+@page { margin: 15mm 18mm; }
+body { font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; line-height: 1.5; color: #000; }
+.title { font-size: 14pt; font-weight: bold; text-align: center; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+.meta { font-size: 9pt; margin-bottom: 15px; }
+.meta td { padding: 3px 0; }
+.dotted { border-bottom: 1px dotted #000; display: inline-block; min-width: 150px; }
+.text-box { border: 1px solid #ccc; padding: 12px; line-height: 2; font-size: 10pt; margin-bottom: 12px; }
+.words-title { font-weight: bold; font-size: 10pt; border-bottom: 1px solid #000; padding-bottom: 3px; margin: 15px 0 8px; }
+.word-table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+.word-table td, .word-table th { border: 1px solid #999; padding: 4px 8px; }
+.word-table th { background: #eee; }
+.q { margin-bottom: 10px; page-break-inside: avoid; }
+.q-num { font-weight: bold; }
+.q-opts { margin-top: 4px; }
+.q-opt { display: inline-block; border: 1.5px solid #000; padding: 3px 12px; margin-right: 20px; font-size: 10pt; }
+.q-opt-correct { background: #000; color: #fff; }
+.footer { margin-top: 15px; text-align: center; font-size: 7pt; color: #999; border-top: 1px solid #ddd; padding-top: 5px; }
+</style>
+</head>
+<body>
+
+<div class="title">{{ data.title }}</div>
+
+<table class="meta">
+    <tr>
+        <td>Imię i nazwisko: <span class="dotted">&nbsp;</span></td>
+        <td style="text-align:right;">Klasa: <span class="dotted" style="min-width:60px;">&nbsp;</span> &nbsp; Data: <span class="dotted" style="min-width:100px;">&nbsp;</span></td>
+    </tr>
+</table>
+
+{% if data.type|default('classic') == 'classic' %}
+
+    {% if showAnswers %}
+        {# ═══ TEACHER VERSION ═══ #}
+        <div style="font-size:8pt;font-style:italic;color:#555;margin-bottom:8px;text-align:center;">
+            Wersja dla nauczyciela — tekst do dyktowania
+        </div>
+
+        <div class="text-box" style="line-height:2.2;font-size:11pt;">
+            {{ data.text|nl2br }}
+        </div>
+
+        {% if data.difficultWords is defined %}
+            <div class="words-title">TRUDNE WYRAZY — REGUŁY ORTOGRAFICZNE</div>
+            <table class="word-table">
+                <thead><tr><th style="width:120px;">Wyraz</th><th>Reguła</th></tr></thead>
+                <tbody>
+                    {% for w in data.difficultWords %}
+                        <tr><td style="font-weight:bold;font-size:10pt;">{{ w.word }}</td><td>{{ w.rule }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+
+        {% if data.hints is defined and data.hints %}
+            <div style="margin-top:10px;padding:6px 10px;border:1px solid #ccc;background:#f8f8f8;font-size:9pt;">
+                <strong>Wskazówka przed dyktandem:</strong> {{ data.hints }}
+            </div>
+        {% endif %}
+
+    {% else %}
+        {# ═══ STUDENT VERSION — empty lines ═══ #}
+        <div style="font-size:9pt;font-style:italic;margin-bottom:10px;">Zapisz tekst dyktanda czytanego przez nauczyciela.</div>
+        {% for i in 1..22 %}
+            <div style="border-bottom:1px dotted #999;height:2em;"></div>
+        {% endfor %}
+    {% endif %}
+
+{% elseif data.type|default('') == 'quiz' %}
+    <div style="font-size:9pt;font-style:italic;margin-bottom:10px;">Zakreśl poprawną pisownię wyrazu (A lub B). Odpowiedzi zaznacz na karcie odpowiedzi.</div>
+
+    <table style="width:100%;border-collapse:collapse;font-size:10pt;">
+        <thead>
+            <tr>
+                <th style="border:1.5px solid #000;padding:4px;width:35px;text-align:center;">Nr</th>
+                <th style="border:1.5px solid #000;padding:4px;text-align:center;">A</th>
+                <th style="border:1.5px solid #000;padding:4px;text-align:center;">B</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for i, q in data.questions|default([]) %}
+                <tr>
+                    <td style="border:1px solid #000;padding:4px;text-align:center;font-weight:bold;">{{ i + 1 }}</td>
+                    {% for letter in ['A', 'B'] %}
+                        {% set opt = letter == 'A' ? q.optionA : q.optionB %}
+                        {% set isCorrect = showAnswers and q.correct == letter %}
+                        <td style="border:1px solid #000;padding:4px;text-align:center;font-size:11pt;{{ isCorrect ? 'font-weight:bold;background:#ddd;' : '' }}">
+                            {{ opt }}{% if isCorrect %} ✓{% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {# ═══ KARTA ODPOWIEDZI ═══ #}
+    <div style="page-break-before:always;"></div>
+    <div style="border:2.5px solid #000;padding:12px;">
+        <div style="font-size:12pt;font-weight:bold;text-align:center;text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">Karta odpowiedzi — Dyktando testowe</div>
+        <div style="font-size:8pt;text-align:center;color:#555;margin-bottom:8px;">Zaznacz poprawną pisownię stawiając X w kratce A lub B.</div>
+        <div style="margin-bottom:10px;font-size:10pt;">
+            Imię i nazwisko: <span style="border-bottom:1px dotted #000;display:inline-block;min-width:200px;">&nbsp;</span>
+            &nbsp; Klasa: <span style="border-bottom:1px dotted #000;display:inline-block;min-width:50px;">&nbsp;</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;">
+            <thead>
+                <tr>
+                    <th style="border:1.5px solid #000;padding:5px;width:40px;text-align:center;background:#ddd;">Nr</th>
+                    <th style="border:1.5px solid #000;padding:5px;width:80px;text-align:center;background:#ddd;">A</th>
+                    <th style="border:1.5px solid #000;padding:5px;width:80px;text-align:center;background:#ddd;">B</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i, q in data.questions|default([]) %}
+                    <tr style="height:28px;">
+                        <td style="border:1.5px solid #000;text-align:center;font-weight:bold;font-size:11pt;">{{ i + 1 }}</td>
+                        {% for letter in ['A', 'B'] %}
+                            <td style="border:1.5px solid #000;text-align:center;">
+                                {% if showAnswers and q.correct == letter %}
+                                    <span style="display:inline-block;width:18px;height:18px;background:#000;"></span>
+                                {% else %}
+                                    <span style="display:inline-block;width:18px;height:18px;border:2px solid #000;"></span>
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if showAnswers %}
+        <div class="words-title" style="margin-top:20px;">KLUCZ — REGUŁY ORTOGRAFICZNE</div>
+        {% for i, q in data.questions|default([]) %}
+            <div style="font-size:9pt;margin-bottom:3px;">
+                <strong>{{ i + 1 }}.</strong> {{ q.correct == 'A' ? q.optionA : q.optionB }}
+                {% if q.rule is defined and q.rule %}<span style="color:#555;"> — {{ q.rule }}</span>{% endif %}
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endif %}
+
+<div class="footer">Wygenerowano w Nauczyciel Assistant</div>
+</body>
+</html>

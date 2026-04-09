@@ -93,6 +93,12 @@
                                     <span class="nav-link-title">Karty pracy</span>
                                 </a>
                             </li>
+                            <li class="nav-item {{ app.request.attributes.get('_route') starts with 'app_dictation_gen' ? 'active' }}">
+                                <a class="nav-link" href="{{ path('app_dictation_gen_index') }}">
+                                    <span class="nav-link-icon"><i class="ti ti-writing-sign"></i></span>
+                                    <span class="nav-link-title">Dyktanda</span>
+                                </a>
+                            </li>
                             <li class="nav-item {{ app.request.attributes.get('_route') starts with 'app_generate_parent_info' ? 'active' }}">
                                 <a class="nav-link" href="{{ path('app_generate_parent_info_index') }}">
                                     <span class="nav-link-icon"><i class="ti ti-mail-forward"></i></span>
@@ -191,6 +197,12 @@
                                         {% if is_granted('ROLE_ADMIN') %}
                                             <a href="{{ path('app_admin_index') }}" class="dropdown-item">
                                                 <i class="ti ti-users-group me-2"></i>Zarządzanie użytkownikami
+                                            </a>
+                                            <a href="{{ path('app_settings') }}" class="dropdown-item">
+                                                <i class="ti ti-settings me-2"></i>Ustawienia AI
+                                            </a>
+                                            <a href="{{ path('app_admin_ai_logs') }}" class="dropdown-item">
+                                                <i class="ti ti-chart-line me-2"></i>Logi i koszty AI
                                             </a>
                                         {% endif %}
                                         <div class="dropdown-divider"></div>

@@ -11,6 +11,7 @@ use App\Form\GenerateParentInfoType;
 use App\Repository\GeneratedMaterialRepository;
 use App\Service\AI\OpenRouterClient;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use App\Service\AI\PromptBuilder\DictationPromptBuilder;
 use App\Service\AI\PromptBuilder\TestPromptBuilder;
 use App\Service\AI\PromptBuilder\WorksheetPromptBuilder;
 use App\Service\AI\PromptBuilder\ParentInfoPromptBuilder;
@@ -488,16 +489,20 @@ class GeneratorController extends AbstractController
 
         $testData = null;
         $wsData = null;
+        $dictData = null;
         if ($material->getType() === 'test') {
             $testData = TestPromptBuilder::parseResponse($material->getContent());
         } elseif ($material->getType() === 'worksheet') {
             $wsData = WorksheetPromptBuilder::parseResponse($material->getContent());
+        } elseif ($material->getType() === 'dictation') {
+            $dictData = DictationPromptBuilder::parseResponse($material->getContent());
         }
 
         return $this->render('generator/history_show.html.twig', [
             'material' => $material,
             'testData' => $testData,
             'wsData' => $wsData,
+            'dictData' => $dictData,
         ]);
     }
 
@@ -513,6 +518,8 @@ class GeneratorController extends AbstractController
             $parsed = TestPromptBuilder::parseResponse($material->getContent());
         } elseif ($material->getType() === 'worksheet') {
             $parsed = WorksheetPromptBuilder::parseResponse($material->getContent());
+        } elseif ($material->getType() === 'dictation') {
+            $parsed = DictationPromptBuilder::parseResponse($material->getContent());
         }
 
         return $this->render('generator/edit_' . $material->getType() . '.html.twig', [
@@ -626,6 +633,17 @@ class GeneratorController extends AbstractController
                 ],
                 'karta_pracy_' . date('Y-m-d_His') . '.pdf',
             );
+        }
+
+        if ($material->getType() === 'dictation') {
+            $dictData = DictationPromptBuilder::parseResponse($material->getContent());
+            if ($dictData) {
+                return $this->pdf->generateResponse(
+                    'pdf/dictation.html.twig',
+                    ['data' => $dictData, 'showAnswers' => $includeAnswers],
+                    'dyktando_' . date('Y-m-d_His') . '.pdf',
+                );
+            }
         }
 
         // Fallback — generic text PDF

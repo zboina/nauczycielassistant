@@ -1,0 +1,81 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dyktanda — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Generatory AI{% endblock %}
+{% block title_text %}Dyktanda ortograficzne{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_dictation_gen_generate') }}" class="btn btn-primary btn-sm"><i class="ti ti-sparkles me-1"></i>Generuj dyktando</a>
+{% endblock %}
+
+{% block body %}
+<div class="d-flex gap-2 mb-3">
+    <a href="{{ path('app_dictation_gen_index') }}" class="btn btn-sm {{ currentClass is null ? 'btn-primary' : 'btn-outline-primary' }}">Wszystkie</a>
+    {% for cl in ['4','5','6','7','8'] %}
+        <a href="{{ path('app_dictation_gen_index', {class: cl}) }}" class="btn btn-sm {{ currentClass == cl ? 'btn-primary' : 'btn-outline-primary' }}">Kl. {{ cl }}</a>
+    {% endfor %}
+</div>
+
+{% if materials|length > 0 %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table table-hover table-sm">
+            <thead>
+                <tr>
+                    <th>Tytuł</th>
+                    <th style="width:55px;">Kl.</th>
+                    <th style="width:180px;">Info</th>
+                    <th style="width:100px;">Data</th>
+                    <th style="width:120px;" class="text-end">Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in materials %}
+                    {% set infoParts = m.subjectContext ? m.subjectContext|split(' | ') : [] %}
+                    <tr>
+                        <td class="fw-medium">
+                            <a href="{{ path('app_generate_history_show', {id: m.id}) }}" class="text-reset">{{ m.title }}</a>
+                        </td>
+                        <td><span class="badge bg-primary-lt">{{ m.classLevel }}</span></td>
+                        <td>
+                            {% if infoParts|length >= 1 %}
+                                <span class="badge {{ infoParts[0]|default('') == 'testowe' ? 'bg-blue-lt' : 'bg-orange-lt' }}">{{ infoParts[0]|default('') }}</span>
+                            {% endif %}
+                            {% if infoParts|length >= 2 %}
+                                <span class="badge bg-secondary-lt">{{ infoParts[1]|default('') }}</span>
+                            {% endif %}
+                            {% if infoParts|length >= 3 %}
+                                <span class="badge bg-green-lt">{{ infoParts[2]|default('') }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-secondary" style="font-size:.8rem;">{{ m.createdAt|date('d.m.Y') }}</td>
+                        <td class="text-end text-nowrap">
+                            <div class="btn-group">
+                                <a href="{{ path('app_generate_history_show', {id: m.id}) }}" class="btn btn-ghost-primary btn-sm" title="Podgląd"><i class="ti ti-eye"></i></a>
+                                <a href="{{ path('app_generate_history_edit', {id: m.id}) }}" class="btn btn-ghost-blue btn-sm" title="Edytuj"><i class="ti ti-edit"></i></a>
+                                <a href="{{ path('app_generate_history_pdf', {id: m.id}) }}" class="btn btn-ghost-primary btn-sm" target="_blank" title="PDF"><i class="ti ti-file-type-pdf"></i></a>
+                                <form method="post" action="{{ path('app_generate_material_delete', {id: m.id}) }}" class="d-inline" onsubmit="return confirm('Usunąć?')">
+                                    <button class="btn btn-ghost-danger btn-sm"><i class="ti ti-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body">
+        <div class="empty">
+            <div class="empty-icon"><i class="ti ti-writing-sign" style="font-size:2.5rem;"></i></div>
+            <p class="empty-title">Brak zapisanych dyktand</p>
+            <div class="empty-action">
+                <a href="{{ path('app_dictation_gen_generate') }}" class="btn btn-primary"><i class="ti ti-sparkles me-2"></i>Generuj dyktando</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

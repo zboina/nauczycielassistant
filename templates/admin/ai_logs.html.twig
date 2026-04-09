@@ -1,0 +1,104 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Logi AI — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Administracja{% endblock %}
+{% block title_text %}Logi zapytań AI{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_settings') }}" class="btn btn-outline-primary btn-sm"><i class="ti ti-settings me-1"></i>Ustawienia modeli</a>
+{% endblock %}
+
+{% block body %}
+{# Stats #}
+<div class="row g-3 mb-3">
+    <div class="col-md-3">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto"><span class="bg-primary text-white avatar"><i class="ti ti-robot"></i></span></div>
+                    <div class="col"><div class="fw-bold fs-3">{{ stats.totalRequests ?? 0 }}</div><div class="text-secondary small">Zapytań (miesiąc)</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto"><span class="bg-blue text-white avatar"><i class="ti ti-arrow-up"></i></span></div>
+                    <div class="col"><div class="fw-bold fs-3">{{ '%0.0f'|format(((stats.totalTokensIn ?? 0) / 1000)) }}K</div><div class="text-secondary small">Tokeny input</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto"><span class="bg-green text-white avatar"><i class="ti ti-arrow-down"></i></span></div>
+                    <div class="col"><div class="fw-bold fs-3">{{ '%0.0f'|format(((stats.totalTokensOut ?? 0) / 1000)) }}K</div><div class="text-secondary small">Tokeny output</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-auto"><span class="bg-orange text-white avatar"><i class="ti ti-currency-dollar"></i></span></div>
+                    <div class="col"><div class="fw-bold fs-3">${{ '%0.4f'|format(stats.totalCost ?? 0) }}</div><div class="text-secondary small">Koszt (miesiąc)</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Logs table #}
+<div class="card">
+    <div class="card-header"><h3 class="card-title"><i class="ti ti-list me-2"></i>Ostatnie 100 zapytań</h3></div>
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table table-sm table-hover">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Moduł</th>
+                    <th>Model</th>
+                    <th>Użytkownik</th>
+                    <th class="text-end">In</th>
+                    <th class="text-end">Out</th>
+                    <th class="text-end">Koszt</th>
+                    <th class="text-end">Czas</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                    <tr class="{{ log.status == 'error' ? 'bg-red-lt' : '' }}">
+                        <td class="text-secondary" style="font-size:.78rem;">{{ log.createdAt|date('d.m H:i:s') }}</td>
+                        <td><span class="badge bg-blue-lt" style="font-size:.7rem;">{{ log.module }}</span></td>
+                        <td style="font-size:.78rem;">{{ log.model|split('/')|last }}</td>
+                        <td style="font-size:.8rem;">{{ log.owner ? log.owner.fullName : '—' }}</td>
+                        <td class="text-end" style="font-size:.78rem;">{{ log.tokensInput }}</td>
+                        <td class="text-end" style="font-size:.78rem;">{{ log.tokensOutput }}</td>
+                        <td class="text-end fw-medium" style="font-size:.78rem;">
+                            {% if log.costUsd %}
+                                ${{ '%0.6f'|format(log.costUsd) }}
+                            {% else %}
+                                <span class="text-secondary">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end text-secondary" style="font-size:.78rem;">{{ log.durationMs ? (log.durationMs / 1000)|number_format(1) ~ 's' : '—' }}</td>
+                        <td>
+                            {% if log.status == 'success' %}
+                                <span class="badge bg-green-lt">OK</span>
+                            {% else %}
+                                <span class="badge bg-red-lt" title="{{ log.error }}">Błąd</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

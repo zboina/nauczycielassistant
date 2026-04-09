@@ -1,0 +1,99 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Ustawienia AI — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Administracja{% endblock %}
+{% block title_text %}Ustawienia modeli AI{% endblock %}
+
+{% set tierColors = {'budget': 'green', 'standard': 'blue', 'premium': 'orange', 'ultra': 'red'} %}
+{% set tierLabels = {'budget': 'Tani', 'standard': 'Standard', 'premium': 'Premium', 'ultra': 'Ultra'} %}
+
+{% block body %}
+<div class="alert alert-info mb-3">
+    <i class="ti ti-info-circle me-1"></i>
+    Wybierz model AI dla każdego modułu. Pusty = domyślny (Gemini 2.5 Flash).
+    Droższe modele dają lepszą jakość tekstu, szczególnie w dyktandach i konspektach.
+</div>
+
+<form method="post" action="{{ path('app_settings_save') }}">
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title"><i class="ti ti-robot me-2"></i>Modele per moduł</h3>
+            <div class="card-actions">
+                <button type="submit" class="btn btn-success btn-sm"><i class="ti ti-device-floppy me-1"></i>Zapisz</button>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table">
+                <thead>
+                    <tr>
+                        <th>Moduł</th>
+                        <th>Model AI</th>
+                        <th style="width:100px;">Koszt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for module, label in modules %}
+                        {% set currentModel = moduleSettings[module].model|default('') %}
+                        <tr>
+                            <td class="fw-medium">{{ label }}</td>
+                            <td>
+                                <select name="model[{{ module }}]" class="form-select form-select-sm">
+                                    <option value="" {{ currentModel == '' ? 'selected' : '' }}>— Domyślny (Gemini 2.5 Flash) —</option>
+                                    {% for tier in ['budget', 'standard', 'premium', 'ultra'] %}
+                                        <optgroup label="{{ tierLabels[tier]|upper }}">
+                                            {% for modelId, info in availableModels %}
+                                                {% if info.tier == tier %}
+                                                    <option value="{{ modelId }}" {{ currentModel == modelId ? 'selected' : '' }}>
+                                                        {{ info.name }} ({{ info.input }})
+                                                    </option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </optgroup>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                {% if currentModel and availableModels[currentModel] is defined %}
+                                    {% set info = availableModels[currentModel] %}
+                                    <span class="badge bg-{{ tierColors[info.tier] }}-lt">{{ info.input }}</span>
+                                {% else %}
+                                    <span class="badge bg-blue-lt">$0.15/M</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+            <button type="submit" class="btn btn-success"><i class="ti ti-device-floppy me-1"></i>Zapisz ustawienia</button>
+            <button type="button" class="btn btn-outline-secondary" onclick="document.querySelectorAll('select[name^=model]').forEach(s=>s.value='')">
+                <i class="ti ti-refresh me-1"></i>Reset do domyślnych
+            </button>
+        </div>
+    </div>
+</form>
+
+{# Available models reference #}
+<div class="card">
+    <div class="card-header"><h3 class="card-title"><i class="ti ti-list me-2"></i>Dostępne modele — porównanie</h3></div>
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table table-sm">
+            <thead>
+                <tr><th>Model</th><th>Kategoria</th><th>Input</th><th>Output</th><th>Opis</th></tr>
+            </thead>
+            <tbody>
+                {% for modelId, info in availableModels %}
+                    <tr>
+                        <td class="fw-medium">{{ info.name }}</td>
+                        <td><span class="badge bg-{{ tierColors[info.tier] }}-lt">{{ tierLabels[info.tier] }}</span></td>
+                        <td>{{ info.input }}</td>
+                        <td>{{ info.output }}</td>
+                        <td class="text-secondary" style="font-size:.82rem;">{{ info.desc }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -71,7 +71,6 @@ class ScannerController extends AbstractController
                 userPrompt: $userPrompt,
                 systemPrompt: AnswerScannerPromptBuilder::SYSTEM_PROMPT,
                 module: 'answer_scanner',
-                model: 'qwen/qwen2.5-vl-32b-instruct',
                 maxTokens: 2000,
                 owner: $this->getUser(),
                 imageBase64: $base64,

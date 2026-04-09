@@ -1,0 +1,153 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Edycja karty pracy — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Karty pracy{% endblock %}
+{% block title_text %}Edycja karty pracy{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_generate_history_show', {id: material.id}) }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Podgląd</a>
+{% endblock %}
+
+{% block stylesheets %}
+<style>
+    .edit-field { border: 1px dashed transparent; padding: 2px 4px; border-radius: 4px; min-height: 1.5em; cursor: text; transition: border-color .2s; }
+    .edit-field:hover { border-color: #ccc; }
+    .edit-field:focus { border-color: var(--tblr-primary); outline: none; background: #fefef0; }
+    .ex-block { border: 1px solid #e6e8eb; border-radius: .5rem; padding: 1rem; margin-bottom: .75rem; position: relative; transition: box-shadow .2s; }
+    .ex-block:hover { box-shadow: 0 0 0 2px rgba(var(--tblr-primary-rgb),.15); }
+    .ex-block.dragging { opacity: .4; }
+    .ex-block .drag-handle { cursor: grab; color: #aaa; position: absolute; left: -4px; top: 50%; transform: translateY(-50%); }
+    .saved-toast { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div x-data="wsEditor()" x-init="init()">
+    {# Toolbar #}
+    <div class="card mb-3">
+        <div class="card-body py-2 d-flex align-items-center gap-3 flex-wrap">
+            <div class="flex-fill">
+                <span class="fw-bold" contenteditable="true" @blur="wsData.title = $el.innerText" x-text="wsData.title"></span>
+            </div>
+            <span class="badge bg-secondary-lt" x-text="'Ćwiczeń: ' + wsData.exercises.length"></span>
+            <span class="badge bg-primary-lt" x-text="'Razem: ' + totalPoints + ' pkt'"></span>
+            <button class="btn btn-success btn-sm" @click="save()" :disabled="saving">
+                <template x-if="!saving"><span><i class="ti ti-device-floppy me-1"></i>Zapisz</span></template>
+                <template x-if="saving"><span><i class="ti ti-loader ti-spin me-1"></i>Zapisuję...</span></template>
+            </button>
+        </div>
+    </div>
+
+    {# Exercises #}
+    <template x-for="(ex, idx) in wsData.exercises" :key="ex._key">
+        <div class="ex-block" draggable="true"
+             @dragstart="dragIdx=idx; $el.classList.add('dragging')" @dragend="dragIdx=null; $el.classList.remove('dragging')"
+             @dragover.prevent @drop="onDrop(idx)">
+            <div class="drag-handle"><i class="ti ti-grip-vertical"></i></div>
+
+            <div class="d-flex justify-content-between align-items-start mb-2" style="padding-left:16px;">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="badge bg-green-lt" x-text="'Zad. ' + (idx+1)"></span>
+                    <select class="form-select form-select-sm" style="width:auto;" x-model="ex.type">
+                        <option value="fill_blanks">Uzupełnij luki</option>
+                        <option value="open">Otwarte</option>
+                        <option value="choice">Wybór (ABCD)</option>
+                        <option value="true_false">Prawda/Fałsz</option>
+                        <option value="match">Łączenie w pary</option>
+                        <option value="transform">Przekształcanie</option>
+                        <option value="order">Porządkowanie</option>
+                        <option value="text_analysis">Analiza tekstu</option>
+                    </select>
+                    <div class="d-flex align-items-center gap-1">
+                        <input type="number" class="form-control form-control-sm" style="width:55px;" x-model.number="ex.points" min="1" max="10">
+                        <span class="text-secondary small">pkt</span>
+                    </div>
+                </div>
+                <button class="btn btn-ghost-danger btn-sm" @click="wsData.exercises.splice(idx, 1)"><i class="ti ti-trash"></i></button>
+            </div>
+
+            <div style="padding-left:16px;">
+                <div class="text-secondary small mb-1">Instrukcja:</div>
+                <div class="edit-field mb-2" contenteditable="true" @blur="ex.instruction = $el.innerText" x-text="ex.instruction || ''" style="font-style:italic;font-size:.9rem;"></div>
+
+                <div class="text-secondary small mb-1">Treść:</div>
+                <div class="edit-field mb-2" contenteditable="true" @blur="ex.content = $el.innerText" x-text="ex.content || ''" style="font-size:.9rem;"></div>
+
+                {# Answer key #}
+                <div class="text-secondary small mb-1">Klucz odpowiedzi:</div>
+                <div class="edit-field" contenteditable="true" @blur="ex.answer = $el.innerText" x-text="ex.answer || ''" style="font-size:.82rem;color:#555;"></div>
+            </div>
+        </div>
+    </template>
+
+    {# Add buttons #}
+    <div class="d-flex gap-2 justify-content-center mt-3 flex-wrap">
+        <button class="btn btn-outline-green btn-sm" @click="addEx('fill_blanks')"><i class="ti ti-plus me-1"></i>Luki</button>
+        <button class="btn btn-outline-green btn-sm" @click="addEx('open')"><i class="ti ti-plus me-1"></i>Otwarte</button>
+        <button class="btn btn-outline-green btn-sm" @click="addEx('choice')"><i class="ti ti-plus me-1"></i>ABCD</button>
+        <button class="btn btn-outline-green btn-sm" @click="addEx('true_false')"><i class="ti ti-plus me-1"></i>P/F</button>
+        <button class="btn btn-outline-green btn-sm" @click="addEx('match')"><i class="ti ti-plus me-1"></i>Pary</button>
+        <button class="btn btn-outline-purple btn-sm" @click="aiAdd()" :disabled="aiAdding">
+            <template x-if="!aiAdding"><span><i class="ti ti-sparkles me-1"></i>Dogeneruj AI</span></template>
+            <template x-if="aiAdding"><span><i class="ti ti-loader ti-spin me-1"></i>Generuję...</span></template>
+        </button>
+    </div>
+
+    <div class="saved-toast" x-show="showSaved" x-transition.opacity>
+        <div class="alert alert-success py-2 px-3 shadow"><i class="ti ti-check me-1"></i>Zapisano!</div>
+    </div>
+</div>
+
+<script>
+function wsEditor() {
+    var _k = 0;
+    return {
+        wsData: {}, saving: false, showSaved: false, aiAdding: false, dragIdx: null,
+
+        init() {
+            this.wsData = {{ data|json_encode|raw }};
+            if (!this.wsData.exercises) this.wsData.exercises = [];
+            this.wsData.exercises.forEach(function(ex) { ex._key = ++_k; });
+        },
+
+        get totalPoints() { return this.wsData.exercises.reduce(function(s,e){ return s + (e.points||0); }, 0); },
+
+        addEx(type) {
+            this.wsData.exercises.push({ _key: ++_k, type: type, instruction: 'Instrukcja...', content: '', points: 2, answer: '' });
+        },
+
+        onDrop(idx) {
+            if (this.dragIdx === null || this.dragIdx === idx) return;
+            var ex = this.wsData.exercises.splice(this.dragIdx, 1)[0];
+            this.wsData.exercises.splice(idx, 0, ex);
+            this.dragIdx = null;
+        },
+
+        async save() {
+            this.saving = true;
+            var payload = JSON.parse(JSON.stringify(this.wsData));
+            payload.exercises.forEach(function(e) { delete e._key; });
+            payload.totalPoints = this.totalPoints;
+            try {
+                var r = await fetch('{{ path("app_generate_history_api_save", {id: material.id}) }}', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+                var d = await r.json();
+                if (d.ok) { this.showSaved = true; setTimeout(() => this.showSaved = false, 2000); }
+                else alert(d.error);
+            } catch(e) { alert(e.message); }
+            finally { this.saving = false; }
+        },
+
+        async aiAdd() {
+            this.aiAdding = true;
+            try {
+                var r = await fetch('{{ path("app_generate_history_ai_add", {id: material.id}) }}', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({context: this.wsData.title}) });
+                var d = await r.json();
+                if (d.item) { d.item._key = ++_k; this.wsData.exercises.push(d.item); }
+                else alert(d.error);
+            } catch(e) { alert(e.message); }
+            finally { this.aiAdding = false; }
+        }
+    };
+}
+</script>
+{% endblock %}

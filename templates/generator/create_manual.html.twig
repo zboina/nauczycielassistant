@@ -1,0 +1,41 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nowy {{ typeLabel }} — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}{{ typeLabel }}{% endblock %}
+{% block title_text %}Utwórz ręcznie: {{ typeLabel }}{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path(type == 'test' ? 'app_generate_test_index' : 'app_generate_worksheet_index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Lista</a>
+{% endblock %}
+
+{% block body %}
+<div class="row justify-content-center">
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-plus me-2"></i>Nowy {{ typeLabel|lower }}</h3></div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label class="form-label required">Tytuł</label>
+                        <input type="text" name="title" class="form-control" required autofocus placeholder="np. Sprawdzian — Środki stylistyczne kl. 6">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Klasa</label>
+                        <div class="d-flex gap-2">
+                            {% for cl in ['4','5','6','7','8'] %}
+                                <label class="form-selectgroup-item flex-fill">
+                                    <input type="radio" name="classLevel" value="{{ cl }}" class="form-selectgroup-input" {{ cl == '7' ? 'checked' : '' }}>
+                                    <span class="form-selectgroup-label text-center">{{ cl }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="ti ti-plus me-2"></i>Utwórz i przejdź do edytora
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

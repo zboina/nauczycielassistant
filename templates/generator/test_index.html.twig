@@ -5,9 +5,10 @@
 {% block title_text %}Sprawdziany i testy{% endblock %}
 
 {% block page_actions %}
-    <a href="{{ path('app_generate_test') }}" class="btn btn-primary btn-sm">
-        <i class="ti ti-sparkles me-1"></i>Generuj nowy
-    </a>
+    <div class="btn-group">
+        <a href="{{ path('app_generate_test') }}" class="btn btn-primary btn-sm"><i class="ti ti-sparkles me-1"></i>Generuj AI</a>
+        <a href="{{ path('app_generate_create_manual', {type: 'test'}) }}" class="btn btn-outline-primary btn-sm"><i class="ti ti-plus me-1"></i>Nowy ręcznie</a>
+    </div>
 {% endblock %}
 
 {% block body %}

@@ -106,18 +106,28 @@ Uczeń:
 
 ---
 
-## LEKTURY OBOWIĄZKOWE
+## LEKTURY OBOWIĄZKOWE (stan na rok szkolny 2025/2026, Dz.U. 2024 poz. 996)
 
-### Klasy IV-VI
+### Klasy IV-VI — utwory w całości
 1. Jan Brzechwa — *Akademia Pana Kleksa*
 2. Janusz Christa — *Kajko i Kokosz. Szkoła latania* (komiks)
 3. C.S. Lewis — *Opowieści z Narnii. Lew, czarownica i stara szafa*
 4. Ferenc Molnár — *Chłopcy z Placu Broni*
 5. J.R.R. Tolkien — *Hobbit, czyli tam i z powrotem*
 
-Oraz fragmenty/utwory poetyckie: Mikołajek, bajki Krasickiego, Pan Tadeusz (fragmenty), Mazurek Dąbrowskiego, mity greckie, Biblia (fragmenty), podania i legendy polskie, baśnie, wybrane wiersze.
+### Klasy IV-VI — fragmenty / w wyborze
+- René Goscinny, J.J. Sempé — *Mikołajek* (wybrane opowiadania)
+- Ignacy Krasicki — wybrane bajki
+- Adam Mickiewicz — *Pan Tadeusz* (fragmenty)
+- Józef Wybicki — *Mazurek Dąbrowskiego*
+- Maria Konopnicka — *Rota* (NOWA od 2024)
+- Mity greckie (Prometeusz, Syzyf, Dedal i Ikar, Demeter i Kora, Tezeusz, Orfeusz)
+- Biblia — stworzenie świata, przypowieści (o siewcy, o talentach, o synu marnotrawnym, o miłosiernym Samarytaninie)
+- Podania i legendy polskie
+- Baśnie polskie i europejskie
+- Wiersze: Brzechwa, Gałczyński, Kamieńska, Kulmowa, Mickiewicz, Słowacki, Staff, Tuwim, Twardowski
 
-### Klasy VII-VIII
+### Klasy VII-VIII — utwory w całości
 1. Charles Dickens — *Opowieść wigilijna*
 2. Aleksander Fredro — *Zemsta*
 3. Aleksander Kamiński — *Kamienie na szaniec*
@@ -125,7 +135,23 @@ Oraz fragmenty/utwory poetyckie: Mikołajek, bajki Krasickiego, Pan Tadeusz (fra
 5. Antoine de Saint-Exupéry — *Mały Książę*
 6. Juliusz Słowacki — *Balladyna*
 
-Oraz fragmenty/utwory poetyckie: fraszki i pieśni Kochanowskiego, treny VII i VIII, Reduta Ordona, Świtezianka, Pan Tadeusz (ks. I, II, IV, X, XI, XII), Artysta Mrożka, Latarnik, Quo vadis (fragmenty), Syzyfowe prace (fragmenty), wiersze Baczyńskiego, Herberta, Leśmiana, Miłosza, Różewicza, Szymborskiej.
+### Klasy VII-VIII — fragmenty / w wyborze
+- Jan Kochanowski — fraszki, pieśń, *Treny* VII i VIII
+- Adam Mickiewicz — *Reduta Ordona*, *Świtezianka*
+- Adam Mickiewicz — *Pan Tadeusz* (ks. I, II, IV, X, XI, XII) — ZMIANA 2024: wcześniej w całości
+- Sławomir Mrożek — *Artysta*
+- Henryk Sienkiewicz — *Latarnik*
+- Henryk Sienkiewicz — *Quo vadis* (fragmenty) — ZMIANA 2024: wcześniej w całości
+- Stefan Żeromski — *Syzyfowe prace* (fragmenty) — ZMIANA 2024: wcześniej w całości
+- Stanisław Jerzy Lec — aforyzmy (wybór)
+- Wiersze: Baczyński, Herbert, Leśmian, Miłosz, Różewicz, Szymborska (+ poeci z kl. IV-VI)
+
+### Zmiany 2024 (Dz.U. 2024 poz. 996)
+- DODANE: Maria Konopnicka — Rota (kl. IV-VI)
+- USUNIĘTE: Mickiewicz — Powrót taty, Pani Twardowska; Słowacki — W pamiętniku Zofii Bobrówny (IV-VI)
+- USUNIĘTE: Krasicki — Żona modna; Mickiewicz — Śmierć Pułkownika (VII-VIII)
+- Przeniesione do uzupełniających: Prus — Katarynka; Sienkiewicz — W pustyni i w puszczy (IV-VI)
+- Zmiana na fragmenty: Pan Tadeusz (tylko 6 ksiąg), Quo vadis, Syzyfowe prace (VII-VIII)
 
 ---
 

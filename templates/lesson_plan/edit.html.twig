@@ -1,0 +1,150 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Edycja konspektu — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Konspekty lekcji{% endblock %}
+{% block title_text %}Edycja konspektu{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_lesson_plan_show', {id: plan.id}) }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Podgląd</a>
+{% endblock %}
+
+{% block stylesheets %}
+<style>
+    .edit-field { border: 1px dashed transparent; padding: 2px 4px; border-radius: 4px; min-height: 1.5em; cursor: text; }
+    .edit-field:hover { border-color: #ccc; }
+    .edit-field:focus { border-color: var(--tblr-primary); outline: none; background: #fefef0; }
+    .phase-block { border-left: 3px solid var(--tblr-primary); padding-left: .75rem; margin-bottom: 1rem; }
+    .act-row { display: flex; gap: .5rem; align-items: start; margin-bottom: .5rem; }
+    .saved-toast { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div x-data="lpEditor()" x-init="init()">
+    {# Toolbar #}
+    <div class="card mb-3">
+        <div class="card-body py-2 d-flex align-items-center gap-3 flex-wrap">
+            <span class="fw-bold edit-field flex-fill" contenteditable="true" @blur="d.title = $el.innerText" x-text="d.title"></span>
+            <button class="btn btn-success btn-sm" @click="save()" :disabled="saving">
+                <template x-if="!saving"><span><i class="ti ti-device-floppy me-1"></i>Zapisz</span></template>
+                <template x-if="saving"><span><i class="ti ti-loader ti-spin me-1"></i>Zapisuję...</span></template>
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-4">
+            {# Goals #}
+            <div class="card mb-3">
+                <div class="card-header py-2"><h3 class="card-title" style="font-size:.85rem;"><i class="ti ti-target me-2"></i>Cele ogólne</h3></div>
+                <div class="card-body py-2">
+                    <template x-for="(g, i) in d.goalsGeneral || []" :key="i">
+                        <div class="d-flex gap-2 mb-1">
+                            <div class="edit-field flex-fill" contenteditable="true" @blur="d.goalsGeneral[i] = $el.innerText" x-text="g" style="font-size:.85rem;"></div>
+                            <button class="btn btn-ghost-danger btn-sm flex-shrink-0" @click="d.goalsGeneral.splice(i,1)"><i class="ti ti-x"></i></button>
+                        </div>
+                    </template>
+                    <button class="btn btn-outline-primary btn-sm w-100 mt-1" @click="(d.goalsGeneral = d.goalsGeneral||[]).push('Nowy cel...')"><i class="ti ti-plus me-1"></i>Dodaj</button>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header py-2"><h3 class="card-title" style="font-size:.85rem;"><i class="ti ti-list-check me-2"></i>Cele szczegółowe</h3></div>
+                <div class="card-body py-2">
+                    <template x-for="(g, i) in d.goalsSpecific || []" :key="i">
+                        <div class="d-flex gap-2 mb-1">
+                            <div class="edit-field flex-fill" contenteditable="true" @blur="d.goalsSpecific[i] = $el.innerText" x-text="g" style="font-size:.85rem;"></div>
+                            <button class="btn btn-ghost-danger btn-sm flex-shrink-0" @click="d.goalsSpecific.splice(i,1)"><i class="ti ti-x"></i></button>
+                        </div>
+                    </template>
+                    <button class="btn btn-outline-primary btn-sm w-100 mt-1" @click="(d.goalsSpecific = d.goalsSpecific||[]).push('Uczeń...')"><i class="ti ti-plus me-1"></i>Dodaj</button>
+                </div>
+            </div>
+
+            {# Methods & Materials #}
+            <div class="card mb-3">
+                <div class="card-header py-2"><h3 class="card-title" style="font-size:.85rem;"><i class="ti ti-settings me-2"></i>Metody i środki</h3></div>
+                <div class="card-body py-2">
+                    <div class="small text-secondary mb-1">Metody:</div>
+                    <div class="edit-field mb-2" contenteditable="true" @blur="d.methods = $el.innerText.split(',').map(s=>s.trim())" x-text="(d.methods||[]).join(', ')" style="font-size:.85rem;"></div>
+                    <div class="small text-secondary mb-1">Środki dydaktyczne:</div>
+                    <div class="edit-field" contenteditable="true" @blur="d.materials = $el.innerText.split(',').map(s=>s.trim())" x-text="(d.materials||[]).join(', ')" style="font-size:.85rem;"></div>
+                </div>
+            </div>
+
+            {# Footer fields #}
+            <div class="card">
+                <div class="card-header py-2"><h3 class="card-title" style="font-size:.85rem;"><i class="ti ti-notebook me-2"></i>Dodatkowe</h3></div>
+                <div class="card-body py-2">
+                    <div class="small text-secondary mb-1">Praca domowa:</div>
+                    <div class="edit-field mb-2" contenteditable="true" @blur="d.homework = $el.innerText" x-text="d.homework || ''" style="font-size:.85rem;"></div>
+                    <div class="small text-secondary mb-1">Ewaluacja:</div>
+                    <div class="edit-field mb-2" contenteditable="true" @blur="d.evaluation = $el.innerText" x-text="d.evaluation || ''" style="font-size:.85rem;"></div>
+                    <div class="small text-secondary mb-1">Uwagi SPE:</div>
+                    <div class="edit-field mb-2" contenteditable="true" @blur="d.notesForSPE = $el.innerText" x-text="d.notesForSPE || ''" style="font-size:.85rem;"></div>
+                    <div class="small text-secondary mb-1">Uczniowie zdolni:</div>
+                    <div class="edit-field" contenteditable="true" @blur="d.notesForGifted = $el.innerText" x-text="d.notesForGifted || ''" style="font-size:.85rem;"></div>
+                </div>
+            </div>
+        </div>
+
+        {# Phases #}
+        <div class="col-lg-8">
+            <template x-for="(phase, pi) in d.phases || []" :key="pi">
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <div class="d-flex align-items-center gap-2 flex-fill">
+                            <span class="edit-field fw-bold" contenteditable="true" @blur="phase.name = $el.innerText" x-text="phase.name" style="font-size:.9rem;"></span>
+                            <span class="text-secondary">(</span>
+                            <span class="edit-field" contenteditable="true" @blur="phase.duration = $el.innerText" x-text="phase.duration" style="font-size:.85rem;"></span>
+                            <span class="text-secondary">)</span>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn btn-ghost-danger btn-sm" @click="d.phases.splice(pi,1)"><i class="ti ti-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="card-body py-2">
+                        <template x-for="(act, ai) in phase.activities || []" :key="ai">
+                            <div class="act-row">
+                                <input type="text" class="form-control form-control-sm" style="width:70px;flex-shrink:0;" x-model="act.time" placeholder="5 min">
+                                <div class="edit-field flex-fill" contenteditable="true" @blur="act.description = $el.innerText" x-text="act.description" style="font-size:.85rem;"></div>
+                                <button class="btn btn-ghost-danger btn-sm flex-shrink-0" @click="phase.activities.splice(ai,1)"><i class="ti ti-x"></i></button>
+                            </div>
+                        </template>
+                        <button class="btn btn-outline-primary btn-sm w-100" @click="(phase.activities = phase.activities||[]).push({time:'5 min', description:'Nowa aktywność...'})">
+                            <i class="ti ti-plus me-1"></i>Dodaj aktywność
+                        </button>
+                    </div>
+                </div>
+            </template>
+
+            <button class="btn btn-outline-primary w-100" @click="(d.phases = d.phases||[]).push({name:'Nowa faza', duration:'10 min', activities:[]})">
+                <i class="ti ti-plus me-1"></i>Dodaj fazę
+            </button>
+        </div>
+    </div>
+
+    <div class="saved-toast" x-show="showSaved" x-transition.opacity>
+        <div class="alert alert-success py-2 px-3 shadow"><i class="ti ti-check me-1"></i>Zapisano!</div>
+    </div>
+</div>
+
+<script>
+function lpEditor() {
+    return {
+        d: {}, saving: false, showSaved: false,
+        init() { this.d = {{ data|json_encode|raw }}; },
+        async save() {
+            this.saving = true;
+            try {
+                var r = await fetch('{{ path("app_lesson_plan_api_save", {id: plan.id}) }}', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(this.d) });
+                var data = await r.json();
+                if (data.ok) { this.showSaved = true; setTimeout(() => this.showSaved = false, 2000); }
+                else alert(data.error);
+            } catch(e) { alert(e.message); }
+            finally { this.saving = false; }
+        }
+    };
+}
+</script>
+{% endblock %}

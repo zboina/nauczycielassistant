@@ -1,0 +1,162 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Organizuj lektury — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Baza lektur{% endblock %}
+{% block title_text %}Organizuj lektury — przeciągnij między klasami{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_literature_index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Lista lektur</a>
+{% endblock %}
+
+{% block stylesheets %}
+<style>
+    .class-column { min-height: 200px; }
+    .lit-card { cursor: grab; transition: transform .15s, box-shadow .15s; }
+    .lit-card:active { cursor: grabbing; }
+    .lit-card.dragging { opacity: .4; transform: scale(.95); }
+    .class-column.drag-over { background: rgba(26,86,219,.06); border: 2px dashed var(--tblr-primary); border-radius: .5rem; }
+    .drop-indicator { font-size: .8rem; color: #aaa; padding: 2rem 0; text-align: center; }
+</style>
+{% endblock %}
+
+{% set classColors = {'4': 'cyan', '5': 'teal', '6': 'blue', '7': 'green', '8': 'orange'} %}
+
+{% block body %}
+<div class="alert alert-info mb-3">
+    <i class="ti ti-drag-drop me-1"></i>
+    <strong>Przeciągnij</strong> lekturę z jednej klasy do drugiej. Zmiana zapisuje się automatycznie.
+</div>
+
+<div class="row g-3">
+    {% for cl, books in byClass %}
+        {% set color = classColors[cl] %}
+        <div class="col">
+            <div class="card h-100">
+                <div class="card-status-top bg-{{ color }}"></div>
+                <div class="card-header py-2">
+                    <h3 class="card-title">
+                        <span class="badge bg-{{ color }} me-2">{{ cl }}</span>
+                        Klasa {{ cl }}
+                        <span class="badge bg-{{ color }}-lt ms-auto" id="count-{{ cl }}">{{ books|length }}</span>
+                    </h3>
+                </div>
+                <div class="card-body p-2 class-column" data-class="{{ cl }}"
+                     ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+                    {% for lit in books %}
+                        <div class="card card-sm mb-2 lit-card" draggable="true"
+                             data-id="{{ lit.id }}" data-class="{{ cl }}"
+                             ondragstart="onDragStart(event)" ondragend="onDragEnd(event)">
+                            <div class="card-body py-2 px-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="ti ti-grip-vertical text-secondary"></i>
+                                    <div class="flex-fill">
+                                        <div class="fw-medium" style="font-size:.85rem;">{{ lit.title }}</div>
+                                        <div class="text-secondary" style="font-size:.75rem;">{{ lit.author }}</div>
+                                    </div>
+                                    {% if lit.isObligatory %}
+                                        <span class="badge bg-red-lt" style="font-size:.6rem;">obow.</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    {% if books|length == 0 %}
+                        <div class="drop-indicator">Przeciągnij tutaj</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+{# Toast notification #}
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999;" id="toastContainer"></div>
+
+<script>
+var draggedEl = null;
+var draggedId = null;
+
+function onDragStart(e) {
+    draggedEl = e.target.closest('.lit-card');
+    draggedId = draggedEl.dataset.id;
+    draggedEl.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', draggedId);
+}
+
+function onDragEnd(e) {
+    if (draggedEl) draggedEl.classList.remove('dragging');
+    document.querySelectorAll('.class-column').forEach(function(col) {
+        col.classList.remove('drag-over');
+    });
+    draggedEl = null;
+}
+
+function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.classList.add('drag-over');
+}
+
+function onDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+}
+
+function onDrop(e) {
+    e.preventDefault();
+    var col = e.currentTarget;
+    col.classList.remove('drag-over');
+    var newClass = col.dataset.class;
+    var litId = e.dataTransfer.getData('text/plain');
+
+    if (!litId || !newClass || !draggedEl) return;
+    if (draggedEl.dataset.class === newClass) return; // same column
+
+    // Move DOM element
+    var indicator = col.querySelector('.drop-indicator');
+    if (indicator) indicator.remove();
+    col.appendChild(draggedEl);
+    draggedEl.dataset.class = newClass;
+    draggedEl.classList.remove('dragging');
+
+    // Update counts
+    updateCounts();
+
+    // Save via AJAX
+    var fd = new FormData();
+    fd.append('classLevel', newClass);
+    fetch('/literature/' + litId + '/change-class', {
+        method: 'POST',
+        body: fd,
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    }).then(function(r) {
+        if (r.ok) {
+            showToast('Przeniesiono do klasy ' + newClass, 'success');
+        } else {
+            showToast('Błąd zapisu!', 'danger');
+        }
+    }).catch(function() {
+        showToast('Błąd połączenia!', 'danger');
+    });
+}
+
+function updateCounts() {
+    ['4','5','6','7','8'].forEach(function(cl) {
+        var col = document.querySelector('.class-column[data-class="' + cl + '"]');
+        var count = col ? col.querySelectorAll('.lit-card').length : 0;
+        var badge = document.getElementById('count-' + cl);
+        if (badge) badge.textContent = count;
+    });
+}
+
+function showToast(msg, type) {
+    var container = document.getElementById('toastContainer');
+    var toast = document.createElement('div');
+    toast.className = 'alert alert-' + type + ' alert-dismissible fade show py-2 px-3';
+    toast.style.minWidth = '250px';
+    toast.innerHTML = '<i class="ti ti-check me-1"></i>' + msg + '<button class="btn-close btn-close-sm" data-bs-dismiss="alert"></button>';
+    container.appendChild(toast);
+    setTimeout(function() { toast.remove(); }, 3000);
+}
+</script>
+{% endblock %}

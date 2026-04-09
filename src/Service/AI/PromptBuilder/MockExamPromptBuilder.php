@@ -10,6 +10,7 @@ class MockExamPromptBuilder
 {
     public const SYSTEM_PROMPT = <<<'PROMPT'
 Jesteś doświadczonym egzaminatorem CKE, tworzącym arkusze próbne egzaminu ósmoklasisty z języka polskiego.
+KRYTYCZNE: Pisz WYŁĄCZNIE po polsku, alfabetem łacińskim. NIGDY nie używaj cyrylicy ani znaków z innych alfabetów.
 Arkusz musi być REALISTYCZNY — identyczny w strukturze i trudności z prawdziwym egzaminem CKE.
 
 MUSISZ odpowiedzieć WYŁĄCZNIE poprawnym JSON-em (bez markdown, bez ```json, bez komentarzy).

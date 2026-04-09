@@ -6,6 +6,13 @@
 
 {% set classColors = {'4': 'cyan', '5': 'teal', '6': 'blue', '7': 'green', '8': 'orange'} %}
 
+{% block page_actions %}
+    <div class="btn-group">
+        <a href="{{ path('app_literature_add') }}" class="btn btn-primary btn-sm"><i class="ti ti-plus me-1"></i>Dodaj lekturę</a>
+        <a href="{{ path('app_literature_organize') }}" class="btn btn-outline-primary btn-sm"><i class="ti ti-drag-drop me-1"></i>Organizuj</a>
+    </div>
+{% endblock %}
+
 {% block body %}
 {# ── Filters ─────────────────────────── #}
 <div class="card mb-4">

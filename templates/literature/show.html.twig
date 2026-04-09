@@ -114,6 +114,11 @@
                         <i class="ti ti-sparkles me-2"></i> Generuj nowe pytania AI
                     </button>
                 </form>
+                <form method="post" action="{{ path('app_literature_delete', {id: literature.id}) }}" onsubmit="return confirm('Usunąć lekturę i wszystkie pytania?')">
+                    <button type="submit" class="btn btn-outline-danger w-100">
+                        <i class="ti ti-trash me-2"></i>Usuń lekturę
+                    </button>
+                </form>
             </div>
         </div>
     </div>

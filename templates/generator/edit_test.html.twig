@@ -1,0 +1,229 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Edycja sprawdzianu — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Sprawdziany{% endblock %}
+{% block title_text %}Edycja sprawdzianu{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_generate_history_show', {id: material.id}) }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Podgląd</a>
+{% endblock %}
+
+{% block stylesheets %}
+<style>
+    .edit-field { border: 1px dashed transparent; padding: 2px 4px; border-radius: 4px; min-height: 1.5em; cursor: text; transition: border-color .2s; }
+    .edit-field:hover { border-color: #ccc; }
+    .edit-field:focus { border-color: var(--tblr-primary); outline: none; background: #fefef0; }
+    .q-block { border: 1px solid #e6e8eb; border-radius: .5rem; padding: 1rem; margin-bottom: .75rem; position: relative; transition: box-shadow .2s; }
+    .q-block:hover { box-shadow: 0 0 0 2px rgba(var(--tblr-primary-rgb),.15); }
+    .q-block.dragging { opacity: .4; }
+    .q-block .drag-handle { cursor: grab; color: #aaa; position: absolute; left: -4px; top: 50%; transform: translateY(-50%); }
+    .q-block .drag-handle:active { cursor: grabbing; }
+    .opt-row { display: flex; align-items: center; gap: .5rem; margin-bottom: .25rem; }
+    .saved-toast { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div x-data="testEditor()" x-init="init()">
+    {# Toolbar #}
+    <div class="card mb-3">
+        <div class="card-body py-2 d-flex align-items-center gap-3 flex-wrap">
+            <div class="flex-fill">
+                <span class="fw-bold" contenteditable="true" @blur="testData.title = $el.innerText" x-text="testData.title"></span>
+            </div>
+            <span class="badge bg-secondary-lt" x-text="'Pytań: ' + testData.questions.length"></span>
+            <span class="badge bg-primary-lt" x-text="'Razem: ' + totalPoints + ' pkt'"></span>
+            <button class="btn btn-success btn-sm" @click="save()" :disabled="saving">
+                <template x-if="!saving"><span><i class="ti ti-device-floppy me-1"></i>Zapisz</span></template>
+                <template x-if="saving"><span><i class="ti ti-loader ti-spin me-1"></i>Zapisuję...</span></template>
+            </button>
+        </div>
+    </div>
+
+    {# Questions #}
+    <div id="questionsList">
+        <template x-for="(q, idx) in testData.questions" :key="q._key">
+            <div class="q-block" draggable="true"
+                 @dragstart="onDragStart(idx, $event)" @dragend="onDragEnd()"
+                 @dragover.prevent="onDragOver(idx, $event)" @drop="onDrop(idx)">
+                <div class="drag-handle" title="Przeciągnij"><i class="ti ti-grip-vertical"></i></div>
+
+                <div class="d-flex justify-content-between align-items-start mb-2" style="padding-left:16px;">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary-lt" x-text="'Zad. ' + (idx+1)"></span>
+                        <select class="form-select form-select-sm" style="width:auto;" x-model="q.type" @change="onTypeChange(q)">
+                            <option value="closed">Zamknięte (ABCD)</option>
+                            <option value="open">Otwarte</option>
+                            <option value="true_false">Prawda/Fałsz</option>
+                        </select>
+                        <div class="d-flex align-items-center gap-1">
+                            <input type="number" class="form-control form-control-sm" style="width:60px;" x-model.number="q.points" min="1" max="10">
+                            <span class="text-secondary small">pkt</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-ghost-danger btn-sm" @click="removeQuestion(idx)" title="Usuń pytanie">
+                        <i class="ti ti-trash"></i>
+                    </button>
+                </div>
+
+                {# Question text #}
+                <div style="padding-left:16px;">
+                    <div class="edit-field mb-2" contenteditable="true"
+                         @blur="q.text = $el.innerText" x-text="q.text"
+                         style="font-size:.95rem;"></div>
+
+                    {# Closed: options #}
+                    <template x-if="q.type === 'closed'">
+                        <div>
+                            <template x-for="(opt, oi) in q.options || ['','','','']" :key="oi">
+                                <div class="opt-row">
+                                    <span class="badge" :class="q.correct === ['A','B','C','D'][oi] ? 'bg-green' : 'bg-secondary-lt'"
+                                          style="cursor:pointer;width:28px;" @click="q.correct = ['A','B','C','D'][oi]"
+                                          x-text="['A','B','C','D'][oi]"></span>
+                                    <input type="text" class="form-control form-control-sm flex-fill"
+                                           :value="opt" @input="q.options[oi] = $el.value"
+                                           :placeholder="'Opcja ' + ['A','B','C','D'][oi]">
+                                </div>
+                            </template>
+                            <div class="text-secondary small mt-1"><i class="ti ti-info-circle me-1"></i>Kliknij literę, aby ustawić poprawną odpowiedź</div>
+                        </div>
+                    </template>
+
+                    {# Open: lines + answer #}
+                    <template x-if="q.type === 'open'">
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <span class="text-secondary small">Linie na odpowiedź:</span>
+                                <input type="number" class="form-control form-control-sm" style="width:60px;" x-model.number="q.lines" min="1" max="10">
+                            </div>
+                            <div class="text-secondary small mb-1">Model odpowiedzi:</div>
+                            <div class="edit-field" contenteditable="true"
+                                 @blur="q.answer = $el.innerText" x-text="q.answer || ''"
+                                 style="font-size:.85rem;color:#555;"></div>
+                        </div>
+                    </template>
+
+                    {# True/False: correct #}
+                    <template x-if="q.type === 'true_false'">
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm" :class="q.correct === 'P' ? 'btn-success' : 'btn-outline-secondary'" @click="q.correct = 'P'">Prawda</button>
+                            <button class="btn btn-sm" :class="q.correct === 'F' ? 'btn-danger' : 'btn-outline-secondary'" @click="q.correct = 'F'">Fałsz</button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    {# Add buttons #}
+    <div class="d-flex gap-2 justify-content-center mt-3">
+        <button class="btn btn-outline-primary" @click="addQuestion('closed')"><i class="ti ti-plus me-1"></i>ABCD</button>
+        <button class="btn btn-outline-primary" @click="addQuestion('open')"><i class="ti ti-plus me-1"></i>Otwarte</button>
+        <button class="btn btn-outline-primary" @click="addQuestion('true_false')"><i class="ti ti-plus me-1"></i>P/F</button>
+        <button class="btn btn-outline-purple" @click="aiAdd()" :disabled="aiAdding">
+            <template x-if="!aiAdding"><span><i class="ti ti-sparkles me-1"></i>Dogeneruj AI</span></template>
+            <template x-if="aiAdding"><span><i class="ti ti-loader ti-spin me-1"></i>Generuję...</span></template>
+        </button>
+    </div>
+
+    {# Save toast #}
+    <div class="saved-toast" x-show="showSaved" x-transition.opacity>
+        <div class="alert alert-success py-2 px-3 shadow"><i class="ti ti-check me-1"></i>Zapisano!</div>
+    </div>
+</div>
+
+<script>
+function testEditor() {
+    var _keyCounter = 0;
+    return {
+        testData: {},
+        saving: false,
+        showSaved: false,
+        aiAdding: false,
+        dragIdx: null,
+
+        init() {
+            this.testData = {{ data|json_encode|raw }};
+            // Add unique keys for Alpine reactivity
+            this.testData.questions.forEach(function(q) { q._key = ++_keyCounter; });
+            if (!this.testData.questions) this.testData.questions = [];
+        },
+
+        get totalPoints() {
+            return this.testData.questions.reduce(function(s, q) { return s + (q.points || 0); }, 0);
+        },
+
+        onTypeChange(q) {
+            if (q.type === 'closed' && (!q.options || q.options.length < 4)) {
+                q.options = ['', '', '', ''];
+                q.correct = 'A';
+            }
+            if (q.type === 'open' && !q.lines) q.lines = 3;
+            if (q.type === 'true_false' && !q.correct) q.correct = 'P';
+        },
+
+        addQuestion(type) {
+            var q = { _key: ++_keyCounter, type: type, text: 'Nowe pytanie...', points: 1 };
+            if (type === 'closed') { q.options = ['', '', '', '']; q.correct = 'A'; }
+            if (type === 'open') { q.lines = 3; q.answer = ''; }
+            if (type === 'true_false') { q.correct = 'P'; }
+            this.testData.questions.push(q);
+        },
+
+        removeQuestion(idx) {
+            if (confirm('Usunąć pytanie ' + (idx+1) + '?')) {
+                this.testData.questions.splice(idx, 1);
+            }
+        },
+
+        async save() {
+            this.saving = true;
+            var payload = JSON.parse(JSON.stringify(this.testData));
+            // Remove internal keys
+            payload.questions.forEach(function(q) { delete q._key; });
+            payload.totalPoints = this.totalPoints;
+
+            try {
+                var resp = await fetch('{{ path("app_generate_history_api_save", {id: material.id}) }}', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                var data = await resp.json();
+                if (data.ok) { this.showSaved = true; setTimeout(() => this.showSaved = false, 2000); }
+                else { alert('Błąd: ' + (data.error || 'Nieznany')); }
+            } catch(e) { alert('Błąd połączenia: ' + e.message); }
+            finally { this.saving = false; }
+        },
+
+        async aiAdd() {
+            this.aiAdding = true;
+            try {
+                var resp = await fetch('{{ path("app_generate_history_ai_add", {id: material.id}) }}', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({context: this.testData.title})
+                });
+                var data = await resp.json();
+                if (data.item) {
+                    data.item._key = ++_keyCounter;
+                    this.testData.questions.push(data.item);
+                } else { alert(data.error || 'Błąd AI'); }
+            } catch(e) { alert('Błąd: ' + e.message); }
+            finally { this.aiAdding = false; }
+        },
+
+        // Drag & drop
+        onDragStart(idx, e) { this.dragIdx = idx; e.target.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; },
+        onDragEnd() { this.dragIdx = null; document.querySelectorAll('.q-block').forEach(function(el) { el.classList.remove('dragging'); }); },
+        onDragOver(idx, e) { e.dataTransfer.dropEffect = 'move'; },
+        onDrop(idx) {
+            if (this.dragIdx === null || this.dragIdx === idx) return;
+            var q = this.testData.questions.splice(this.dragIdx, 1)[0];
+            this.testData.questions.splice(idx, 0, q);
+            this.dragIdx = null;
+        }
+    };
+}
+</script>
+{% endblock %}

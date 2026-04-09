@@ -10,6 +10,7 @@ use App\Form\GenerateWorksheetType;
 use App\Form\GenerateParentInfoType;
 use App\Repository\GeneratedMaterialRepository;
 use App\Service\AI\OpenRouterClient;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use App\Service\AI\PromptBuilder\TestPromptBuilder;
 use App\Service\AI\PromptBuilder\WorksheetPromptBuilder;
 use App\Service\AI\PromptBuilder\ParentInfoPromptBuilder;
@@ -414,6 +415,54 @@ class GeneratorController extends AbstractController
         return $this->redirectToRoute('app_generate_history_show', ['id' => $material->getId()]);
     }
 
+    // ─── RĘCZNE TWORZENIE ────────────────────────────────────────
+
+    #[Route('/create/{type}', name: 'app_generate_create_manual', requirements: ['type' => 'test|worksheet'])]
+    public function createManual(Request $request, string $type): Response
+    {
+        if ($request->isMethod('POST')) {
+            $title = trim($request->request->get('title', ''));
+            $classLevel = $request->request->get('classLevel', '');
+
+            if ($title === '') {
+                $this->addFlash('error', 'Podaj tytuł.');
+                return $this->redirectToRoute('app_generate_create_manual', ['type' => $type]);
+            }
+
+            $emptyData = match ($type) {
+                'test' => [
+                    'title' => $title,
+                    'totalPoints' => 0,
+                    'questions' => [],
+                ],
+                'worksheet' => [
+                    'title' => $title,
+                    'totalPoints' => 0,
+                    'exercises' => [],
+                ],
+            };
+
+            $material = new GeneratedMaterial();
+            $material->setType($type);
+            $material->setTitle($title);
+            $material->setClassLevel($classLevel);
+            $material->setSubjectContext($title);
+            $material->setContent(json_encode($emptyData, JSON_UNESCAPED_UNICODE));
+            $material->setOwner($this->getUser());
+
+            $this->em->persist($material);
+            $this->em->flush();
+
+            $this->addFlash('success', 'Utworzono "' . $title . '". Dodaj pytania w edytorze.');
+            return $this->redirectToRoute('app_generate_history_edit', ['id' => $material->getId()]);
+        }
+
+        return $this->render('generator/create_manual.html.twig', [
+            'type' => $type,
+            'typeLabel' => $type === 'test' ? 'Sprawdzian' : 'Karta pracy',
+        ]);
+    }
+
     // ─── HISTORIA ──────────────────────────────────────────────
 
     #[Route('/history', name: 'app_generate_history')]
@@ -450,6 +499,93 @@ class GeneratorController extends AbstractController
             'testData' => $testData,
             'wsData' => $wsData,
         ]);
+    }
+
+    #[Route('/history/{id}/edit', name: 'app_generate_history_edit')]
+    public function historyEdit(GeneratedMaterial $material): Response
+    {
+        if ($material->getOwner() !== $this->getUser()) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $parsed = null;
+        if ($material->getType() === 'test') {
+            $parsed = TestPromptBuilder::parseResponse($material->getContent());
+        } elseif ($material->getType() === 'worksheet') {
+            $parsed = WorksheetPromptBuilder::parseResponse($material->getContent());
+        }
+
+        return $this->render('generator/edit_' . $material->getType() . '.html.twig', [
+            'material' => $material,
+            'data' => $parsed,
+        ]);
+    }
+
+    #[Route('/history/{id}/api-save', name: 'app_generate_history_api_save', methods: ['POST'])]
+    public function historyApiSave(Request $request, GeneratedMaterial $material): JsonResponse
+    {
+        if ($material->getOwner() !== $this->getUser()) {
+            return new JsonResponse(['error' => 'Brak dostępu'], 403);
+        }
+
+        $json = $request->getContent();
+        $data = json_decode($json, true);
+        if (!$data) {
+            return new JsonResponse(['error' => 'Nieprawidłowy JSON'], 400);
+        }
+
+        $material->setContent(json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        if (isset($data['title'])) {
+            $material->setTitle($data['title']);
+        }
+        $this->em->flush();
+
+        return new JsonResponse(['ok' => true, 'message' => 'Zapisano']);
+    }
+
+    #[Route('/history/{id}/ai-add-question', name: 'app_generate_history_ai_add', methods: ['POST'])]
+    public function historyAiAddQuestion(Request $request, GeneratedMaterial $material): JsonResponse
+    {
+        if ($material->getOwner() !== $this->getUser()) {
+            return new JsonResponse(['error' => 'Brak dostępu'], 403);
+        }
+
+        $body = json_decode($request->getContent(), true);
+        $context = $body['context'] ?? '';
+        $type = $material->getType();
+
+        $prompt = match ($type) {
+            'test' => "Wygeneruj JEDNO dodatkowe pytanie do sprawdzianu z języka polskiego.\nKontekst: {$context}\nOdpowiedz JSON-em: {\"type\":\"closed|open|true_false\",\"text\":\"...\",\"points\":1,\"options\":[\"A\",\"B\",\"C\",\"D\"],\"correct\":\"A\",\"answer\":\"...\",\"lines\":3}\nTylko JSON, nic więcej.",
+            'worksheet' => "Wygeneruj JEDNO dodatkowe ćwiczenie do karty pracy z języka polskiego.\nKontekst: {$context}\nOdpowiedz JSON-em: {\"type\":\"fill_blanks|open|choice|true_false|match|transform|order\",\"instruction\":\"...\",\"points\":2,\"content\":\"...\"}\nTylko JSON, nic więcej.",
+            default => '',
+        };
+
+        if (!$prompt) {
+            return new JsonResponse(['error' => 'Nieobsługiwany typ'], 400);
+        }
+
+        try {
+            $result = $this->ai->generate(
+                userPrompt: $prompt,
+                systemPrompt: "Jesteś nauczycielem języka polskiego. Odpowiadaj WYŁĄCZNIE JSON-em. Pisz po polsku, alfabetem łacińskim.",
+                module: 'editor_ai_add',
+                maxTokens: 1000,
+                owner: $this->getUser(),
+            );
+
+            $json = trim($result);
+            $json = preg_replace('/^```(?:json)?\s*/i', '', $json);
+            $json = preg_replace('/\s*```$/', '', $json);
+            $item = json_decode(trim($json), true);
+
+            if (!$item) {
+                return new JsonResponse(['error' => 'AI nie zwróciło poprawnego JSON'], 500);
+            }
+
+            return new JsonResponse(['item' => $item]);
+        } catch (\RuntimeException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], 500);
+        }
     }
 
     #[Route('/history/{id}/pdf', name: 'app_generate_history_pdf')]

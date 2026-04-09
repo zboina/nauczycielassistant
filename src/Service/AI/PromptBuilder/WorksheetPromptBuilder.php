@@ -12,6 +12,7 @@ class WorksheetPromptBuilder
 Tworzysz karty pracy dla uczniów klas 4-8 szkoły podstawowej z języka polskiego.
 Ćwiczenia mają być praktyczne, angażujące, z jasną instrukcją.
 Używaj polskiego języka formalnego, dostosowanego do wieku ucznia (9-15 lat).
+KRYTYCZNE: Pisz WYŁĄCZNIE po polsku, alfabetem łacińskim. NIGDY nie używaj cyrylicy ani znaków z innych alfabetów.
 
 MUSISZ odpowiedzieć WYŁĄCZNIE poprawnym JSON-em (bez markdown, bez ```json, bez komentarzy).
 

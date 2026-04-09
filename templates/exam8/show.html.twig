@@ -5,6 +5,7 @@
 {% block title_text %}{{ exam.title }}{% endblock %}
 
 {% block page_actions %}
+    <a href="{{ path('app_exam8_edit', {id: exam.id}) }}" class="btn btn-primary btn-sm"><i class="ti ti-edit me-1"></i>Edytuj</a>
     <a href="{{ path('app_exam8_index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Lista</a>
 {% endblock %}
 

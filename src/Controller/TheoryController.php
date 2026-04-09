@@ -43,19 +43,21 @@ class TheoryController extends AbstractController
                 'charakterystyka', 'tekst argumentacyjny',
             ],
             'readings' => [
-                ['author' => 'Jan Brzechwa', 'title' => 'Akademia Pana Kleksa', 'class' => '4'],
-                ['author' => 'Janusz Christa', 'title' => 'Kajko i Kokosz. Szkoła latania (komiks)', 'class' => '4-5'],
-                ['author' => 'C.S. Lewis', 'title' => 'Opowieści z Narnii. Lew, czarownica i stara szafa', 'class' => '5'],
-                ['author' => 'Ferenc Molnár', 'title' => 'Chłopcy z Placu Broni', 'class' => '5'],
-                ['author' => 'J.R.R. Tolkien', 'title' => 'Hobbit, czyli tam i z powrotem', 'class' => '5-6'],
-                ['author' => 'Henryk Sienkiewicz', 'title' => 'W pustyni i w puszczy', 'class' => '4'],
-                ['author' => '', 'title' => 'Mity greckie (wybór)', 'class' => '5-6'],
-                ['author' => '', 'title' => 'Biblia — fragmenty (stworzenie świata, potop, przypowieści)', 'class' => '5-6'],
-                ['author' => '', 'title' => 'Podania i legendy polskie', 'class' => '4'],
-                ['author' => '', 'title' => 'Baśnie (Perrault, Grimm, Andersen)', 'class' => '4'],
-                ['author' => 'Ignacy Krasicki', 'title' => 'Bajki (wybór)', 'class' => '5-6'],
-                ['author' => 'Adam Mickiewicz', 'title' => 'Pan Tadeusz — fragmenty', 'class' => '6'],
-                ['author' => '', 'title' => 'Wybrane wiersze (Tuwim, Brzechwa, Konopnicka, Staff)', 'class' => '4-6'],
+                ['author' => 'Jan Brzechwa', 'title' => 'Akademia Pana Kleksa', 'class' => '4-6', 'type' => 'całość'],
+                ['author' => 'Janusz Christa', 'title' => 'Kajko i Kokosz. Szkoła latania', 'class' => '4-6', 'type' => 'całość'],
+                ['author' => 'C.S. Lewis', 'title' => 'Opowieści z Narnii. Lew, czarownica i stara szafa', 'class' => '4-6', 'type' => 'całość'],
+                ['author' => 'Ferenc Molnár', 'title' => 'Chłopcy z Placu Broni', 'class' => '4-6', 'type' => 'całość'],
+                ['author' => 'J.R.R. Tolkien', 'title' => 'Hobbit, czyli tam i z powrotem', 'class' => '4-6', 'type' => 'całość'],
+                ['author' => 'R. Goscinny, J.J. Sempé', 'title' => 'Mikołajek (wybrane opowiadania)', 'class' => '4-6', 'type' => 'fragmenty'],
+                ['author' => 'Ignacy Krasicki', 'title' => 'Bajki (wybór)', 'class' => '5-6', 'type' => 'fragmenty'],
+                ['author' => 'Adam Mickiewicz', 'title' => 'Pan Tadeusz — fragmenty', 'class' => '6', 'type' => 'fragmenty'],
+                ['author' => 'Józef Wybicki', 'title' => 'Mazurek Dąbrowskiego', 'class' => '4-6', 'type' => 'fragmenty'],
+                ['author' => 'Maria Konopnicka', 'title' => 'Rota', 'class' => '4-6', 'type' => 'fragmenty'],
+                ['author' => '', 'title' => 'Mity greckie (Prometeusz, Syzyf, Dedal i Ikar, Orfeusz i in.)', 'class' => '5-6', 'type' => 'fragmenty'],
+                ['author' => '', 'title' => 'Biblia — stworzenie świata, przypowieści ewangeliczne', 'class' => '5-6', 'type' => 'fragmenty'],
+                ['author' => '', 'title' => 'Podania i legendy polskie', 'class' => '4', 'type' => 'fragmenty'],
+                ['author' => '', 'title' => 'Baśnie polskie i europejskie', 'class' => '4', 'type' => 'fragmenty'],
+                ['author' => '', 'title' => 'Wiersze: Brzechwa, Gałczyński, Kamieńska, Kulmowa, Mickiewicz, Słowacki, Staff, Tuwim, Twardowski', 'class' => '4-6', 'type' => 'wiersze'],
             ],
         ],
         '7-8' => [
@@ -84,22 +86,21 @@ class TheoryController extends AbstractController
                 'przemówienie', 'wywiad', 'streszczenie', 'charakterystyka porównawcza',
             ],
             'readings' => [
-                ['author' => 'Charles Dickens', 'title' => 'Opowieść wigilijna', 'class' => '7'],
-                ['author' => 'Aleksander Fredro', 'title' => 'Zemsta', 'class' => '7'],
-                ['author' => 'Aleksander Kamiński', 'title' => 'Kamienie na szaniec', 'class' => '7-8'],
-                ['author' => 'Adam Mickiewicz', 'title' => 'Dziady część II', 'class' => '7'],
-                ['author' => 'Antoine de Saint-Exupéry', 'title' => 'Mały Książę', 'class' => '7'],
-                ['author' => 'Juliusz Słowacki', 'title' => 'Balladyna', 'class' => '8'],
-                ['author' => 'Jan Kochanowski', 'title' => 'Fraszki, Pieśni, Treny VII i VIII', 'class' => '8'],
-                ['author' => 'Adam Mickiewicz', 'title' => 'Świtezianka, Reduta Ordona', 'class' => '7-8'],
-                ['author' => 'Adam Mickiewicz', 'title' => 'Pan Tadeusz (ks. I, II, IV, X, XI, XII)', 'class' => '8'],
-                ['author' => 'Henryk Sienkiewicz', 'title' => 'Latarnik', 'class' => '8'],
-                ['author' => 'Henryk Sienkiewicz', 'title' => 'Quo vadis — fragmenty', 'class' => '8'],
-                ['author' => 'Stefan Żeromski', 'title' => 'Syzyfowe prace — fragmenty', 'class' => '8'],
-                ['author' => 'Sławomir Mrożek', 'title' => 'Artysta', 'class' => '7-8'],
-                ['author' => 'Zofia Nałkowska', 'title' => 'Medaliony — fragmenty', 'class' => '8'],
-                ['author' => 'Hanna Krall', 'title' => 'Zdążyć przed Panem Bogiem', 'class' => '8'],
-                ['author' => '', 'title' => 'Wiersze: Baczyński, Herbert, Leśmian, Miłosz, Różewicz, Szymborska', 'class' => '7-8'],
+                ['author' => 'Charles Dickens', 'title' => 'Opowieść wigilijna', 'class' => '7', 'type' => 'całość'],
+                ['author' => 'Aleksander Fredro', 'title' => 'Zemsta', 'class' => '7', 'type' => 'całość'],
+                ['author' => 'Aleksander Kamiński', 'title' => 'Kamienie na szaniec', 'class' => '7-8', 'type' => 'całość'],
+                ['author' => 'Adam Mickiewicz', 'title' => 'Dziady część II', 'class' => '7', 'type' => 'całość'],
+                ['author' => 'Antoine de Saint-Exupéry', 'title' => 'Mały Książę', 'class' => '7', 'type' => 'całość'],
+                ['author' => 'Juliusz Słowacki', 'title' => 'Balladyna', 'class' => '8', 'type' => 'całość'],
+                ['author' => 'Jan Kochanowski', 'title' => 'Fraszki, pieśni, Treny VII i VIII', 'class' => '8', 'type' => 'fragmenty'],
+                ['author' => 'Adam Mickiewicz', 'title' => 'Reduta Ordona, Świtezianka', 'class' => '7-8', 'type' => 'fragmenty'],
+                ['author' => 'Adam Mickiewicz', 'title' => 'Pan Tadeusz (ks. I, II, IV, X, XI, XII)', 'class' => '8', 'type' => 'fragmenty'],
+                ['author' => 'Sławomir Mrożek', 'title' => 'Artysta', 'class' => '7-8', 'type' => 'fragmenty'],
+                ['author' => 'Henryk Sienkiewicz', 'title' => 'Latarnik', 'class' => '8', 'type' => 'fragmenty'],
+                ['author' => 'Henryk Sienkiewicz', 'title' => 'Quo vadis — fragmenty', 'class' => '8', 'type' => 'fragmenty'],
+                ['author' => 'Stefan Żeromski', 'title' => 'Syzyfowe prace — fragmenty', 'class' => '8', 'type' => 'fragmenty'],
+                ['author' => 'Stanisław Jerzy Lec', 'title' => 'Aforyzmy (wybór)', 'class' => '7-8', 'type' => 'fragmenty'],
+                ['author' => '', 'title' => 'Wiersze: Baczyński, Herbert, Leśmian, Miłosz, Różewicz, Szymborska + poeci z kl. IV-VI', 'class' => '7-8', 'type' => 'wiersze'],
             ],
         ],
     ];
@@ -315,6 +316,12 @@ class TheoryController extends AbstractController
             'otherGroup' => $group === '4-6' ? '7-8' : '4-6',
             'otherLabel' => $group === '4-6' ? 'Klasy VII–VIII' : 'Klasy IV–VI',
         ]);
+    }
+
+    #[Route('/readings', name: 'app_theory_readings')]
+    public function readings(): Response
+    {
+        return $this->render('theory/readings.html.twig');
     }
 
     #[Route('/genres', name: 'app_theory_genres')]

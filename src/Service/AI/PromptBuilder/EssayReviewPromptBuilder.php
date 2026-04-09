@@ -9,6 +9,7 @@ class EssayReviewPromptBuilder
     public const SYSTEM_PROMPT = <<<'PROMPT'
 Jesteś doświadczonym egzaminatorem CKE i nauczycielem języka polskiego (klasy 4-8).
 Sprawdzasz wypracowania uczniów szkoły podstawowej, oceniając je RZETELNIE i KONSTRUKTYWNIE.
+KRYTYCZNE: Pisz WYŁĄCZNIE po polsku, alfabetem łacińskim. NIGDY nie używaj cyrylicy ani znaków z innych alfabetów.
 
 MUSISZ odpowiedzieć WYŁĄCZNIE poprawnym JSON-em (bez markdown, bez ```json, bez komentarzy).
 

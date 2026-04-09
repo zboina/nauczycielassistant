@@ -12,6 +12,7 @@ class TestPromptBuilder
 Jesteś doświadczonym nauczycielem języka polskiego w polskiej szkole podstawowej (klasy 4-8).
 Tworzysz sprawdziany zgodne z podstawą programową MEN.
 Używaj polskiego języka formalnego, dostosowanego do wieku ucznia (9-15 lat).
+KRYTYCZNE: Pisz WYŁĄCZNIE po polsku, alfabetem łacińskim. NIGDY nie używaj cyrylicy ani znaków z innych alfabetów.
 
 MUSISZ odpowiedzieć WYŁĄCZNIE poprawnym JSON-em (bez markdown, bez ```json, bez komentarzy).
 

@@ -1,0 +1,137 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Edycja arkusza — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Egzamin ósmoklasisty{% endblock %}
+{% block title_text %}Edycja arkusza próbnego{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_exam8_show', {id: exam.id}) }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Podgląd</a>
+{% endblock %}
+
+{% block stylesheets %}
+<style>
+    .edit-field { border: 1px dashed transparent; padding: 2px 4px; border-radius: 4px; min-height: 1.5em; cursor: text; }
+    .edit-field:hover { border-color: #ccc; }
+    .edit-field:focus { border-color: var(--tblr-primary); outline: none; background: #fefef0; }
+    .q-block { border: 1px solid #e6e8eb; border-radius: .5rem; padding: .75rem; margin-bottom: .5rem; }
+    .saved-toast { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div x-data="examEditor()" x-init="init()">
+    <div class="card mb-3">
+        <div class="card-body py-2 d-flex align-items-center gap-3 flex-wrap">
+            <span class="fw-bold edit-field flex-fill" contenteditable="true" @blur="d.title = $el.innerText" x-text="d.title"></span>
+            <button class="btn btn-success btn-sm" @click="save()" :disabled="saving">
+                <template x-if="!saving"><span><i class="ti ti-device-floppy me-1"></i>Zapisz</span></template>
+                <template x-if="saving"><span><i class="ti ti-loader ti-spin me-1"></i>Zapisuję...</span></template>
+            </button>
+        </div>
+    </div>
+
+    {# Parts #}
+    <template x-for="(part, pi) in d.parts || []" :key="pi">
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <span class="edit-field fw-bold" contenteditable="true" @blur="part.name = $el.innerText" x-text="part.name"></span>
+                <div class="card-actions">
+                    <button class="btn btn-ghost-danger btn-sm" @click="d.parts.splice(pi,1)"><i class="ti ti-trash"></i></button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="small text-secondary mb-1">Tekst źródłowy:</div>
+                <div class="edit-field mb-2 border rounded p-2 bg-light" contenteditable="true" @blur="part.text = $el.innerText" x-text="part.text || ''" style="font-size:.9rem;font-style:italic;min-height:60px;"></div>
+                <div class="d-flex gap-2 mb-3">
+                    <div class="small text-secondary">Autor/źródło:</div>
+                    <div class="edit-field flex-fill" contenteditable="true" @blur="part.textAuthor = $el.innerText" x-text="part.textAuthor || ''" style="font-size:.85rem;"></div>
+                </div>
+
+                {# Questions #}
+                <template x-for="(q, qi) in part.questions || []" :key="qi">
+                    <div class="q-block">
+                        <div class="d-flex gap-2 align-items-center mb-2">
+                            <span class="badge bg-blue-lt" x-text="'Zad. ' + q.number"></span>
+                            <select class="form-select form-select-sm" style="width:auto;" x-model="q.type">
+                                <option value="closed">ABCD</option>
+                                <option value="open_short">Otwarte krótkie</option>
+                                <option value="open_long">Otwarte długie</option>
+                            </select>
+                            <input type="number" class="form-control form-control-sm" style="width:55px;" x-model.number="q.points" min="1">
+                            <span class="text-secondary small">pkt</span>
+                            <button class="btn btn-ghost-danger btn-sm ms-auto" @click="part.questions.splice(qi,1)"><i class="ti ti-trash"></i></button>
+                        </div>
+                        <div class="edit-field mb-2" contenteditable="true" @blur="q.text = $el.innerText" x-text="q.text" style="font-size:.9rem;"></div>
+
+                        <template x-if="q.type === 'closed'">
+                            <div>
+                                <template x-for="(opt, oi) in q.options || []" :key="oi">
+                                    <div class="d-flex gap-2 mb-1 align-items-center">
+                                        <span class="badge" style="cursor:pointer;width:24px;" :class="q.correct === opt.charAt(0) ? 'bg-green' : 'bg-secondary-lt'" @click="q.correct = opt.charAt(0)" x-text="opt.charAt(0)"></span>
+                                        <input type="text" class="form-control form-control-sm flex-fill" :value="opt" @input="q.options[oi] = $el.value">
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                        <template x-if="q.type !== 'closed'">
+                            <div>
+                                <div class="small text-secondary">Model odpowiedzi:</div>
+                                <div class="edit-field" contenteditable="true" @blur="q.answer = $el.innerText" x-text="q.answer || ''" style="font-size:.82rem;color:#555;"></div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+                <button class="btn btn-outline-primary btn-sm w-100" @click="addQ(part)"><i class="ti ti-plus me-1"></i>Dodaj pytanie</button>
+            </div>
+        </div>
+    </template>
+
+    {# Essay topics #}
+    <template x-if="d.essayTopics && d.essayTopics.length > 0">
+        <div class="card mb-3">
+            <div class="card-header py-2"><h3 class="card-title">Tematy wypracowań</h3></div>
+            <div class="card-body">
+                <template x-for="(t, ti) in d.essayTopics" :key="ti">
+                    <div class="border rounded p-2 mb-2">
+                        <div class="d-flex gap-2 mb-1">
+                            <select class="form-select form-select-sm" style="width:auto;" x-model="t.type">
+                                <option value="rozprawka">Rozprawka</option>
+                                <option value="opowiadanie">Opowiadanie</option>
+                            </select>
+                            <button class="btn btn-ghost-danger btn-sm ms-auto" @click="d.essayTopics.splice(ti,1)"><i class="ti ti-trash"></i></button>
+                        </div>
+                        <div class="edit-field" contenteditable="true" @blur="t.topic = $el.innerText" x-text="t.topic" style="font-size:.9rem;"></div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </template>
+
+    <div class="saved-toast" x-show="showSaved" x-transition.opacity>
+        <div class="alert alert-success py-2 px-3 shadow"><i class="ti ti-check me-1"></i>Zapisano!</div>
+    </div>
+</div>
+
+<script>
+function examEditor() {
+    return {
+        d: {}, saving: false, showSaved: false,
+        init() { this.d = {{ data|json_encode|raw }}; },
+        addQ(part) {
+            var n = (part.questions||[]).length + 1;
+            (part.questions = part.questions||[]).push({number: n, type:'closed', text:'Nowe pytanie...', points:1, options:['A) ','B) ','C) ','D) '], correct:'A'});
+        },
+        async save() {
+            this.saving = true;
+            try {
+                var r = await fetch('{{ path("app_exam8_api_save", {id: exam.id}) }}', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(this.d) });
+                var data = await r.json();
+                if (data.ok) { this.showSaved = true; setTimeout(() => this.showSaved = false, 2000); }
+                else alert(data.error);
+            } catch(e) { alert(e.message); }
+            finally { this.saving = false; }
+        }
+    };
+}
+</script>
+{% endblock %}

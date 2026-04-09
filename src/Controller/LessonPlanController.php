@@ -14,6 +14,7 @@ use App\Service\DocxGenerator;
 use App\Service\PdfGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -223,6 +224,72 @@ PROMPT;
             ['plan' => $plan, 'lpData' => $lpData],
             'konspekt_' . date('Y-m-d_His') . '.pdf',
         );
+    }
+
+    #[Route('/create-manual', name: 'app_lesson_plan_create_manual')]
+    public function createManual(Request $request): Response
+    {
+        if ($request->isMethod('POST')) {
+            $title = trim($request->request->get('title', ''));
+            $classLevel = $request->request->get('classLevel', '');
+            if ($title === '') {
+                $this->addFlash('error', 'Podaj tytuł.');
+                return $this->redirectToRoute('app_lesson_plan_create_manual');
+            }
+
+            $emptyData = [
+                'title' => $title,
+                'classLevel' => $classLevel,
+                'duration' => 45,
+                'goalsGeneral' => [],
+                'goalsSpecific' => [],
+                'methods' => [],
+                'materials' => [],
+                'phases' => [
+                    ['name' => 'Faza wstępna', 'duration' => '5 min', 'activities' => []],
+                    ['name' => 'Faza realizacji', 'duration' => '30 min', 'activities' => []],
+                    ['name' => 'Faza podsumowująca', 'duration' => '10 min', 'activities' => []],
+                ],
+                'homework' => '',
+                'evaluation' => '',
+            ];
+
+            $plan = new LessonPlan();
+            $plan->setTitle($title);
+            $plan->setClassLevel($classLevel);
+            $plan->setLessonTopic($title);
+            $plan->setContent(json_encode($emptyData, JSON_UNESCAPED_UNICODE));
+            $plan->setDurationMinutes(45);
+            $plan->setOwner($this->getUser());
+
+            $this->em->persist($plan);
+            $this->em->flush();
+
+            $this->addFlash('success', 'Utworzono konspekt. Uzupełnij w edytorze.');
+            return $this->redirectToRoute('app_lesson_plan_edit', ['id' => $plan->getId()]);
+        }
+
+        return $this->render('lesson_plan/create_manual.html.twig');
+    }
+
+    #[Route('/{id}/edit', name: 'app_lesson_plan_edit', requirements: ['id' => '\d+'])]
+    public function edit(LessonPlan $plan): Response
+    {
+        if ($plan->getOwner() !== $this->getUser()) { throw $this->createAccessDeniedException(); }
+        $lpData = LessonPlanPromptBuilder::parseResponse($plan->getContent());
+        return $this->render('lesson_plan/edit.html.twig', ['plan' => $plan, 'data' => $lpData]);
+    }
+
+    #[Route('/{id}/api-save', name: 'app_lesson_plan_api_save', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function apiSave(Request $request, LessonPlan $plan): JsonResponse
+    {
+        if ($plan->getOwner() !== $this->getUser()) { return new JsonResponse(['error' => 'Brak dostępu'], 403); }
+        $data = json_decode($request->getContent(), true);
+        if (!$data) { return new JsonResponse(['error' => 'Nieprawidłowy JSON'], 400); }
+        $plan->setContent(json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        if (isset($data['title'])) { $plan->setTitle($data['title']); }
+        $this->em->flush();
+        return new JsonResponse(['ok' => true]);
     }
 
     #[Route('/{id}/docx', name: 'app_lesson_plan_docx', requirements: ['id' => '\d+'])]

@@ -13,6 +13,7 @@ use App\Service\DocxGenerator;
 use App\Service\PdfGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -133,6 +134,77 @@ class MockExamController extends AbstractController
             ['exam' => $exam, 'data' => $exam->getExamContent(), 'showAnswers' => $showAnswers],
             'egzamin_probny_' . date('Y-m-d') . '.pdf',
         );
+    }
+
+    #[Route('/create-manual', name: 'app_exam8_create_manual')]
+    public function createManual(Request $request): Response
+    {
+        if ($request->isMethod('POST')) {
+            $title = trim($request->request->get('title', ''));
+            if ($title === '') {
+                $this->addFlash('error', 'Podaj tytuł.');
+                return $this->redirectToRoute('app_exam8_create_manual');
+            }
+
+            $emptyData = [
+                'title' => $title,
+                'totalPoints' => 0,
+                'parts' => [
+                    ['name' => 'Część 1 — Tekst literacki', 'text' => '', 'textAuthor' => '', 'questions' => []],
+                    ['name' => 'Część 2 — Tekst nieliteracki', 'text' => '', 'textAuthor' => '', 'questions' => []],
+                ],
+                'essayTopics' => [
+                    ['type' => 'rozprawka', 'topic' => '', 'minWords' => 200],
+                    ['type' => 'opowiadanie', 'topic' => '', 'minWords' => 200],
+                ],
+                'essayMaxPoints' => 20,
+            ];
+
+            $exam = new MockExam();
+            $exam->setTitle($title);
+            $exam->setClassLevel($request->request->get('classLevel', '8'));
+            $exam->setExamType('full');
+            $exam->setExamContent($emptyData);
+            $exam->setAnswerKey([]);
+            $exam->setOwner($this->getUser());
+
+            $this->em->persist($exam);
+            $this->em->flush();
+
+            $this->addFlash('success', 'Utworzono arkusz. Uzupełnij w edytorze.');
+            return $this->redirectToRoute('app_exam8_edit', ['id' => $exam->getId()]);
+        }
+
+        return $this->render('exam8/create_manual.html.twig');
+    }
+
+    #[Route('/{id}/edit', name: 'app_exam8_edit', requirements: ['id' => '\d+'])]
+    public function edit(MockExam $exam): Response
+    {
+        if ($exam->getOwner() !== $this->getUser()) { throw $this->createAccessDeniedException(); }
+        return $this->render('exam8/edit.html.twig', ['exam' => $exam, 'data' => $exam->getExamContent()]);
+    }
+
+    #[Route('/{id}/api-save', name: 'app_exam8_api_save', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function apiSave(Request $request, MockExam $exam): JsonResponse
+    {
+        if ($exam->getOwner() !== $this->getUser()) { return new JsonResponse(['error' => 'Brak dostępu'], 403); }
+        $data = json_decode($request->getContent(), true);
+        if (!$data) { return new JsonResponse(['error' => 'Nieprawidłowy JSON'], 400); }
+        $exam->setExamContent($data);
+        if (isset($data['title'])) { $exam->setTitle($data['title']); }
+        // Rebuild answer key
+        $answerKey = [];
+        foreach ($data['parts'] ?? [] as $part) {
+            foreach ($part['questions'] ?? [] as $q) {
+                if (($q['type'] ?? '') === 'closed' && isset($q['correct'])) {
+                    $answerKey[(string) $q['number']] = $q['correct'];
+                }
+            }
+        }
+        $exam->setAnswerKey($answerKey);
+        $this->em->flush();
+        return new JsonResponse(['ok' => true]);
     }
 
     #[Route('/{id}/docx', name: 'app_exam8_docx', requirements: ['id' => '\d+'])]

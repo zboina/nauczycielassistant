@@ -1,0 +1,48 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dodaj lekturę — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Baza lektur{% endblock %}
+{% block title_text %}Dodaj nową lekturę{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_literature_index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Lista lektur</a>
+{% endblock %}
+
+{% block body %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-stamp"><div class="card-stamp-icon bg-green"><i class="ti ti-sparkles"></i></div></div>
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-book-2 me-2"></i>Dodaj lekturę z AI</h3></div>
+            <div class="card-body">
+                <div class="alert alert-info mb-3">
+                    <i class="ti ti-info-circle me-1"></i>
+                    Podaj tytuł i klasę — AI automatycznie doda autora, streszczenie, bohaterów, motywy i pytania.
+                </div>
+
+                <form method="post" action="{{ path('app_literature_add') }}" data-ai-loading="Trwa generowanie danych o lekturze...">
+                    <div class="mb-3">
+                        <label class="form-label required">Tytuł lektury</label>
+                        <input type="text" name="title" class="form-control form-control-lg" required autofocus
+                               placeholder="np. W pustyni i w puszczy, Mały Książę, Balladyna...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label required">Klasa</label>
+                        <div class="d-flex gap-2">
+                            {% for cl in ['4','5','6','7','8'] %}
+                                <label class="form-selectgroup-item flex-fill">
+                                    <input type="radio" name="classLevel" value="{{ cl }}" class="form-selectgroup-input" {{ cl == '7' ? 'checked' : '' }}>
+                                    <span class="form-selectgroup-label text-center">Kl. {{ cl }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="ti ti-sparkles me-2"></i>Dodaj lekturę
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

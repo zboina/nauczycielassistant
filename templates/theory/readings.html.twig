@@ -1,0 +1,260 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Lektury 2025/2026 — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Teoria{% endblock %}
+{% block title_text %}Lista lektur obowiązkowych i uzupełniających 2025/2026{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ path('app_theory_index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Teoria</a>
+{% endblock %}
+
+{% block body %}
+<div class="alert alert-info mb-4">
+    <div class="d-flex align-items-center gap-2">
+        <i class="ti ti-info-circle flex-shrink-0"></i>
+        <div>
+            <strong>Podstawa prawna:</strong> Rozporządzenie MEN z 28 czerwca 2024 r. (Dz.U. 2024 poz. 996).
+            Obowiązuje w roku szkolnym 2025/2026 (okres przejściowy do nowej PP od 1.09.2026).
+        </div>
+    </div>
+</div>
+
+{# ═══ KLASY IV-VI — OBOWIĄZKOWE ═══ #}
+<div class="card mb-4">
+    <div class="card-status-start bg-blue"></div>
+    <div class="card-header">
+        <h3 class="card-title"><i class="ti ti-book-2 me-2"></i>Klasy IV–VI — Lektury obowiązkowe</h3>
+    </div>
+    <div class="card-body p-0">
+        <h4 class="px-3 pt-3 pb-1 text-uppercase text-secondary" style="font-size:.75rem;letter-spacing:.05em;">Utwory w całości</h4>
+        <div class="list-group list-group-flush">
+            {% set mandatory46 = [
+                {author: 'Jan Brzechwa', title: 'Akademia Pana Kleksa'},
+                {author: 'Janusz Christa', title: 'Kajko i Kokosz. Szkoła latania (komiks)'},
+                {author: 'C.S. Lewis', title: 'Opowieści z Narnii. Lew, czarownica i stara szafa'},
+                {author: 'Ferenc Molnár', title: 'Chłopcy z Placu Broni'},
+                {author: 'J.R.R. Tolkien', title: 'Hobbit, czyli tam i z powrotem'},
+            ] %}
+            {% for r in mandatory46 %}
+                <div class="list-group-item">
+                    <div class="fw-medium">{{ r.title }}</div>
+                    <div class="text-secondary small">{{ r.author }}</div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <h4 class="px-3 pt-3 pb-1 text-uppercase text-secondary" style="font-size:.75rem;letter-spacing:.05em;">Fragmenty / w wyborze</h4>
+        <div class="list-group list-group-flush">
+            {% set fragments46 = [
+                {author: 'René Goscinny, Jean-Jacques Sempé', title: 'Mikołajek (wybrane opowiadania)'},
+                {author: 'Ignacy Krasicki', title: 'Bajki (wybór)'},
+                {author: 'Adam Mickiewicz', title: 'Pan Tadeusz (fragmenty)'},
+                {author: 'Józef Wybicki', title: 'Mazurek Dąbrowskiego'},
+                {author: 'Maria Konopnicka', title: 'Rota', note: 'NOWA od 2024'},
+                {author: '', title: 'Mity greckie: Prometeusz, Syzyf, Demeter i Kora, Dedal i Ikar, Tezeusz i Ariadna, Orfeusz i Eurydyka'},
+                {author: '', title: 'Biblia — stworzenie świata i człowieka, przypowieści: o siewcy, o talentach, o synu marnotrawnym, o miłosiernym Samarytaninie'},
+                {author: '', title: 'Podania i legendy polskie (wybór)'},
+                {author: '', title: 'Baśnie polskie i europejskie (wybór)'},
+            ] %}
+            {% for r in fragments46 %}
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="fw-medium">{{ r.title }}</div>
+                            {% if r.author %}<div class="text-secondary small">{{ r.author }}</div>{% endif %}
+                        </div>
+                        {% if r.note is defined %}<span class="badge bg-green-lt">{{ r.note }}</span>{% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <h4 class="px-3 pt-3 pb-1 text-uppercase text-secondary" style="font-size:.75rem;letter-spacing:.05em;">Poezja — wiersze w wyborze</h4>
+        <div class="card-body pt-0">
+            <div class="d-flex flex-wrap gap-2">
+                {% for poet in ['Jan Brzechwa', 'Konstanty Ildefons Gałczyński', 'Anna Kamieńska', 'Joanna Kulmowa', 'Adam Mickiewicz', 'Juliusz Słowacki', 'Leopold Staff', 'Julian Tuwim', 'Jan Twardowski'] %}
+                    <span class="badge bg-blue-lt">{{ poet }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ═══ KLASY VII-VIII — OBOWIĄZKOWE ═══ #}
+<div class="card mb-4">
+    <div class="card-status-start bg-green"></div>
+    <div class="card-header">
+        <h3 class="card-title"><i class="ti ti-book-2 me-2"></i>Klasy VII–VIII — Lektury obowiązkowe</h3>
+    </div>
+    <div class="card-body p-0">
+        <h4 class="px-3 pt-3 pb-1 text-uppercase text-secondary" style="font-size:.75rem;letter-spacing:.05em;">Utwory w całości</h4>
+        <div class="list-group list-group-flush">
+            {% set mandatory78 = [
+                {author: 'Charles Dickens', title: 'Opowieść wigilijna'},
+                {author: 'Aleksander Fredro', title: 'Zemsta'},
+                {author: 'Aleksander Kamiński', title: 'Kamienie na szaniec'},
+                {author: 'Adam Mickiewicz', title: 'Dziady część II'},
+                {author: 'Antoine de Saint-Exupéry', title: 'Mały Książę'},
+                {author: 'Juliusz Słowacki', title: 'Balladyna'},
+            ] %}
+            {% for r in mandatory78 %}
+                <div class="list-group-item">
+                    <div class="fw-medium">{{ r.title }}</div>
+                    <div class="text-secondary small">{{ r.author }}</div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <h4 class="px-3 pt-3 pb-1 text-uppercase text-secondary" style="font-size:.75rem;letter-spacing:.05em;">Fragmenty / w wyborze</h4>
+        <div class="list-group list-group-flush">
+            {% set fragments78 = [
+                {author: 'Jan Kochanowski', title: 'Fraszki (wybór), pieśń, Treny VII i VIII'},
+                {author: 'Adam Mickiewicz', title: 'Reduta Ordona, Świtezianka'},
+                {author: 'Adam Mickiewicz', title: 'Pan Tadeusz (ks. I, II, IV, X, XI, XII)', note: 'ZMIANA 2024: wcześniej w całości'},
+                {author: 'Sławomir Mrożek', title: 'Artysta'},
+                {author: 'Henryk Sienkiewicz', title: 'Latarnik'},
+                {author: 'Henryk Sienkiewicz', title: 'Quo vadis (fragmenty)', note: 'ZMIANA 2024: wcześniej w całości'},
+                {author: 'Stefan Żeromski', title: 'Syzyfowe prace (fragmenty)', note: 'ZMIANA 2024: wcześniej w całości'},
+                {author: 'Stanisław Jerzy Lec', title: 'Aforyzmy (wybór)'},
+            ] %}
+            {% for r in fragments78 %}
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="fw-medium">{{ r.title }}</div>
+                            {% if r.author %}<div class="text-secondary small">{{ r.author }}</div>{% endif %}
+                        </div>
+                        {% if r.note is defined %}<span class="badge bg-orange-lt" style="font-size:.65rem;">{{ r.note }}</span>{% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <h4 class="px-3 pt-3 pb-1 text-uppercase text-secondary" style="font-size:.75rem;letter-spacing:.05em;">Poezja — wiersze w wyborze (+ poeci z kl. IV-VI)</h4>
+        <div class="card-body pt-0">
+            <div class="d-flex flex-wrap gap-2">
+                {% for poet in ['Krzysztof Kamil Baczyński', 'Zbigniew Herbert', 'Bolesław Leśmian', 'Czesław Miłosz', 'Tadeusz Różewicz', 'Wisława Szymborska'] %}
+                    <span class="badge bg-green-lt">{{ poet }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ═══ ZMIANY 2024 ═══ #}
+<div class="card mb-4">
+    <div class="card-status-start bg-orange"></div>
+    <div class="card-header">
+        <h3 class="card-title"><i class="ti ti-alert-triangle me-2"></i>Zmiany w lekturach (Dz.U. 2024 poz. 996)</h3>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table">
+                <thead>
+                    <tr><th>Zmiana</th><th>Autor</th><th>Tytuł</th><th>Klasy</th></tr>
+                </thead>
+                <tbody>
+                    <tr class="bg-green-lt">
+                        <td><span class="badge bg-green">DODANE</span></td>
+                        <td>Maria Konopnicka</td><td>Rota</td><td>IV-VI</td>
+                    </tr>
+                    <tr class="bg-red-lt">
+                        <td><span class="badge bg-red">USUNIĘTE</span></td>
+                        <td>Adam Mickiewicz</td><td>Powrót taty, Pani Twardowska</td><td>IV-VI</td>
+                    </tr>
+                    <tr class="bg-red-lt">
+                        <td><span class="badge bg-red">USUNIĘTE</span></td>
+                        <td>Juliusz Słowacki</td><td>W pamiętniku Zofii Bobrówny</td><td>IV-VI</td>
+                    </tr>
+                    <tr class="bg-orange-lt">
+                        <td><span class="badge bg-orange">→ UZUPEŁN.</span></td>
+                        <td>Bolesław Prus</td><td>Katarynka</td><td>IV-VI</td>
+                    </tr>
+                    <tr class="bg-orange-lt">
+                        <td><span class="badge bg-orange">→ UZUPEŁN.</span></td>
+                        <td>Henryk Sienkiewicz</td><td>W pustyni i w puszczy</td><td>IV-VI</td>
+                    </tr>
+                    <tr class="bg-yellow-lt">
+                        <td><span class="badge bg-yellow text-dark">FRAGMENTY</span></td>
+                        <td>Adam Mickiewicz</td><td>Pan Tadeusz (tylko ks. I, II, IV, X, XI, XII)</td><td>VII-VIII</td>
+                    </tr>
+                    <tr class="bg-yellow-lt">
+                        <td><span class="badge bg-yellow text-dark">FRAGMENTY</span></td>
+                        <td>Henryk Sienkiewicz</td><td>Quo vadis</td><td>VII-VIII</td>
+                    </tr>
+                    <tr class="bg-yellow-lt">
+                        <td><span class="badge bg-yellow text-dark">FRAGMENTY</span></td>
+                        <td>Stefan Żeromski</td><td>Syzyfowe prace</td><td>VII-VIII</td>
+                    </tr>
+                    <tr class="bg-red-lt">
+                        <td><span class="badge bg-red">USUNIĘTE</span></td>
+                        <td>Ignacy Krasicki</td><td>Żona modna</td><td>VII-VIII</td>
+                    </tr>
+                    <tr class="bg-red-lt">
+                        <td><span class="badge bg-red">USUNIĘTE</span></td>
+                        <td>Adam Mickiewicz</td><td>Śmierć Pułkownika</td><td>VII-VIII</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{# ═══ LEKTURY UZUPEŁNIAJĄCE ═══ #}
+<div class="card mb-4">
+    <div class="card-status-start bg-purple"></div>
+    <div class="card-header">
+        <h3 class="card-title"><i class="ti ti-books me-2"></i>Lektury uzupełniające (klasy IV–VIII)</h3>
+        <div class="card-actions"><span class="text-secondary small">Min. 2 rocznie (IV-VI) / 1 rocznie (VII-VIII)</span></div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive" style="max-height:500px;overflow-y:auto;">
+            <table class="table table-vcenter table-sm card-table">
+                <tbody>
+                    {% set supplementary = [
+                        {a: 'Adam Bahdaj', t: 'Kapelusz za 100 tysięcy'},
+                        {a: 'Justyna Bednarek', t: 'Dom nr 5'},
+                        {a: 'Paweł Beręsewicz', t: 'Wszystkie lajki Marczuka'},
+                        {a: 'Miron Białoszewski', t: 'Pamiętnik z powstania warszawskiego (fr.)'},
+                        {a: 'Frances H. Burnett', t: 'Tajemniczy ogród'},
+                        {a: 'Lewis Carroll', t: 'Alicja w Krainie Czarów'},
+                        {a: 'Agatha Christie', t: 'Wybrana powieść kryminalna'},
+                        {a: 'Carlo Collodi', t: 'Pinokio'},
+                        {a: 'Aleksander Dumas', t: 'Trzej muszkieterowie'},
+                        {a: 'Arkady Fiedler', t: 'Dywizjon 303'},
+                        {a: 'John Flanagan', t: 'Zwiadowcy. Księga 1. Ruiny Gorlanu'},
+                        {a: 'Ernest Hemingway', t: 'Stary człowiek i morze'},
+                        {a: 'Rudyard Kipling', t: 'Księga dżungli'},
+                        {a: 'Janusz Korczak', t: 'Król Maciuś Pierwszy'},
+                        {a: 'Rafał Kosik', t: 'Felix, Net i Nika oraz Gang Niewidzialnych Ludzi'},
+                        {a: 'Barbara Kosmowska', t: 'Pozłacana rybka'},
+                        {a: 'Marcin Kozioł', t: 'Skrzynia Władcy Piorunów'},
+                        {a: 'Stanisław Lem', t: 'Cyberiada (fragmenty)'},
+                        {a: 'Bolesław Leśmian', t: 'Klechdy sezamowe'},
+                        {a: 'A.A. Milne', t: 'Kubuś Puchatek'},
+                        {a: 'L.M. Montgomery', t: 'Ania z Zielonego Wzgórza'},
+                        {a: 'Małgorzata Musierowicz', t: 'Wybrana powieść'},
+                        {a: 'Edmund Niziurski', t: 'Sposób na Alcybiadesa'},
+                        {a: 'Bolesław Prus', t: 'Katarynka, Placówka'},
+                        {a: 'Rick Riordan', t: 'Percy Jackson i bogowie olimpijscy'},
+                        {a: 'E.-E. Schmitt', t: 'Oskar i pani Róża'},
+                        {a: 'Henryk Sienkiewicz', t: 'Janko Muzykant, W pustyni i w puszczy, Krzyżacy'},
+                        {a: 'Marcin Szczygielski', t: 'Teatr Niewidzialnych Dzieci'},
+                        {a: 'Mark Twain', t: 'Przygody Tomka Sawyera'},
+                        {a: 'Marcus Zusak', t: 'Złodziejka książek'},
+                    ] %}
+                    {% for r in supplementary %}
+                        <tr>
+                            <td class="fw-medium">{{ r.t }}</td>
+                            <td class="text-secondary">{{ r.a }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer text-center text-secondary small">
+        ...i więcej — pełna lista w rozporządzeniu Dz.U. 2024 poz. 996
+    </div>
+</div>
+{% endblock %}

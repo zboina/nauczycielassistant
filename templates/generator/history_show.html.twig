@@ -5,8 +5,13 @@
 {% block title_text %}{{ material.title }}{% endblock %}
 
 {% block page_actions %}
+    {% if material.type in ['test', 'worksheet'] %}
+        <a href="{{ path('app_generate_history_edit', {id: material.id}) }}" class="btn btn-primary btn-sm">
+            <i class="ti ti-edit me-1"></i>Edytuj
+        </a>
+    {% endif %}
     <a href="{{ path('app_generate_history') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="ti ti-arrow-left me-1"></i> Wróć
+        <i class="ti ti-arrow-left me-1"></i>Wróć
     </a>
 {% endblock %}
 

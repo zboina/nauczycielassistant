@@ -20,57 +20,89 @@
 </div>
 
 {% if essays|length > 0 %}
-    <div class="row row-cards">
-        {% for essay in essays %}
-            <div class="col-md-6 col-xl-4">
-                <div class="card">
-                    {% if essay.isAccepting %}
-                        <div class="card-status-start bg-green"></div>
-                    {% else %}
-                        <div class="card-status-start bg-secondary"></div>
-                    {% endif %}
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h3 class="card-title mb-0">
-                                <a href="{{ path('app_essay_show', {id: essay.id}) }}" class="text-reset">{{ essay.topic }}</a>
-                            </h3>
-                            <span class="badge {{ essay.isAccepting ? 'bg-green-lt' : 'bg-secondary-lt' }}">
-                                {{ essay.isAccepting ? 'Aktywne' : 'Zamknięte' }}
-                            </span>
-                        </div>
-                        <div class="text-secondary mb-3" style="font-size:.85rem;">{{ essay.writingFormLabel }}</div>
-                        <div class="d-flex gap-2 flex-wrap">
-                            <span class="badge bg-primary-lt">Kl. {{ essay.classLevel }}</span>
-                            <span class="badge bg-blue-lt">
-                                <i class="ti ti-file-text me-1"></i>{{ essay.submissionCount }} prac
-                            </span>
-                            <span class="badge bg-green-lt">
-                                <i class="ti ti-check me-1"></i>{{ essay.reviewedCount }} ocenionych
-                            </span>
-                            {% if essay.deadline %}
-                                <span class="badge {{ essay.isExpired ? 'bg-red-lt' : 'bg-orange-lt' }}">
-                                    <i class="ti ti-clock me-1"></i>{{ essay.deadline|date('d.m.Y') }}
-                                </span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="card-footer d-flex justify-content-between">
-                        <span class="text-secondary small">Kod: <strong class="text-primary">{{ essay.accessCode }}</strong></span>
-                        <a href="{{ path('app_essay_show', {id: essay.id}) }}" class="btn btn-primary btn-sm">
-                            <i class="ti ti-eye me-1"></i>Otwórz
-                        </a>
+<div x-data="essayTable()" x-init="init()">
+    <div class="card mb-2">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <div class="col">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="ti ti-search"></i></span>
+                        <input type="text" class="form-control" placeholder="Szukaj..." x-model="search" @input="filter()">
+                        <button class="btn btn-outline-secondary" x-show="search" @click="search=''; filter()"><i class="ti ti-x"></i></button>
                     </div>
                 </div>
+                <div class="col-auto text-secondary small"><span x-text="filtered.length"></span> / {{ essays|length }}</div>
             </div>
-        {% endfor %}
+        </div>
     </div>
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-hover table-sm">
+                <thead>
+                    <tr>
+                        <th style="cursor:pointer;" @click="sortBy('topic')">Temat</th>
+                        <th style="width:55px;">Kl.</th>
+                        <th style="width:70px;">Kod</th>
+                        <th style="width:60px;">Prace</th>
+                        <th style="width:60px;">Status</th>
+                        <th style="width:100px;cursor:pointer;" @click="sortBy('date')">Data</th>
+                        <th style="width:60px;" class="text-end">Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="e in filtered" :key="e.id">
+                        <tr>
+                            <td>
+                                <a :href="e.showUrl" class="text-reset fw-medium" x-text="e.topic"></a>
+                                <div class="text-secondary" style="font-size:.72rem;" x-text="e.form"></div>
+                            </td>
+                            <td><span class="badge bg-primary-lt" x-text="e.cl"></span></td>
+                            <td><code class="text-primary" x-text="e.code"></code></td>
+                            <td>
+                                <span class="badge bg-blue-lt" x-text="e.subs"></span>
+                                <span class="badge bg-green-lt" x-text="e.reviewed" x-show="e.reviewed > 0"></span>
+                            </td>
+                            <td>
+                                <span class="badge" :class="e.active ? 'bg-green-lt' : 'bg-secondary-lt'" x-text="e.active ? 'Aktywne' : 'Zamkn.'"></span>
+                            </td>
+                            <td class="text-secondary" style="font-size:.8rem;" x-text="e.date"></td>
+                            <td class="text-end">
+                                <a :href="e.showUrl" class="btn btn-ghost-primary btn-sm"><i class="ti ti-eye"></i></a>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+        <div x-show="filtered.length===0 && search" class="card-body text-center text-secondary py-3">Brak wyników</div>
+    </div>
+</div>
+<script>
+function essayTable() {
+    return {
+        all:[], filtered:[], search:'', sf:'date', sd:'desc',
+        init() {
+            this.all = [{% for e in essays %}{
+                id:{{e.id}}, topic:{{e.topic|json_encode|raw}}, cl:{{e.classLevel|json_encode|raw}},
+                code:{{e.accessCode|json_encode|raw}}, form:{{e.writingFormLabel|json_encode|raw}},
+                subs:{{e.submissionCount}}, reviewed:{{e.reviewedCount}}, active:{{e.isAccepting?'true':'false'}},
+                date:{{e.createdAt|date('d.m.Y')|json_encode|raw}}, dateRaw:{{e.createdAt|date('U')}},
+                showUrl:{{path('app_essay_show',{id:e.id})|json_encode|raw}}
+            }{{not loop.last?',':''}}{% endfor %}];
+            this.filter();
+        },
+        filter() { var s=this.search.toLowerCase(); this.filtered=this.all.filter(function(e){return !s||e.topic.toLowerCase().includes(s)||e.cl.includes(s)||e.code.toLowerCase().includes(s);}); this.doSort(); },
+        sortBy(f) { if(this.sf===f) this.sd=this.sd==='asc'?'desc':'asc'; else{this.sf=f;this.sd=f==='date'?'desc':'asc';} this.doSort(); },
+        doSort() { var f=this.sf,d=this.sd==='asc'?1:-1; this.filtered.sort(function(a,b){var va,vb;if(f==='topic'){va=a.topic.toLowerCase();vb=b.topic.toLowerCase();}else{va=a.dateRaw;vb=b.dateRaw;}return va<vb?-d:va>vb?d:0;}); }
+    };
+}
+</script>
 {% else %}
     <div class="card">
         <div class="card-body">
             <div class="empty">
-                <div class="empty-icon"><i class="ti ti-writing" style="font-size: 2.5rem;"></i></div>
+                <div class="empty-icon"><i class="ti ti-writing" style="font-size:2.5rem;"></i></div>
                 <p class="empty-title">Brak zadań</p>
-                <p class="empty-subtitle text-secondary">Utwórz pierwsze zadanie pisemne dla swoich uczniów.</p>
                 <div class="empty-action">
                     <a href="{{ path('app_essay_create') }}" class="btn btn-primary"><i class="ti ti-plus me-2"></i>Nowe zadanie</a>
                 </div>

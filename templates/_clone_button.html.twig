@@ -1,0 +1,43 @@
+{# Clone button partial
+   Required: cloneRoute, cloneParams, currentUserId, docTitle, docType (material|lesson_plan|mock_exam)
+#}
+{% set users = _users|default([]) %}
+{% if users|length > 1 %}
+{% set sharedIds = shared_user_ids(docType|default('material'), docTitle|default('')) %}
+<div x-data="{open:false, search:''}" class="position-relative d-inline-block">
+    <button type="button" class="btn btn-outline-secondary btn-sm" @click="open=!open">
+        <i class="ti ti-share me-1"></i>Udostępnij
+    </button>
+    <div x-show="open" @click.away="open=false" x-transition
+         class="card shadow position-absolute end-0" style="z-index:100;width:300px;top:100%;margin-top:4px;">
+        <div class="card-header py-2"><h4 class="card-title" style="font-size:.85rem;">Udostępnij użytkownikowi</h4></div>
+        <div class="card-body py-2">
+            <input type="text" class="form-control form-control-sm mb-2" placeholder="Szukaj..." x-model="search">
+            <div style="max-height:220px;overflow-y:auto;">
+                {% for u in users %}
+                    {% if u.id != currentUserId %}
+                    {% set hasClone = u.id in sharedIds %}
+                    <div class="d-flex align-items-center gap-2 py-1 px-1 rounded"
+                         style="cursor:pointer;font-size:.85rem;"
+                         x-show="!search || '{{ u.fullName|lower }}'.includes(search.toLowerCase()) || '{{ u.email|lower }}'.includes(search.toLowerCase())"
+                         @mouseover="$el.style.background='#f1f5f9'" @mouseout="$el.style.background=''"
+                         @click="{% if hasClone %}if(!confirm('{{ u.fullName }} ma już kopię tego dokumentu. Udostępnić ponownie?')) return;{% endif %} $refs.cf{{ u.id }}.submit()">
+                        <span class="avatar avatar-xs rounded" style="background-image:url('https://ui-avatars.com/api/?name={{ u.fullName|url_encode }}&size=24&background=1a56db&color=fff')"></span>
+                        <div class="flex-fill">
+                            <div class="fw-medium">{{ u.fullName }}</div>
+                            <div class="text-secondary" style="font-size:.7rem;">{{ u.email }}</div>
+                        </div>
+                        {% if hasClone %}
+                            <span class="badge bg-green-lt flex-shrink-0" style="font-size:.6rem;"><i class="ti ti-check me-1"></i>ma kopię</span>
+                        {% endif %}
+                    </div>
+                    <form x-ref="cf{{ u.id }}" method="post" action="{{ path(cloneRoute, cloneParams) }}" class="d-none">
+                        <input type="hidden" name="targetUserId" value="{{ u.id }}">
+                    </form>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

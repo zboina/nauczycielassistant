@@ -139,12 +139,6 @@
 
                             <li class="nav-item mt-2"><span class="nav-link text-uppercase small fw-bold text-secondary px-2" style="font-size:.625rem;letter-spacing:.05em;">Narzędzia lekcyjne</span></li>
 
-                            <li class="nav-item {{ app.request.attributes.get('_route') starts with 'app_scanner' ? 'active' }}">
-                                <a class="nav-link" href="{{ path('app_scanner_index') }}">
-                                    <span class="nav-link-icon"><i class="ti ti-scan"></i></span>
-                                    <span class="nav-link-title">Skaner odpowiedzi</span>
-                                </a>
-                            </li>
                             <li class="nav-item {{ app.request.attributes.get('_route') == 'app_classroom_timer' ? 'active' }}">
                                 <a class="nav-link" href="{{ path('app_classroom_timer') }}">
                                     <span class="nav-link-icon"><i class="ti ti-clock-hour-3"></i></span>

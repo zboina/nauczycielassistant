@@ -13,46 +13,88 @@
 
 {% block body %}
 {% if exams|length > 0 %}
-    <div class="row row-cards">
-        {% for exam in exams %}
-            <div class="col-md-6 col-xl-4">
-                <div class="card">
-                    <div class="card-status-start bg-red"></div>
-                    <div class="card-body">
-                        <h3 class="card-title mb-1">
-                            <a href="{{ path('app_exam8_show', {id: exam.id}) }}" class="text-reset">{{ exam.title }}</a>
-                        </h3>
-                        <div class="text-secondary mb-3" style="font-size:.85rem;">{{ exam.examTypeLabel }}</div>
-                        <div class="d-flex gap-2 flex-wrap">
-                            <span class="badge bg-primary-lt">Kl. {{ exam.classLevel }}</span>
-                            <span class="badge bg-red-lt">{{ exam.maxPoints }} pkt</span>
-                            {% if exam.resultCount > 0 %}
-                                <span class="badge bg-blue-lt"><i class="ti ti-users me-1"></i>{{ exam.resultCount }} wyników</span>
-                                {% if exam.averagePercent is not null %}
-                                    <span class="badge bg-green-lt">Śr. {{ exam.averagePercent }}%</span>
-                                {% endif %}
-                            {% endif %}
-                            <span class="badge bg-secondary-lt">{{ exam.createdAt|date('d.m.Y') }}</span>
-                        </div>
-                    </div>
-                    <div class="card-footer d-flex justify-content-between">
-                        <a href="{{ path('app_exam8_show', {id: exam.id}) }}" class="btn btn-primary btn-sm"><i class="ti ti-eye me-1"></i>Podgląd</a>
-                        <div class="btn-group">
-                            <a href="{{ path('app_exam8_results', {id: exam.id}) }}" class="btn btn-outline-blue btn-sm"><i class="ti ti-chart-bar me-1"></i>Wyniki</a>
-                            <a href="{{ path('app_exam8_pdf', {id: exam.id}) }}" class="btn btn-outline-secondary btn-sm" target="_blank"><i class="ti ti-file-type-pdf"></i></a>
-                        </div>
+<div x-data="examTable()" x-init="init()">
+    <div class="card mb-2">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <div class="col">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="ti ti-search"></i></span>
+                        <input type="text" class="form-control" placeholder="Szukaj..." x-model="search" @input="filter()">
+                        <button class="btn btn-outline-secondary" x-show="search" @click="search=''; filter()"><i class="ti ti-x"></i></button>
                     </div>
                 </div>
+                <div class="col-auto text-secondary small"><span x-text="filtered.length"></span> / {{ exams|length }}</div>
             </div>
-        {% endfor %}
+        </div>
     </div>
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-hover table-sm">
+                <thead>
+                    <tr>
+                        <th style="cursor:pointer;" @click="sortBy('title')">Tytuł</th>
+                        <th style="width:55px;">Kl.</th>
+                        <th style="width:55px;">Pkt</th>
+                        <th style="width:70px;">Wyniki</th>
+                        <th style="width:100px;cursor:pointer;" @click="sortBy('date')">Data</th>
+                        <th style="width:150px;" class="text-end">Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="e in filtered" :key="e.id">
+                        <tr>
+                            <td><a :href="e.showUrl" class="text-reset fw-medium" x-text="e.title"></a></td>
+                            <td><span class="badge bg-primary-lt" x-text="e.cl"></span></td>
+                            <td class="text-secondary" x-text="e.pts"></td>
+                            <td>
+                                <span class="badge bg-blue-lt" x-show="e.results > 0" x-text="e.results + ' (' + e.avg + '%)'"></span>
+                            </td>
+                            <td class="text-secondary" style="font-size:.8rem;" x-text="e.date"></td>
+                            <td class="text-end text-nowrap">
+                                <div class="btn-group">
+                                    <a :href="e.showUrl" class="btn btn-ghost-primary btn-sm" title="Podgląd"><i class="ti ti-eye"></i></a>
+                                    <a :href="e.editUrl" class="btn btn-ghost-blue btn-sm" title="Edytuj"><i class="ti ti-edit"></i></a>
+                                    <a :href="e.resultsUrl" class="btn btn-ghost-green btn-sm" title="Wyniki"><i class="ti ti-chart-bar"></i></a>
+                                    <a :href="e.pdfUrl" class="btn btn-ghost-primary btn-sm" target="_blank" title="PDF"><i class="ti ti-file-type-pdf"></i></a>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+        <div x-show="filtered.length===0 && search" class="card-body text-center text-secondary py-3">Brak wyników</div>
+    </div>
+</div>
+<script>
+function examTable() {
+    return {
+        all:[], filtered:[], search:'', sf:'date', sd:'desc',
+        init() {
+            this.all = [{% for e in exams %}{
+                id:{{e.id}}, title:{{e.title|json_encode|raw}}, cl:{{e.classLevel|json_encode|raw}},
+                pts:{{e.maxPoints}}, results:{{e.resultCount}}, avg:{{e.averagePercent ?? 0}},
+                date:{{e.createdAt|date('d.m.Y')|json_encode|raw}}, dateRaw:{{e.createdAt|date('U')}},
+                showUrl:{{path('app_exam8_show',{id:e.id})|json_encode|raw}},
+                editUrl:{{path('app_exam8_edit',{id:e.id})|json_encode|raw}},
+                resultsUrl:{{path('app_exam8_results',{id:e.id})|json_encode|raw}},
+                pdfUrl:{{path('app_exam8_pdf',{id:e.id})|json_encode|raw}}
+            }{{not loop.last?',':''}}{% endfor %}];
+            this.filter();
+        },
+        filter() { var s=this.search.toLowerCase(); this.filtered=this.all.filter(function(e){return !s||e.title.toLowerCase().includes(s)||e.cl.includes(s);}); this.doSort(); },
+        sortBy(f) { if(this.sf===f) this.sd=this.sd==='asc'?'desc':'asc'; else{this.sf=f;this.sd=f==='date'?'desc':'asc';} this.doSort(); },
+        doSort() { var f=this.sf,d=this.sd==='asc'?1:-1; this.filtered.sort(function(a,b){var va,vb;if(f==='title'){va=a.title.toLowerCase();vb=b.title.toLowerCase();}else{va=a.dateRaw;vb=b.dateRaw;}return va<vb?-d:va>vb?d:0;}); }
+    };
+}
+</script>
 {% else %}
     <div class="card">
         <div class="card-body">
             <div class="empty">
                 <div class="empty-icon"><i class="ti ti-school" style="font-size:2.5rem;"></i></div>
                 <p class="empty-title">Brak arkuszy próbnych</p>
-                <p class="empty-subtitle text-secondary">Wygeneruj pierwszy arkusz próbny egzaminu ósmoklasisty.</p>
                 <div class="empty-action">
                     <a href="{{ path('app_exam8_generate') }}" class="btn btn-primary"><i class="ti ti-sparkles me-2"></i>Generuj arkusz</a>
                 </div>

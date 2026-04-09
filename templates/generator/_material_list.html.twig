@@ -1,59 +1,151 @@
-{# Reusable material list for generator index pages #}
+{# Reusable material table for generator index pages #}
 {# Required vars: materials, typeLabel, typeIcon, typeColor, generateRoute, showRoute, pdfRoute #}
 
 {% if materials|length > 0 %}
-    <div class="row row-cards">
-        {% for m in materials %}
-            <div class="col-md-6 col-xl-4">
-                <div class="card">
-                    {% if m.isFavorite %}
-                        <div class="card-status-start bg-yellow"></div>
-                    {% endif %}
-                    <div class="card-body">
-                        <div class="d-flex align-items-start">
-                            <div class="flex-fill">
-                                <h3 class="card-title mb-1">
-                                    <a href="{{ path(showRoute, {id: m.id}) }}" class="text-reset">
-                                        {{ m.title ?? m.subjectContext|u.truncate(50) }}
-                                    </a>
-                                </h3>
-                                {% if m.subjectContext and m.subjectContext != m.title %}
-                                    <div class="text-secondary small">{{ m.subjectContext|u.truncate(60) }}</div>
-                                {% endif %}
-                            </div>
-                            {% if m.isFavorite %}
-                                <span class="text-yellow ms-2"><i class="ti ti-star-filled"></i></span>
-                            {% endif %}
-                        </div>
-                        <div class="mt-3 d-flex gap-2 flex-wrap">
-                            {% if m.classLevel %}
-                                <span class="badge bg-primary-lt">Kl. {{ m.classLevel }}</span>
-                            {% endif %}
-                            <span class="badge bg-secondary-lt">{{ m.createdAt|date('d.m.Y H:i') }}</span>
-                        </div>
-                    </div>
-                    <div class="card-footer d-flex justify-content-between">
-                        <a href="{{ path(showRoute, {id: m.id}) }}" class="btn btn-primary btn-sm">
-                            <i class="ti ti-eye me-1"></i>Podgląd
-                        </a>
-                        <div class="btn-group">
-                            <a href="{{ path(pdfRoute, {id: m.id}) }}" class="btn btn-ghost-primary btn-sm" target="_blank" title="PDF">
-                                <i class="ti ti-file-type-pdf"></i>
-                            </a>
-                            {% if m.type != 'parent_info' %}
-                                <a href="{{ path('app_generate_history_docx', {id: m.id}) }}" class="btn btn-ghost-blue btn-sm" title="DOCX">
-                                    <i class="ti ti-file-type-doc"></i>
-                                </a>
-                            {% endif %}
-                            <form method="post" action="{{ path('app_generate_material_delete', {id: m.id}) }}" class="d-inline" onsubmit="return confirm('Usunąć?')">
-                                <button class="btn btn-ghost-danger btn-sm"><i class="ti ti-trash"></i></button>
-                            </form>
-                        </div>
+<div x-data="materialTable()" x-init="init()">
+    {# Search & sort bar #}
+    <div class="card mb-2">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <div class="col">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="ti ti-search"></i></span>
+                        <input type="text" class="form-control" placeholder="Szukaj..." x-model="search" @input="filter()">
+                        <button class="btn btn-outline-secondary" x-show="search" @click="search=''; filter()"><i class="ti ti-x"></i></button>
                     </div>
                 </div>
+                <div class="col-auto text-secondary small">
+                    <span x-text="filtered.length"></span> / {{ materials|length }}
+                </div>
             </div>
-        {% endfor %}
+        </div>
     </div>
+
+    {# Table #}
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-hover table-sm">
+                <thead>
+                    <tr>
+                        <th style="width:40px;"></th>
+                        <th style="cursor:pointer;" @click="sortBy('title')">
+                            Tytuł
+                            <i class="ti ti-chevron-up" style="font-size:.7rem;" x-show="sortField==='title' && sortDir==='asc'"></i>
+                            <i class="ti ti-chevron-down" style="font-size:.7rem;" x-show="sortField==='title' && sortDir==='desc'"></i>
+                        </th>
+                        <th style="width:60px;cursor:pointer;" @click="sortBy('class')">
+                            Kl.
+                            <i class="ti ti-chevron-up" style="font-size:.7rem;" x-show="sortField==='class' && sortDir==='asc'"></i>
+                            <i class="ti ti-chevron-down" style="font-size:.7rem;" x-show="sortField==='class' && sortDir==='desc'"></i>
+                        </th>
+                        <th style="width:110px;cursor:pointer;" @click="sortBy('date')">
+                            Data
+                            <i class="ti ti-chevron-up" style="font-size:.7rem;" x-show="sortField==='date' && sortDir==='asc'"></i>
+                            <i class="ti ti-chevron-down" style="font-size:.7rem;" x-show="sortField==='date' && sortDir==='desc'"></i>
+                        </th>
+                        <th style="width:140px;" class="text-end">Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="m in filtered" :key="m.id">
+                        <tr>
+                            <td class="text-center">
+                                <template x-if="m.fav"><i class="ti ti-star-filled text-yellow"></i></template>
+                            </td>
+                            <td>
+                                <a :href="m.showUrl" class="text-reset fw-medium" x-text="m.title"></a>
+                                <div class="text-secondary" style="font-size:.75rem;" x-show="m.subject && m.subject !== m.title" x-text="m.subject"></div>
+                            </td>
+                            <td><span class="badge bg-primary-lt" x-text="m.class" x-show="m.class"></span></td>
+                            <td class="text-secondary" style="font-size:.8rem;" x-text="m.date"></td>
+                            <td class="text-end text-nowrap">
+                                <div class="btn-group">
+                                    <a :href="m.showUrl" class="btn btn-ghost-primary btn-sm" title="Podgląd"><i class="ti ti-eye"></i></a>
+                                    <a :href="m.editUrl" class="btn btn-ghost-blue btn-sm" title="Edytuj" x-show="m.editUrl"><i class="ti ti-edit"></i></a>
+                                    <a :href="m.pdfUrl" class="btn btn-ghost-primary btn-sm" target="_blank" title="PDF"><i class="ti ti-file-type-pdf"></i></a>
+                                    <a :href="m.docxUrl" class="btn btn-ghost-blue btn-sm" title="DOCX" x-show="m.docxUrl"><i class="ti ti-file-type-doc"></i></a>
+                                    <form :action="m.deleteUrl" method="post" class="d-inline" onsubmit="return confirm('Usunąć?')">
+                                        <button class="btn btn-ghost-danger btn-sm"><i class="ti ti-trash"></i></button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+        <div x-show="filtered.length === 0 && search" class="card-body text-center text-secondary py-3">
+            Brak wyników dla "<span x-text="search"></span>"
+        </div>
+    </div>
+</div>
+
+<script>
+function materialTable() {
+    return {
+        all: [],
+        filtered: [],
+        search: '',
+        sortField: 'date',
+        sortDir: 'desc',
+
+        init() {
+            this.all = [
+                {% for m in materials %}
+                {
+                    id: {{ m.id }},
+                    title: {{ (m.title ?? m.subjectContext|u.truncate(50))|json_encode|raw }},
+                    subject: {{ (m.subjectContext ?? '')|json_encode|raw }},
+                    class: {{ (m.classLevel ?? '')|json_encode|raw }},
+                    date: {{ m.createdAt|date('d.m.Y H:i')|json_encode|raw }},
+                    dateRaw: {{ m.createdAt|date('U')|json_encode|raw }},
+                    fav: {{ m.isFavorite ? 'true' : 'false' }},
+                    type: {{ m.type|json_encode|raw }},
+                    showUrl: {{ path(showRoute, {id: m.id})|json_encode|raw }},
+                    editUrl: {% if m.type in ['test','worksheet'] %}{{ path('app_generate_history_edit', {id: m.id})|json_encode|raw }}{% else %}null{% endif %},
+                    pdfUrl: {{ path(pdfRoute, {id: m.id})|json_encode|raw }},
+                    docxUrl: {% if m.type != 'parent_info' %}{{ path('app_generate_history_docx', {id: m.id})|json_encode|raw }}{% else %}null{% endif %},
+                    deleteUrl: {{ path('app_generate_material_delete', {id: m.id})|json_encode|raw }}
+                }{{ not loop.last ? ',' : '' }}
+                {% endfor %}
+            ];
+            this.filter();
+        },
+
+        filter() {
+            var s = this.search.toLowerCase();
+            var self = this;
+            this.filtered = this.all.filter(function(m) {
+                if (!s) return true;
+                return m.title.toLowerCase().includes(s) || m.subject.toLowerCase().includes(s) || m.class.includes(s);
+            });
+            this.doSort();
+        },
+
+        sortBy(field) {
+            if (this.sortField === field) {
+                this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.sortField = field;
+                this.sortDir = field === 'date' ? 'desc' : 'asc';
+            }
+            this.doSort();
+        },
+
+        doSort() {
+            var f = this.sortField, d = this.sortDir === 'asc' ? 1 : -1;
+            this.filtered.sort(function(a, b) {
+                var va, vb;
+                if (f === 'title') { va = a.title.toLowerCase(); vb = b.title.toLowerCase(); }
+                else if (f === 'class') { va = a.class; vb = b.class; }
+                else { va = parseInt(a.dateRaw); vb = parseInt(b.dateRaw); }
+                return va < vb ? -d : va > vb ? d : 0;
+            });
+        }
+    };
+}
+</script>
+
 {% else %}
     <div class="card">
         <div class="card-body">

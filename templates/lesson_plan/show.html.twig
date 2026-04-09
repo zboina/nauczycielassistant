@@ -6,6 +6,7 @@
 
 {% block page_actions %}
     <a href="{{ path('app_lesson_plan_edit', {id: plan.id}) }}" class="btn btn-primary btn-sm"><i class="ti ti-edit me-1"></i>Edytuj</a>
+    {% include '_clone_button.html.twig' with {cloneRoute: 'app_clone_lesson_plan', cloneParams: {id: plan.id}, currentUserId: app.user.id, docTitle: plan.title, docType: 'lesson_plan'} %}
     <a href="{{ path('app_lesson_plan_index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Lista</a>
 {% endblock %}
 

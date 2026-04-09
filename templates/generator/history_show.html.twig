@@ -10,6 +10,7 @@
             <i class="ti ti-edit me-1"></i>Edytuj
         </a>
     {% endif %}
+    {% include '_clone_button.html.twig' with {cloneRoute: 'app_clone_material', cloneParams: {id: material.id}, currentUserId: app.user.id, docTitle: material.title, docType: 'material'} %}
     <a href="{{ path('app_generate_history') }}" class="btn btn-outline-secondary btn-sm">
         <i class="ti ti-arrow-left me-1"></i>Wróć
     </a>
@@ -191,6 +192,35 @@
                 <div id="mc" class="result-box">{{ material.content }}</div>
             </div>
         </div>
+        {% endif %}
+
+        {# ═══ Answer Checker ═══ #}
+        {% if testData %}
+            {% set answerKey = {} %}
+            {% for i, q in testData.questions %}
+                {% if q.type == 'closed' and q.correct is defined %}
+                    {% set answerKey = answerKey|merge({(i + 1): q.correct}) %}
+                {% endif %}
+            {% endfor %}
+            {% if answerKey|length > 0 %}
+                <div class="mt-3">
+                    {% include 'generator/_answer_checker.html.twig' with {answerKey: answerKey, pointsPerQuestion: 1} %}
+                </div>
+            {% endif %}
+        {% elseif wsData %}
+            {% set answerKey = {} %}
+            {% set qNum = 1 %}
+            {% for ex in wsData.exercises %}
+                {% if ex.type == 'choice' and ex.correct is defined %}
+                    {% set answerKey = answerKey|merge({(qNum): ex.correct}) %}
+                    {% set qNum = qNum + 1 %}
+                {% endif %}
+            {% endfor %}
+            {% if answerKey|length > 0 %}
+                <div class="mt-3">
+                    {% include 'generator/_answer_checker.html.twig' with {answerKey: answerKey, pointsPerQuestion: 1} %}
+                </div>
+            {% endif %}
         {% endif %}
 
     </div>

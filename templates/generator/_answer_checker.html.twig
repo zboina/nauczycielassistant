@@ -1,0 +1,208 @@
+{# Answer checker partial — pass: answerKey (JSON object {1:"A", 4:"B", ...}), pointsPerQuestion (int) #}
+<div class="card" x-data="answerChecker()" x-init="init()">
+    <div class="card-status-start bg-blue"></div>
+    <div class="card-header">
+        <h3 class="card-title"><i class="ti ti-checkbox me-2"></i>Sprawdzanie odpowiedzi ucznia</h3>
+        <div class="card-actions">
+            <span class="badge bg-blue-lt" x-text="totalQ + ' pytań zamkniętych'"></span>
+        </div>
+    </div>
+    <div class="card-body">
+        {# Input #}
+        <div class="mb-3">
+            <label class="form-label">Odpowiedzi ucznia <span class="text-secondary fw-normal">(wpisz litery po kolei, np. ABCDA)</span></label>
+            <div class="d-flex gap-2">
+                <input type="text" class="form-control form-control-lg font-monospace text-uppercase text-center"
+                       x-ref="answerInput" x-model="input" @input="input = input.toUpperCase().replace(/[^ABCD]/g,'')"
+                       :placeholder="'np. ' + exampleInput" :maxlength="totalQ" style="letter-spacing:.3em;font-size:1.3rem;"
+                       @keydown.enter="check()">
+                <button class="btn btn-primary btn-lg flex-shrink-0" @click="check()" :disabled="input.length === 0">
+                    <i class="ti ti-check me-2"></i>Sprawdź
+                </button>
+            </div>
+            <div class="d-flex justify-content-between mt-1">
+                <small class="text-secondary"><span x-text="input.length"></span> / <span x-text="totalQ"></span> odpowiedzi</small>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm" :class="listening ? 'btn-danger' : 'btn-outline-secondary'" @click="toggleVoice()" x-show="hasSpeech">
+                        <i class="ti" :class="listening ? 'ti-microphone-off' : 'ti-microphone'" style="margin-right:4px;"></i>
+                        <span x-text="listening ? 'Zatrzymaj' : 'Dyktuj'"></span>
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" @click="input=''; result=null"><i class="ti ti-eraser me-1"></i>Wyczyść</button>
+                </div>
+            </div>
+        </div>
+
+        {# Voice status #}
+        <div x-show="listening" class="alert alert-warning py-2 mb-3">
+            <i class="ti ti-microphone me-1 text-danger"></i>
+            <strong>Słucham...</strong> Dyktuj litery: A, B, C, D. Powiedz "<strong>STOP</strong>" lub "<strong>SPRAWDŹ</strong>" aby sprawdzić.
+            <span x-show="voiceBuffer" class="ms-2 badge bg-blue font-monospace" x-text="voiceBuffer"></span>
+        </div>
+
+        {# Letter preview #}
+        <div class="d-flex flex-wrap gap-1 mb-3" x-show="input.length > 0">
+            <template x-for="(letter, i) in input.split('')" :key="i">
+                <div class="border rounded text-center" style="width:36px;height:36px;line-height:34px;"
+                     :class="result ? (result.details[i] && result.details[i].ok ? 'border-success bg-success-lt fw-bold' : 'border-danger bg-red-lt fw-bold') : 'bg-light fw-bold'">
+                    <span x-text="letter"></span>
+                </div>
+            </template>
+        </div>
+
+        {# Results #}
+        <div x-show="result" x-transition>
+            <div class="row g-3 mb-3">
+                <div class="col-4">
+                    <div class="card card-sm border-success">
+                        <div class="card-body text-center py-2">
+                            <div class="h1 mb-0 text-success" x-text="result ? result.correct : 0"></div>
+                            <div class="text-secondary small">Poprawne</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="card card-sm border-danger">
+                        <div class="card-body text-center py-2">
+                            <div class="h1 mb-0 text-danger" x-text="result ? result.wrong : 0"></div>
+                            <div class="text-secondary small">Błędne</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="card card-sm border-primary">
+                        <div class="card-body text-center py-2">
+                            <div class="h1 mb-0 text-primary" x-text="result ? result.points + '/' + result.maxPoints : ''"></div>
+                            <div class="text-secondary small">Punkty</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# Details table #}
+            <div class="table-responsive">
+                <table class="table table-sm table-vcenter mb-0">
+                    <thead>
+                        <tr><th class="text-center" style="width:50px;">Nr</th><th class="text-center">Klucz</th><th class="text-center">Uczeń</th><th class="text-center">Wynik</th></tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="(d, i) in result ? result.details : []" :key="i">
+                            <tr :class="d.ok ? '' : 'bg-red-lt'">
+                                <td class="text-center fw-bold" x-text="d.qNum"></td>
+                                <td class="text-center"><span class="badge bg-primary-lt" x-text="d.correct"></span></td>
+                                <td class="text-center">
+                                    <span class="badge" :class="d.ok ? 'bg-success' : 'bg-danger'" x-text="d.student || '—'"></span>
+                                </td>
+                                <td class="text-center">
+                                    <i class="ti" :class="d.ok ? 'ti-check text-success' : 'ti-x text-danger'"></i>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function answerChecker() {
+    return {
+        answerKey: {},
+        qNumbers: [],
+        ppq: 1,
+        input: '',
+        result: null,
+        listening: false,
+        voiceBuffer: '',
+        hasSpeech: !!window.SpeechRecognition || !!window.webkitSpeechRecognition,
+        _recognition: null,
+
+        init() {
+            this.answerKey = {{ answerKey|json_encode|raw }};
+            this.ppq = {{ pointsPerQuestion|default(1) }};
+            // Extract question numbers in order
+            this.qNumbers = Object.keys(this.answerKey).sort(function(a,b){ return parseInt(a)-parseInt(b); });
+        },
+
+        get totalQ() { return this.qNumbers.length; },
+        get exampleInput() { return this.qNumbers.slice(0,3).map(function(){ return 'A'; }).join('') + '...'; },
+
+        check() {
+            var letters = this.input.split('');
+            var correct = 0, wrong = 0, details = [];
+            var self = this;
+
+            this.qNumbers.forEach(function(qNum, i) {
+                var student = letters[i] || null;
+                var key = self.answerKey[qNum];
+                var ok = student && student.toUpperCase() === key.toUpperCase();
+                if (ok) correct++; else wrong++;
+                details.push({ qNum: qNum, correct: key, student: student, ok: ok });
+            });
+
+            this.result = {
+                correct: correct,
+                wrong: wrong,
+                points: correct * this.ppq,
+                maxPoints: this.qNumbers.length * this.ppq,
+                details: details
+            };
+        },
+
+        // Voice input
+        toggleVoice() {
+            if (this.listening) { this.stopVoice(); return; }
+
+            var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) return;
+
+            var rec = new SR();
+            rec.lang = 'pl-PL';
+            rec.continuous = true;
+            rec.interimResults = false;
+            this._recognition = rec;
+            this.listening = true;
+            this.voiceBuffer = '';
+            var self = this;
+
+            rec.onresult = function(e) {
+                for (var i = e.resultIndex; i < e.results.length; i++) {
+                    if (!e.results[i].isFinal) continue;
+                    var text = e.results[i][0].transcript.trim().toUpperCase();
+
+                    // Check for stop command
+                    if (text.match(/STOP|SPRAWDŹ|SPRAWDZ|KONIEC|GOTOWE/)) {
+                        self.stopVoice();
+                        self.check();
+                        return;
+                    }
+
+                    // Extract letters
+                    var map = {'A':'A','B':'B','C':'C','D':'D','BE':'B','CE':'C','DE':'D','HA':'A'};
+                    text.split(/[\s,]+/).forEach(function(word) {
+                        var w = word.replace(/[^A-ZĘÓĄŚŁŻŹĆŃ]/g, '');
+                        if (map[w]) {
+                            self.input += map[w];
+                            self.voiceBuffer = self.input;
+                        } else if (w.length === 1 && 'ABCD'.includes(w)) {
+                            self.input += w;
+                            self.voiceBuffer = self.input;
+                        }
+                    });
+                }
+            };
+
+            rec.onerror = function() { self.listening = false; };
+            rec.onend = function() {
+                if (self.listening) { try { rec.start(); } catch(e) { self.listening = false; } }
+            };
+            rec.start();
+        },
+
+        stopVoice() {
+            this.listening = false;
+            if (this._recognition) { try { this._recognition.stop(); } catch(e) {} this._recognition = null; }
+        }
+    };
+}
+</script>

@@ -9,6 +9,7 @@
 parameters:
     app.openrouter_api_key: '%env(OPENROUTER_API_KEY)%'
     app.openrouter_default_model: '%env(OPENROUTER_DEFAULT_MODEL)%'
+    app.pixabay_api_key: '%env(PIXABAY_API_KEY)%'
 
 services:
     # default configuration for services in *this* file
@@ -37,3 +38,7 @@ services:
     App\Service\AI\ModelResolver:
         arguments:
             $defaultModel: '%app.openrouter_default_model%'
+
+    App\Service\PixabayClient:
+        arguments:
+            $pixabayApiKey: '%app.pixabay_api_key%'

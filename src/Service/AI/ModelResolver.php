@@ -22,6 +22,8 @@ class ModelResolver
         'topic_suggestions' => 'Podpowiedzi tematów',
         'chat' => 'Asystent AI (chat)',
         'editor_ai_add' => 'Dogenerowanie w edytorze',
+        'gazetka_article' => 'Gazetka — artykuły',
+        'gazetka_image' => 'Gazetka — obrazy (model graficzny)',
     ];
 
     public const AVAILABLE_MODELS = [

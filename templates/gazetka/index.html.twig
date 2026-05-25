@@ -1,0 +1,114 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Gazetka szkolna — Nauczyciel Assistant{% endblock %}
+{% block pretitle_text %}Wydawnictwo{% endblock %}
+{% block title_text %}Gazetka szkolna{% endblock %}
+
+{% block body %}
+<div class="row g-4">
+
+    {# ── Nowa gazetka ─────────────────────────── #}
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-status-start bg-primary"></div>
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-plus me-2"></i>Nowa gazetka</h3></div>
+            <form method="post" action="{{ path('app_gazetka_new') }}">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Tytuł</label>
+                        <input type="text" name="title" class="form-control" value="Gazetka szkolna" maxlength="200" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Liczba stron</label>
+                        <select name="pageCount" class="form-select">
+                            <option value="4">4 strony (1 kartka A4)</option>
+                            <option value="8" selected>8 stron (2 kartki A4)</option>
+                            <option value="12">12 stron (3 kartki A4)</option>
+                            <option value="16">16 stron (4 kartki A4)</option>
+                            <option value="20">20 stron (5 kartek A4)</option>
+                            <option value="24">24 strony (6 kartek A4)</option>
+                        </select>
+                        <small class="form-hint">Każda kartka A4 składana na pół daje 4 strony A5. Liczbę stron można później zmienić.</small>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Szablon pierwszej strony</label>
+                        <select name="template" class="form-select">
+                            <option value="cover" selected>Okładka</option>
+                            <option value="article2col">Artykuł — 2 szpalty</option>
+                            <option value="article1col">Artykuł ze zdjęciem</option>
+                            <option value="photopage">Fotorelacja</option>
+                            <option value="colophon">Stopka redakcyjna</option>
+                            <option value="">Pusta strona</option>
+                        </select>
+                        <small class="form-hint">Kolejne strony zaczynają puste — szablon dla każdej z nich wybierzesz w edytorze.</small>
+                    </div>
+                </div>
+                <div class="card-footer text-end">
+                    <button type="submit" class="btn btn-primary"><i class="ti ti-edit me-1"></i>Utwórz i otwórz edytor</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body">
+                <div class="d-flex gap-3">
+                    <span class="avatar avatar-lg rounded bg-blue-lt flex-shrink-0"><i class="ti ti-info-circle" style="font-size:1.3rem;"></i></span>
+                    <div style="font-size:.88rem;">
+                        <div class="fw-bold mb-1">Jak drukować?</div>
+                        Gotową gazetkę eksportujesz do PDF „do druku (składanka)". Wydrukuj <strong>dwustronnie (odbicie wzdłuż krótszej krawędzi)</strong> na A4, złóż kartki na pół i zszyj — strony ułożą się po kolei.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ── Lista gazetek ────────────────────────── #}
+    <div class="col-lg-8">
+        {% if newsletters is empty %}
+            <div class="card">
+                <div class="empty">
+                    <div class="empty-icon"><i class="ti ti-news" style="font-size:2.5rem;"></i></div>
+                    <p class="empty-title">Nie masz jeszcze żadnej gazetki</p>
+                    <p class="empty-subtitle text-secondary">Utwórz pierwszą gazetkę w formularzu obok.</p>
+                </div>
+            </div>
+        {% else %}
+            <div class="row row-cards">
+                {% for n in newsletters %}
+                    <div class="col-md-6">
+                        <div class="card card-link-pop">
+                            <div class="card-body">
+                                <div class="d-flex align-items-start justify-content-between">
+                                    <a href="{{ path('app_gazetka_edit', {id: n.id}) }}" class="card-link flex-grow-1">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <span class="avatar avatar-lg rounded bg-primary-lt"><i class="ti ti-news" style="font-size:1.4rem;"></i></span>
+                                            <div>
+                                                <div class="fw-bold">{{ n.title }}</div>
+                                                <div class="text-secondary small">
+                                                    {{ n.pageCount }} stron ·
+                                                    {{ (n.updatedAt ?? n.createdAt)|date('d.m.Y H:i') }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-ghost-secondary px-1" data-bs-toggle="dropdown"><i class="ti ti-dots-vertical"></i></button>
+                                        <div class="dropdown-menu dropdown-menu-end">
+                                            <a href="{{ path('app_gazetka_edit', {id: n.id}) }}" class="dropdown-item"><i class="ti ti-edit me-2"></i>Edytuj</a>
+                                            <form method="post" action="{{ path('app_gazetka_delete', {id: n.id}) }}" onsubmit="return confirm('Usunąć gazetkę „{{ n.title|e('js') }}"?');">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('gazetka_delete_' ~ n.id) }}">
+                                                <button type="submit" class="dropdown-item text-danger"><i class="ti ti-trash me-2"></i>Usuń</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

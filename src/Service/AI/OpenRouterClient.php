@@ -11,6 +11,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 class OpenRouterClient
 {
     private const BASE_URL = 'https://openrouter.ai/api/v1/chat/completions';
+    public const DEFAULT_IMAGE_MODEL = 'google/gemini-2.5-flash-image';
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,
@@ -124,6 +125,76 @@ class OpenRouterClient
             );
 
             throw new \RuntimeException('Błąd komunikacji z AI: ' . $e->getMessage(), 0, $e);
+        }
+    }
+
+    /**
+     * Generuje obraz przez OpenRouter (modele z wyjściem graficznym, np. gemini-2.5-flash-image).
+     * Zwraca data URI (data:image/png;base64,...). Rzuca RuntimeException przy błędzie / braku obrazu.
+     */
+    public function generateImage(
+        string $prompt,
+        ?User $owner = null,
+        ?string $model = null,
+        string $module = 'gazetka_image',
+    ): string {
+        $model ??= self::DEFAULT_IMAGE_MODEL;
+        $startMs = hrtime(true);
+
+        try {
+            $response = $this->httpClient->request('POST', self::BASE_URL, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->openrouterApiKey,
+                    'HTTP-Referer' => 'https://nauczyciel-app.local',
+                    'X-Title' => 'Nauczyciel Assistant',
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'model' => $model,
+                    'modalities' => ['image', 'text'],
+                    'messages' => [['role' => 'user', 'content' => $prompt]],
+                ],
+                'timeout' => 120,
+            ]);
+
+            $data = $response->toArray(false);
+            $durationMs = (int) ((hrtime(true) - $startMs) / 1_000_000);
+
+            if (isset($data['error'])) {
+                throw new \RuntimeException('OpenRouter API: ' . ($data['error']['message'] ?? json_encode($data['error'])));
+            }
+
+            $url = $data['choices'][0]['message']['images'][0]['image_url']['url'] ?? null;
+            if (!$url) {
+                throw new \RuntimeException(
+                    'Model nie zwrócił obrazu — sprawdź, czy wybrany model („' . $model . '") generuje grafikę i czy Twój klucz OpenRouter ma do niego dostęp.'
+                );
+            }
+
+            $this->logRepo->save(
+                module: $module,
+                model: $model,
+                tokensIn: $data['usage']['prompt_tokens'] ?? 0,
+                tokensOut: $data['usage']['completion_tokens'] ?? 0,
+                durationMs: $durationMs,
+                owner: $owner,
+                costUsd: isset($data['usage']['total_cost']) ? (string) $data['usage']['total_cost'] : null,
+            );
+
+            return $url;
+        } catch (\Throwable $e) {
+            $this->logRepo->save(
+                module: $module,
+                model: $model,
+                tokensIn: 0,
+                tokensOut: 0,
+                durationMs: (int) ((hrtime(true) - $startMs) / 1_000_000),
+                owner: $owner,
+                status: 'error',
+                error: $e->getMessage(),
+            );
+
+            throw new \RuntimeException('Błąd generowania obrazu: ' . $e->getMessage(), 0, $e);
         }
     }
 

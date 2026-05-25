@@ -1,0 +1,681 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ newsletter.title }} — Edytor gazetki{% endblock %}
+
+{% block stylesheets %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Lato:wght@400;700&family=Montserrat:wght@400;700&family=Oswald:wght@400;700&family=Lora:wght@400;700&family=Merriweather:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+<style>
+    body { background:#e9edf2 !important; overflow:hidden; }
+    .gz-app { display:flex; flex-direction:column; height:100vh; }
+    .gz-topbar { display:flex; align-items:center; gap:.5rem; padding:.45rem .75rem; background:#fff; border-bottom:1px solid #e3e6ea; flex-shrink:0; }
+    .gz-topbar .gz-title { border:1px solid transparent; border-radius:.375rem; font-weight:600; font-size:1rem; padding:.25rem .5rem; max-width:280px; }
+    .gz-topbar .gz-title:hover, .gz-topbar .gz-title:focus { border-color:#cdd3da; outline:none; }
+    .gz-status { font-size:.78rem; color:#626976; min-width:120px; }
+    .gz-main { flex:1; display:flex; min-height:0; }
+    .gz-toolbar { width:58px; background:#fff; border-right:1px solid #e3e6ea; padding:.4rem; display:flex; flex-direction:column; gap:.3rem; overflow-y:auto; flex-shrink:0; }
+    .gz-toolbar .btn { width:42px; height:42px; padding:0; display:flex; align-items:center; justify-content:center; }
+    .gz-toolbar .gz-sep { height:1px; background:#e3e6ea; margin:.25rem 2px; }
+    .gz-canvas-wrap { flex:1; overflow:auto; display:flex; justify-content:center; align-items:flex-start; padding:1.5rem; }
+    .gz-stage { line-height:0; }
+    .gz-props { width:286px; background:#fff; border-left:1px solid #e3e6ea; padding:.75rem .85rem; overflow-y:auto; flex-shrink:0; font-size:.84rem; }
+    .gz-props .form-label { font-size:.72rem; text-transform:uppercase; letter-spacing:.03em; color:#828a96; margin-bottom:.15rem; font-weight:600; }
+    .gz-props .gz-group { padding-bottom:.6rem; margin-bottom:.6rem; border-bottom:1px solid #eef1f4; }
+    .gz-props .gz-row { display:flex; gap:.4rem; }
+    .gz-props .gz-row > * { flex:1; }
+    .gz-props input.form-control, .gz-props select.form-select, .gz-props textarea.form-control { font-size:.83rem; padding:.2rem .45rem; }
+    .gz-props input[type=color] { height:32px; padding:2px; }
+    .gz-pages { background:#fff; border-top:1px solid #e3e6ea; padding:.45rem .75rem; display:flex; align-items:center; gap:.6rem; overflow-x:auto; flex-shrink:0; }
+    .gz-thumbs { display:flex; gap:.4rem; }
+    .gz-thumb { position:relative; width:44px; height:62px; border:1px solid #cdd3da; border-radius:3px; background:#fff; cursor:pointer; padding:0; }
+    .gz-thumb--active { border-color:#1a56db; box-shadow:0 0 0 2px rgba(26,86,219,.22); }
+    .gz-thumb__sheet { position:absolute; inset:4px; background:#f6f8fa; border-radius:2px; }
+    .gz-thumb__num { position:absolute; bottom:1px; right:3px; font-size:.62rem; color:#626976; }
+    .gz-empty { color:#828a96; text-align:center; padding:1.5rem .5rem; font-size:.85rem; }
+    /* Podglądy szablonów w modalu */
+    .gz-tpl { display:flex; flex-direction:column; gap:3px; width:100%; aspect-ratio:.707; background:#fff; border:1px solid #dfe3e8; border-radius:3px; padding:7px; overflow:hidden; }
+    .gz-tpl .b { background:#c7ced6; border-radius:1px; height:4px; }
+    .gz-tpl .box { background:#eef1f5; border-radius:2px; flex:1; }
+    .gz-tpl .row { display:flex; gap:4px; flex:1; }
+    .gz-tpl .col { display:flex; flex-direction:column; gap:3px; flex:1; }
+    .gz-tpl-title { height:8px; background:#0b1f3a; border-radius:1px; }
+    .gz-tpl-card .card-body { padding:.75rem; }
+</style>
+{% endblock %}
+
+{% block javascripts %}
+    <script src="https://cdn.jsdelivr.net/npm/konva@9.3.16/konva.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    {{ parent() }}
+{% endblock %}
+
+{% block layout %}
+<div class="gz-app"
+     data-controller="gazetka-editor"
+     data-gazetka-editor-save-url-value="{{ path('app_gazetka_save', {id: newsletter.id}) }}"
+     data-gazetka-editor-upload-url-value="{{ path('app_gazetka_upload', {id: newsletter.id}) }}"
+     data-gazetka-editor-ai-text-url-value="{{ path('app_gazetka_ai_text', {id: newsletter.id}) }}"
+     data-gazetka-editor-ai-image-url-value="{{ path('app_gazetka_ai_image', {id: newsletter.id}) }}"
+     data-gazetka-editor-stock-search-url-value="{{ path('app_gazetka_stock_search', {id: newsletter.id}) }}"
+     data-gazetka-editor-stock-import-url-value="{{ path('app_gazetka_stock_import', {id: newsletter.id}) }}"
+     data-gazetka-editor-csrf-value="{{ csrf_token('gazetka') }}"
+     data-gazetka-editor-doc-value="{{ doc }}"
+     data-gazetka-editor-initial-template-value="{{ app.request.query.get('template')|default('') }}">
+
+    {# ── Górny pasek ──────────────────────────── #}
+    <header class="gz-topbar">
+        <a href="{{ path('app_gazetka_index') }}" class="btn btn-sm btn-ghost-secondary px-2" title="Powrót do listy"><i class="ti ti-arrow-left"></i></a>
+        <input type="text" class="gz-title" data-gazetka-editor-target="title" value="{{ newsletter.title }}" maxlength="200">
+        <span class="gz-status" data-gazetka-editor-target="status">Gotowe</span>
+
+        <div class="ms-auto d-flex align-items-center gap-2">
+            <div class="btn-group">
+                <button class="btn btn-sm btn-icon btn-ghost-secondary" data-gazetka-editor-target="undoBtn" data-action="gazetka-editor#undo" title="Cofnij (Ctrl+Z)" disabled><i class="ti ti-arrow-back-up"></i></button>
+                <button class="btn btn-sm btn-icon btn-ghost-secondary" data-gazetka-editor-target="redoBtn" data-action="gazetka-editor#redo" title="Ponów (Ctrl+Y)" disabled><i class="ti ti-arrow-forward-up"></i></button>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-sm btn-icon btn-ghost-secondary" data-action="gazetka-editor#zoomOut" title="Pomniejsz"><i class="ti ti-minus"></i></button>
+                <span class="btn btn-sm btn-ghost-secondary disabled" style="min-width:52px;" data-gazetka-editor-target="zoomLabel">100%</span>
+                <button class="btn btn-sm btn-icon btn-ghost-secondary" data-action="gazetka-editor#zoomIn" title="Powiększ"><i class="ti ti-plus"></i></button>
+                <button class="btn btn-sm btn-ghost-secondary" data-action="gazetka-editor#zoomFit" title="Dopasuj"><i class="ti ti-arrows-maximize"></i></button>
+            </div>
+            <button class="btn btn-sm btn-ghost-secondary" data-bs-toggle="modal" data-bs-target="#gzSpreadModal" title="Podgląd rozkładówki (2 strony obok siebie)"><i class="ti ti-book-2"></i></button>
+            <button class="btn btn-sm btn-outline-primary" data-action="gazetka-editor#save"><i class="ti ti-device-floppy me-1"></i>Zapisz</button>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-primary" data-bs-toggle="dropdown"><i class="ti ti-file-type-pdf me-1"></i>Eksport PDF</button>
+                <div class="dropdown-menu dropdown-menu-end">
+                    <button class="dropdown-item" data-action="gazetka-editor#exportBooklet"><i class="ti ti-book me-2"></i>PDF do druku (składanka)</button>
+                    <button class="dropdown-item" data-action="gazetka-editor#exportSequential"><i class="ti ti-list-numbers me-2"></i>PDF po kolei (podgląd)</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    {# ── Obszar roboczy ───────────────────────── #}
+    <div class="gz-main">
+
+        {# Pasek narzędzi #}
+        <aside class="gz-toolbar">
+            <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzTemplatesModal" title="Szablony stron"><i class="ti ti-layout-grid"></i></button>
+            <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzAiModal" title="Asystent AI — tekst i obrazy"><i class="ti ti-sparkles"></i></button>
+            <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzIconModal" title="Ikony (Tabler Icons)"><i class="ti ti-shape"></i></button>
+            <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzStockModal" title="Grafiki (Pixabay)"><i class="ti ti-library-photo"></i></button>
+            <div class="gz-sep"></div>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#addHeading" title="Nagłówek"><i class="ti ti-heading"></i></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#addText" title="Tekst / szpalty"><i class="ti ti-text-size"></i></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#pickImage" title="Zdjęcie"><i class="ti ti-photo"></i></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#addRect" title="Prostokąt / ramka"><i class="ti ti-square"></i></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#addLine" title="Linia"><i class="ti ti-line"></i></button>
+            <div class="gz-sep"></div>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#duplicateSelected" title="Duplikuj (Ctrl+D)"><i class="ti ti-copy"></i></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#copySelected" title="Kopiuj (Ctrl+C)"><i class="ti ti-clipboard-copy"></i></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#cutSelected" title="Wytnij (Ctrl+X)"><i class="ti ti-scissors"></i></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#pasteClipboard" title="Wklej na tę stronę (Ctrl+V)"><i class="ti ti-clipboard-plus"></i></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#bringForward" title="Na wierzch"><i class="ti ti-stack-forward"></i></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#sendBackward" title="Pod spód"><i class="ti ti-stack-backward"></i></button>
+            <button class="btn btn-ghost-danger" data-action="gazetka-editor#deleteSelected" title="Usuń (Delete)"><i class="ti ti-trash"></i></button>
+        </aside>
+
+        {# Płótno #}
+        <div class="gz-canvas-wrap">
+            <div class="gz-stage" data-gazetka-editor-target="container"></div>
+        </div>
+
+        {# Panel właściwości #}
+        <aside class="gz-props" data-gazetka-editor-target="props">
+            <div class="gz-empty" data-empty>
+                <i class="ti ti-click" style="font-size:1.6rem;display:block;margin-bottom:.4rem;opacity:.5;"></i>
+                Kliknij element, aby zobaczyć jego właściwości.<br>
+                <span class="text-muted">Dwuklik na tekście = edycja.</span>
+            </div>
+
+            {# Tekst #}
+            <div class="gz-group" data-for="text">
+                <label class="form-label">Treść <span class="text-secondary text-lowercase fw-normal" style="letter-spacing:0;">(podgląd szpalt na stronie na żywo)</span></label>
+                <textarea class="form-control mb-1" rows="8" data-prop="text" style="resize:vertical; font-size:.8rem; line-height:1.45;"></textarea>
+                <div class="text-secondary mb-2" style="font-size:.7rem;">Tu edytujesz cały tekst (z przewijaniem). Zawijanie i podział na szpalty aktualizują się na stronie podczas pisania. Dwuklik na ramce = szybka edycja w miejscu.</div>
+                <div class="gz-row mb-2">
+                    <div>
+                        <label class="form-label">Czcionka</label>
+                        <select class="form-select" data-prop="fontFamily">
+                            <optgroup label="Systemowe">
+                                <option value="Georgia">Georgia</option>
+                                <option value="Times New Roman">Times New Roman</option>
+                                <option value="Arial">Arial</option>
+                                <option value="Trebuchet MS">Trebuchet MS</option>
+                                <option value="Verdana">Verdana</option>
+                                <option value="Tahoma">Tahoma</option>
+                                <option value="Courier New">Courier New</option>
+                            </optgroup>
+                            <optgroup label="Google Fonts — szeryfowe">
+                                <option value="Lora">Lora</option>
+                                <option value="Merriweather">Merriweather</option>
+                                <option value="Playfair Display">Playfair Display</option>
+                            </optgroup>
+                            <optgroup label="Google Fonts — bezszeryfowe">
+                                <option value="Roboto">Roboto</option>
+                                <option value="Open Sans">Open Sans</option>
+                                <option value="Lato">Lato</option>
+                                <option value="Montserrat">Montserrat</option>
+                                <option value="Oswald">Oswald</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div style="flex:0 0 70px;">
+                        <label class="form-label">Rozmiar</label>
+                        <input type="number" class="form-control" data-prop="fontSize" data-type="number" min="6" max="120">
+                    </div>
+                </div>
+                <div class="gz-row mb-2">
+                    <div>
+                        <label class="form-label">Styl</label>
+                        <select class="form-select" data-prop="fontStyle">
+                            <option value="normal">Zwykły</option>
+                            <option value="bold">Pogrubiony</option>
+                            <option value="italic">Kursywa</option>
+                            <option value="bold italic">Pogrub. kursywa</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Wyrównanie</label>
+                        <select class="form-select" data-prop="align">
+                            <option value="left">Do lewej</option>
+                            <option value="center">Wyśrodkuj</option>
+                            <option value="right">Do prawej</option>
+                            <option value="justify">Wyjustuj</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="gz-row mb-2">
+                    <div>
+                        <label class="form-label">Szpalty</label>
+                        <select class="form-select" data-prop="columns" data-type="number">
+                            <option value="1">1 kolumna</option>
+                            <option value="2">2 szpalty</option>
+                            <option value="3">3 szpalty</option>
+                        </select>
+                    </div>
+                    <div style="flex:0 0 80px;">
+                        <label class="form-label">Interlinia</label>
+                        <input type="number" class="form-control" data-prop="lineHeight" data-type="number" step="0.05" min="0.8" max="3">
+                    </div>
+                </div>
+                <label class="form-label">Kolor tekstu</label>
+                <input type="color" class="form-control form-control-color mb-2" data-prop="fill">
+
+                <label class="form-label">Wyrównanie w pionie</label>
+                <select class="form-select mb-2" data-prop="valign">
+                    <option value="top">Do góry</option>
+                    <option value="middle">Do środka</option>
+                    <option value="bottom">Do dołu</option>
+                </select>
+
+                <label class="form-check mb-1">
+                    <input type="checkbox" class="form-check-input" data-prop="bgOn">
+                    <span class="form-check-label">Tło ramki (wstawka)</span>
+                </label>
+                <div class="gz-row mb-2">
+                    <div>
+                        <label class="form-label">Kolor tła</label>
+                        <input type="color" class="form-control form-control-color" data-prop="bgFill" value="#ffe08a">
+                    </div>
+                    <div style="flex:0 0 64px;">
+                        <label class="form-label">Zaokr.</label>
+                        <input type="number" class="form-control" data-prop="bgRadius" data-type="number" min="0" max="60">
+                    </div>
+                </div>
+                <label class="form-check mb-1">
+                    <input type="checkbox" class="form-check-input" data-prop="borderOn">
+                    <span class="form-check-label">Obramowanie</span>
+                </label>
+                <div class="gz-row mb-2">
+                    <div>
+                        <label class="form-label">Kolor ramki</label>
+                        <input type="color" class="form-control form-control-color" data-prop="borderColor" value="#1a56db">
+                    </div>
+                    <div style="flex:0 0 64px;">
+                        <label class="form-label">Grubość</label>
+                        <input type="number" class="form-control" data-prop="borderWidth" data-type="number" min="0" max="20">
+                    </div>
+                </div>
+
+                <label class="form-label">Margines wewn. (pt)</label>
+                <input type="number" class="form-control mb-2" data-prop="padding" data-type="number" min="0" max="80">
+
+                <label class="form-check mb-0">
+                    <input type="checkbox" class="form-check-input" data-prop="shadow">
+                    <span class="form-check-label">Cień pod wstawką</span>
+                </label>
+            </div>
+
+            {# Prostokąt #}
+            <div class="gz-group" data-for="rect">
+                <label class="form-label">Wypełnienie</label>
+                <input type="color" class="form-control form-control-color mb-2" data-prop="fill">
+                <div class="gz-row mb-2">
+                    <div>
+                        <label class="form-label">Obramowanie</label>
+                        <input type="color" class="form-control form-control-color" data-prop="stroke">
+                    </div>
+                    <div style="flex:0 0 70px;">
+                        <label class="form-label">Grubość</label>
+                        <input type="number" class="form-control" data-prop="strokeWidth" data-type="number" min="0" max="40">
+                    </div>
+                </div>
+                <label class="form-label">Zaokrąglenie rogów</label>
+                <input type="number" class="form-control" data-prop="cornerRadius" data-type="number" min="0" max="80">
+            </div>
+
+            {# Linia #}
+            <div class="gz-group" data-for="line">
+                <div class="gz-row">
+                    <div>
+                        <label class="form-label">Kolor</label>
+                        <input type="color" class="form-control form-control-color" data-prop="stroke">
+                    </div>
+                    <div style="flex:0 0 70px;">
+                        <label class="form-label">Grubość</label>
+                        <input type="number" class="form-control" data-prop="strokeWidth" data-type="number" min="1" max="40">
+                    </div>
+                </div>
+            </div>
+
+            {# Zdjęcie #}
+            <div class="gz-group" data-for="image">
+                <label class="form-label">Zdjęcie</label>
+                <button type="button" class="btn btn-sm btn-outline-primary w-100 mb-1" data-bs-toggle="modal" data-bs-target="#gzCropModal"><i class="ti ti-crop me-1"></i>Kadruj</button>
+                <button type="button" class="btn btn-sm btn-ghost-secondary w-100" data-action="gazetka-editor#resetCrop"><i class="ti ti-rotate-2 me-1"></i>Resetuj kadr</button>
+                <label class="form-check mt-2 mb-1">
+                    <input type="checkbox" class="form-check-input" data-prop="wrapText">
+                    <span class="form-check-label">Oblewaj tekstem</span>
+                </label>
+                <label class="form-check mb-0">
+                    <input type="checkbox" class="form-check-input" data-prop="shadow">
+                    <span class="form-check-label">Cień</span>
+                </label>
+            </div>
+
+            {# Ikona #}
+            <div class="gz-group" data-for="icon">
+                <label class="form-label">Ikona</label>
+                <div class="gz-row mb-2">
+                    <div>
+                        <label class="form-label">Kolor ikony</label>
+                        <input type="color" class="form-control form-control-color" data-prop="iconColor">
+                    </div>
+                    <div>
+                        <label class="form-label">Wypełnienie</label>
+                        <input type="color" class="form-control form-control-color" data-prop="iconFill">
+                    </div>
+                </div>
+                <label class="form-check mb-1">
+                    <input type="checkbox" class="form-check-input" data-prop="iconFilled">
+                    <span class="form-check-label">Wypełnij ikonę</span>
+                </label>
+                <label class="form-check mb-1">
+                    <input type="checkbox" class="form-check-input" data-prop="wrapText">
+                    <span class="form-check-label">Oblewaj tekstem</span>
+                </label>
+                <label class="form-check mb-0">
+                    <input type="checkbox" class="form-check-input" data-prop="shadow">
+                    <span class="form-check-label">Cień</span>
+                </label>
+            </div>
+
+            {# Pozycja i rozmiar (wspólne) #}
+            <div class="gz-group" data-for="text image rect line icon" style="border-bottom:none;">
+                <label class="form-label">Pozycja i rozmiar (pt)</label>
+                <div class="gz-row mb-2">
+                    <input type="number" class="form-control" data-prop="x" data-type="number" title="X" placeholder="X">
+                    <input type="number" class="form-control" data-prop="y" data-type="number" title="Y" placeholder="Y">
+                </div>
+                <div class="gz-row mb-2">
+                    <input type="number" class="form-control" data-prop="width" data-type="number" title="Szerokość" placeholder="szer.">
+                    <input type="number" class="form-control" data-prop="height" data-type="number" title="Wysokość" placeholder="wys.">
+                </div>
+                <label class="form-label">Obrót (°)</label>
+                <input type="number" class="form-control" data-prop="rotation" data-type="number" min="-180" max="180">
+            </div>
+        </aside>
+    </div>
+
+    {# ── Strony ───────────────────────────────── #}
+    <footer class="gz-pages">
+        <span class="text-secondary small" data-gazetka-editor-target="pageInfo" style="min-width:90px;">Strona 1</span>
+        <button class="btn btn-sm btn-icon btn-ghost-secondary" data-action="gazetka-editor#prevPage" title="Poprzednia"><i class="ti ti-chevron-left"></i></button>
+        <div class="gz-thumbs" data-gazetka-editor-target="thumbs"></div>
+        <button class="btn btn-sm btn-icon btn-ghost-secondary" data-action="gazetka-editor#nextPage" title="Następna"><i class="ti ti-chevron-right"></i></button>
+        <div class="ms-2 d-flex gap-1">
+            <button class="btn btn-sm btn-ghost-primary" data-action="gazetka-editor#addPage"><i class="ti ti-plus me-1"></i>Strona</button>
+            <button class="btn btn-sm btn-ghost-danger" data-action="gazetka-editor#removePage" title="Usuń stronę"><i class="ti ti-trash"></i></button>
+        </div>
+        <button class="btn btn-sm btn-ghost-secondary active ms-2" data-gazetka-editor-target="gridBtn" data-action="gazetka-editor#toggleGrid" title="Siatka i przyciąganie do siatki (włącz/wyłącz)"><i class="ti ti-grid-dots me-1"></i>Siatka</button>
+        <select class="form-select form-select-sm" data-action="gazetka-editor#setGridSize" title="Rozmiar siatki" style="width:auto;">
+            <option value="5">5 pt</option>
+            <option value="10">10 pt</option>
+            <option value="20" selected>20 pt</option>
+            <option value="40">40 pt</option>
+            <option value="60">60 pt</option>
+        </select>
+        <select class="form-select form-select-sm" data-pagenum data-action="gazetka-editor#setPageNumbers" title="Numery stron" style="width:auto;">
+            <option value="off">Numery: brak</option>
+            <option value="center">Numery: środek</option>
+            <option value="outer">Numery: do zewnątrz</option>
+        </select>
+        <label class="ms-auto d-flex align-items-center gap-1 small text-secondary">
+            Tło strony
+            <input type="color" class="form-control form-control-color" value="#ffffff" data-action="gazetka-editor#setBackground" style="width:36px;height:30px;padding:2px;">
+        </label>
+    </footer>
+
+    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden
+           data-gazetka-editor-target="file" data-action="change->gazetka-editor#onFileChosen">
+
+    {# ── Modal: podgląd rozkładówki ────────────── #}
+    <div class="modal modal-blur fade" id="gzSpreadModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ti ti-book-2 me-2"></i>Podgląd rozkładówki</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex gap-3 align-items-end mb-3 flex-wrap">
+                        <div>
+                            <label class="form-label">Lewa strona</label>
+                            <select class="form-select" data-spread="left" data-action="change->gazetka-editor#renderSpread" style="width:auto;"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Prawa strona</label>
+                            <select class="form-select" data-spread="right" data-action="change->gazetka-editor#renderSpread" style="width:auto;"></select>
+                        </div>
+                        <div class="text-secondary small">Zobacz, jak dwie strony wyglądają obok siebie — jak po rozłożeniu gazetki.</div>
+                    </div>
+                    <div class="d-flex justify-content-center" style="background:#e9edf2;border-radius:6px;padding:16px;">
+                        <div style="display:flex; box-shadow:0 6px 24px rgba(0,0,0,.2);">
+                            <img data-spread="imgL" alt="Lewa strona" style="height:58vh;max-height:560px;width:auto;display:block;background:#fff;">
+                            <div style="width:2px;background:rgba(0,0,0,.18);"></div>
+                            <img data-spread="imgR" alt="Prawa strona" style="height:58vh;max-height:560px;width:auto;display:block;background:#fff;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ── Modal: grafiki (Pixabay) ──────────────── #}
+    <div class="modal modal-blur fade" id="gzStockModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ti ti-library-photo me-2"></i>Grafiki — Pixabay</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2 align-items-end mb-2">
+                        <div class="col">
+                            <label class="form-label">Szukaj grafiki</label>
+                            <input type="text" class="form-control" data-stock="query" placeholder="np. szkoła, jesień, sport, książka"
+                                   data-action="keydown->gazetka-editor#stockKey">
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-label">Typ</label>
+                            <select class="form-select" data-stock="type">
+                                <option value="illustration" selected>Ilustracje / clipart</option>
+                                <option value="vector">Wektory</option>
+                                <option value="photo">Zdjęcia</option>
+                                <option value="all">Wszystko</option>
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-primary" data-action="gazetka-editor#searchStock"><i class="ti ti-search me-1"></i>Szukaj</button>
+                        </div>
+                    </div>
+                    <div class="small mb-2 text-secondary" data-stock="status">Wpisz hasło i kliknij „Szukaj". Grafiki z serwisu Pixabay (darmowe). „Ilustracje" zwykle mają przezroczyste tło.</div>
+                    <div class="row row-cols-3 row-cols-md-5 g-2" data-stock="results"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ── Modal: ikony ──────────────────────────── #}
+    <div class="modal modal-blur fade" id="gzIconModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ti ti-shape me-2"></i>Ikony</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2 align-items-end mb-2">
+                        <div class="col">
+                            <label class="form-label">Filtruj ikony (Tabler Icons — cała biblioteka)</label>
+                            <input type="text" class="form-control" data-icon="filter" placeholder="np. star, book, arrow, heart…"
+                                   data-action="input->gazetka-editor#filterIcons">
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-label">Kolor</label>
+                            <input type="color" class="form-control form-control-color" data-icon="color" value="#1a2330">
+                        </div>
+                    </div>
+                    <div data-icon="status" class="small mb-2 text-secondary">Wczytywanie listy ikon…</div>
+                    <div class="row row-cols-6 row-cols-md-8 g-2" data-icon="grid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ── Modal: kadrowanie zdjęcia ─────────────── #}
+    <div class="modal modal-blur fade" id="gzCropModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ti ti-crop me-2"></i>Kadrowanie zdjęcia</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-center mb-3" style="background:#f1f5f9;border-radius:6px;padding:10px;">
+                        <div data-gazetka-editor-target="cropContainer" style="line-height:0;"></div>
+                    </div>
+                    <label class="form-label">Powiększenie</label>
+                    <input type="range" class="form-range" min="1" max="5" step="0.05" value="1"
+                           data-gazetka-editor-target="cropZoom" data-action="input->gazetka-editor#setCropZoom">
+                    <div class="text-secondary small mt-1">Przeciągnij ramkę kadru, by wybrać fragment; suwakiem zmieniasz powiększenie. Proporcje kadru = proporcje ramki na stronie (bez zniekształceń).</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-link" data-bs-dismiss="modal">Anuluj</button>
+                    <button type="button" class="btn btn-primary" data-action="gazetka-editor#applyCrop"><i class="ti ti-check me-1"></i>Zastosuj kadr</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ── Modal: Asystent AI ────────────────────── #}
+    <div class="modal modal-blur fade" id="gzAiModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ti ti-sparkles me-2 text-primary"></i>Asystent AI</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item"><a href="#gzAiTextPane" class="nav-link active" data-bs-toggle="tab"><i class="ti ti-article me-1"></i>Tekst artykułu</a></li>
+                        <li class="nav-item"><a href="#gzAiImagePane" class="nav-link" data-bs-toggle="tab"><i class="ti ti-photo-ai me-1"></i>Obraz</a></li>
+                    </ul>
+                    <div class="tab-content pt-3">
+
+                        {# Tekst #}
+                        <div class="tab-pane active show" id="gzAiTextPane">
+                            <div class="mb-2">
+                                <label class="form-label">Temat</label>
+                                <input type="text" class="form-control" data-ai="topic" placeholder="np. Wycieczka klasy 6a do Krakowa">
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Rodzaj</label>
+                                    <select class="form-select" data-ai="type">
+                                        <option value="artykul">Artykuł informacyjny</option>
+                                        <option value="relacja">Relacja z wydarzenia</option>
+                                        <option value="wywiad">Wywiad</option>
+                                        <option value="zapowiedz">Zapowiedź wydarzenia</option>
+                                        <option value="ciekawostka">Ciekawostka</option>
+                                        <option value="felieton">Felieton / opinia</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Długość</label>
+                                    <select class="form-select" data-ai="length">
+                                        <option value="short">Krótki</option>
+                                        <option value="medium" selected>Średni</option>
+                                        <option value="long">Obszerny</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Ton</label>
+                                    <select class="form-select" data-ai="tone">
+                                        <option value="lekki" selected>Lekki</option>
+                                        <option value="formalny">Formalny</option>
+                                        <option value="humorystyczny">Z humorem</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">Szczegóły <span class="text-secondary">(opcjonalnie)</span></label>
+                                <textarea class="form-control" rows="3" data-ai="details" placeholder="Co, kiedy, gdzie, kto, najważniejsze fakty — AI oprze się na tych danych."></textarea>
+                            </div>
+                            <div class="small text-secondary mb-2" data-ai="textStatus"></div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-primary" data-ai="textBtn" data-action="gazetka-editor#generateArticle">
+                                    <i class="ti ti-wand me-1"></i>Generuj tekst
+                                </button>
+                                <span class="text-secondary small">Zaznacz ramkę tekstu, by wstawić treść do niej; inaczej powstanie nagłówek + tekst w 2 szpaltach.</span>
+                            </div>
+                        </div>
+
+                        {# Obraz #}
+                        <div class="tab-pane" id="gzAiImagePane">
+                            <div class="mb-2">
+                                <label class="form-label">Opis obrazu</label>
+                                <textarea class="form-control" rows="3" data-ai="imgPrompt" placeholder="np. Jesienny park ze szkołą w tle, dzieci grające w piłkę"></textarea>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">Styl</label>
+                                <select class="form-select" data-ai="imgStyle">
+                                    <option value="ilustracja kredkami, kolorowa, dla dzieci" selected>Kolorowa ilustracja (dla dzieci)</option>
+                                    <option value="akwarela">Akwarela</option>
+                                    <option value="realistyczne zdjęcie">Realistyczny</option>
+                                    <option value="grafika płaska, wektorowa, flat design">Flat / wektorowa</option>
+                                    <option value="czarno-biały szkic ołówkiem">Czarno-biały szkic</option>
+                                    <option value="kreskówka">Kreskówka</option>
+                                </select>
+                            </div>
+                            <div class="alert alert-warning py-2 small mb-2">
+                                <i class="ti ti-alert-triangle me-1"></i>Generowanie obrazu wymaga modelu graficznego i wiąże się z kosztem (zwykle kilka groszy za obraz). Nie używaj wizerunków konkretnych uczniów — obrazy są ilustracyjne.
+                            </div>
+                            <div class="small text-secondary mb-2" data-ai="imgStatus"></div>
+                            <button type="button" class="btn btn-primary" data-ai="imgBtn" data-action="gazetka-editor#generateAiImage">
+                                <i class="ti ti-wand me-1"></i>Generuj obraz
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ── Modal: szablony stron ─────────────────── #}
+    <div class="modal modal-blur fade" id="gzTemplatesModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ti ti-layout-grid me-2"></i>Szablony stron</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-secondary small mb-3">Wybrany szablon zastąpi zawartość <strong>bieżącej strony</strong>. Jeśli strona nie jest pusta, pojawi się pytanie o potwierdzenie.</p>
+                    <div class="row row-cards">
+                        {# Okładka #}
+                        <div class="col-6 col-md-4">
+                            <button type="button" class="card card-link card-link-pop gz-tpl-card w-100 text-start" data-action="gazetka-editor#applyTemplate" data-gazetka-editor-key-param="cover" data-bs-dismiss="modal">
+                                <div class="card-body">
+                                    <div class="gz-tpl">
+                                        <div class="gz-tpl-title"></div>
+                                        <div class="b" style="width:60%;margin:0 auto;"></div>
+                                        <div class="box" style="flex:2;"></div>
+                                        <div class="b" style="width:80%;"></div>
+                                        <div class="b" style="width:70%;"></div>
+                                    </div>
+                                    <div class="fw-bold mt-2">Okładka</div>
+                                    <div class="text-secondary small">Tytuł, duże zdjęcie i spis treści.</div>
+                                </div>
+                            </button>
+                        </div>
+                        {# Artykuł 2 szpalty #}
+                        <div class="col-6 col-md-4">
+                            <button type="button" class="card card-link card-link-pop gz-tpl-card w-100 text-start" data-action="gazetka-editor#applyTemplate" data-gazetka-editor-key-param="article2col" data-bs-dismiss="modal">
+                                <div class="card-body">
+                                    <div class="gz-tpl">
+                                        <div class="gz-tpl-title" style="width:75%;"></div>
+                                        <div class="row">
+                                            <div class="col"><div class="b"></div><div class="b"></div><div class="b" style="width:80%;"></div><div class="b"></div></div>
+                                            <div class="col"><div class="b"></div><div class="b" style="width:90%;"></div><div class="b"></div><div class="b" style="width:60%;"></div></div>
+                                        </div>
+                                    </div>
+                                    <div class="fw-bold mt-2">Artykuł — 2 szpalty</div>
+                                    <div class="text-secondary small">Nagłówek i tekst w dwóch kolumnach.</div>
+                                </div>
+                            </button>
+                        </div>
+                        {# Artykuł ze zdjęciem #}
+                        <div class="col-6 col-md-4">
+                            <button type="button" class="card card-link card-link-pop gz-tpl-card w-100 text-start" data-action="gazetka-editor#applyTemplate" data-gazetka-editor-key-param="article1col" data-bs-dismiss="modal">
+                                <div class="card-body">
+                                    <div class="gz-tpl">
+                                        <div class="gz-tpl-title" style="width:70%;"></div>
+                                        <div class="box" style="flex:1.4;"></div>
+                                        <div class="b"></div><div class="b" style="width:90%;"></div><div class="b"></div>
+                                    </div>
+                                    <div class="fw-bold mt-2">Artykuł ze zdjęciem</div>
+                                    <div class="text-secondary small">Zdjęcie u góry, tekst pod spodem.</div>
+                                </div>
+                            </button>
+                        </div>
+                        {# Fotorelacja #}
+                        <div class="col-6 col-md-4">
+                            <button type="button" class="card card-link card-link-pop gz-tpl-card w-100 text-start" data-action="gazetka-editor#applyTemplate" data-gazetka-editor-key-param="photopage" data-bs-dismiss="modal">
+                                <div class="card-body">
+                                    <div class="gz-tpl">
+                                        <div class="gz-tpl-title" style="width:55%;"></div>
+                                        <div class="row"><div class="box"></div><div class="box"></div></div>
+                                        <div class="row"><div class="box"></div><div class="box"></div></div>
+                                    </div>
+                                    <div class="fw-bold mt-2">Fotorelacja</div>
+                                    <div class="text-secondary small">Siatka czterech zdjęć z podpisami.</div>
+                                </div>
+                            </button>
+                        </div>
+                        {# Stopka redakcyjna #}
+                        <div class="col-6 col-md-4">
+                            <button type="button" class="card card-link card-link-pop gz-tpl-card w-100 text-start" data-action="gazetka-editor#applyTemplate" data-gazetka-editor-key-param="colophon" data-bs-dismiss="modal">
+                                <div class="card-body">
+                                    <div class="gz-tpl">
+                                        <div class="gz-tpl-title" style="width:60%;"></div>
+                                        <div class="b" style="width:90%;"></div><div class="b" style="width:70%;"></div>
+                                        <div class="b" style="width:80%;"></div><div class="b" style="width:50%;"></div>
+                                        <div style="flex:1;"></div>
+                                    </div>
+                                    <div class="fw-bold mt-2">Stopka redakcyjna</div>
+                                    <div class="text-secondary small">Skład redakcji i podziękowania.</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

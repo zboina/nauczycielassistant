@@ -335,7 +335,9 @@
                     <input type="checkbox" class="form-check-input" data-prop="wrapText">
                     <span class="form-check-label">Oblewaj tekstem</span>
                 </label>
-                <div class="text-secondary mb-2" style="font-size:.7rem;">Umieść zdjęcie <strong>wewnątrz</strong> ramki tekstu, a tekst oblepi je dookoła — gdy zdjęcie jest na środku kolumny, tekst popłynie <strong>z obu stron</strong> (efekt DTP).</div>
+                <label class="form-label">Odstęp oblewania — odpychanie tekstu (pt)</label>
+                <input type="number" class="form-control mb-1" data-prop="wrapGap" data-type="number" min="0" max="80" placeholder="9">
+                <div class="text-secondary mb-2" style="font-size:.7rem;">Umieść zdjęcie <strong>wewnątrz</strong> ramki tekstu, a tekst oblepi je dookoła — gdy zdjęcie jest na środku kolumny, tekst popłynie <strong>z obu stron</strong> (efekt DTP). Odstęp = jak daleko tekst trzyma się od zdjęcia.</div>
                 <label class="form-check mb-0">
                     <input type="checkbox" class="form-check-input" data-prop="shadow">
                     <span class="form-check-label">Cień</span>
@@ -363,6 +365,8 @@
                     <input type="checkbox" class="form-check-input" data-prop="wrapText">
                     <span class="form-check-label">Oblewaj tekstem</span>
                 </label>
+                <label class="form-label">Odstęp oblewania (pt)</label>
+                <input type="number" class="form-control mb-2" data-prop="wrapGap" data-type="number" min="0" max="80" placeholder="9">
                 <label class="form-check mb-0">
                     <input type="checkbox" class="form-check-input" data-prop="shadow">
                     <span class="form-check-label">Cień</span>

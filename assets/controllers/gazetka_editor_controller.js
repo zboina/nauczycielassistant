@@ -532,7 +532,6 @@ export default class extends Controller {
      *  els domyślnie = bieżąca strona; eksport PDF podaje elementy konkretnej strony. */
     imageExclusions(el, els = this.page().elements) {
         if (el.wrapImages === false) return [];
-        const gutter = 9;
         const res = [];
         for (const o of els) {
             if (o.rotation || o.id === el.id) continue;
@@ -540,6 +539,8 @@ export default class extends Controller {
             const wraps = o.type === 'image' ? (o.wrapText !== false)
                 : (o.type === 'icon' ? o.wrapText === true : false);
             if (!wraps) continue;
+            // Odstęp oblewania (odpychania tekstu) — cecha obiektu; domyślnie 9 pt.
+            const gutter = Math.max(0, o.wrapGap != null ? o.wrapGap : 9);
             const ix1 = o.x + o.width, iy1 = o.y + o.height;
             const tx1 = el.x + el.width, ty1 = el.y + el.height;
             // brak nałożenia?
@@ -1132,7 +1133,7 @@ export default class extends Controller {
             this.addElement({
                 id: uid(), type: 'image',
                 x: round((this.pageW - w) / 2), y: 80, width: w, height: h,
-                rotation: 0, opacity: 1, src: data.url, wrapText: true,
+                rotation: 0, opacity: 1, src: data.url, wrapText: true, wrapGap: 9,
             });
             this.statusTarget.textContent = 'Zdjęcie dodane.';
         } catch (e) {
@@ -2356,7 +2357,7 @@ export default class extends Controller {
             w = round(w * ratio); h = round(h * ratio);
             this.addElement({
                 id: uid(), type: 'image', x: round((this.pageW - w) / 2), y: 80,
-                width: w, height: h, rotation: 0, opacity: 1, src: data.url, wrapText: true,
+                width: w, height: h, rotation: 0, opacity: 1, src: data.url, wrapText: true, wrapGap: 9,
             });
             this.closeAiModal();
         } catch (e) {
@@ -2616,7 +2617,7 @@ export default class extends Controller {
                 width: size, height: size, rotation: 0, opacity: 1,
                 iconName: name, iconSvg: svg,
                 iconColor: color, iconFilled: false, iconFill: color,
-                wrapText: false,
+                wrapText: false, wrapGap: 9,
             };
             this.regenIconSrc(el);
             this.addElement(el);
@@ -2701,7 +2702,7 @@ export default class extends Controller {
             w = round(w * ratio); h = round(h * ratio);
             this.addElement({
                 id: uid(), type: 'image', x: round((this.pageW - w) / 2), y: 80,
-                width: w, height: h, rotation: 0, opacity: 1, src: data.url, wrapText: true,
+                width: w, height: h, rotation: 0, opacity: 1, src: data.url, wrapText: true, wrapGap: 9,
             });
             const cb = document.querySelector('#gzStockModal [data-bs-dismiss="modal"]');
             if (cb) cb.click();
@@ -2805,7 +2806,7 @@ export default class extends Controller {
         w = round(w * ratio); h = round(h * ratio);
         this.addElement({
             id: uid(), type: 'image', x: round((this.pageW - w) / 2), y: 80,
-            width: w, height: h, rotation: 0, opacity: 1, src: it.url, wrapText: true,
+            width: w, height: h, rotation: 0, opacity: 1, src: it.url, wrapText: true, wrapGap: 9,
         });
         const cb = document.querySelector('#gzMediaModal [data-bs-dismiss="modal"]');
         if (cb) cb.click();

@@ -231,17 +231,37 @@ class GazetkaController extends AbstractController
 
         $p = json_decode($request->getContent(), true);
         $prompt = trim((string) ($p['prompt'] ?? ''));
-        if ($prompt === '') {
+        $style = trim((string) ($p['style'] ?? ''));
+        $ref = trim((string) ($p['ref'] ?? ''));
+
+        if ($prompt === '' && $ref === '') {
             return new JsonResponse(['ok' => false, 'error' => 'Opisz, co ma przedstawiać obraz.'], 400);
         }
-        $style = trim((string) ($p['style'] ?? ''));
 
-        $fullPrompt = $prompt
-            . ($style !== '' ? ' Styl: ' . $style . '.' : '')
-            . ' Ilustracja do szkolnej gazetki. Bez żadnych napisów ani tekstu na obrazie.';
+        // Grafika wzorcowa (np. winietka) → generowanie w jej stylu/kolorystyce.
+        $refUris = [];
+        if ($ref !== '') {
+            $uri = $this->refImageDataUri($ref);
+            if ($uri === null) {
+                return new JsonResponse(['ok' => false, 'error' => 'Nie udało się wczytać grafiki wzorcowej.'], 400);
+            }
+            $refUris[] = $uri;
+        }
+
+        if ($ref !== '') {
+            $fullPrompt = 'W załączeniu grafika wzorcowa — winietka/nagłówek tej gazetki. '
+                . 'Stwórz NOWĄ, mniejszą grafikę (mini-winietkę / ikonę działu) w dokładnie tym samym stylu graficznym, '
+                . 'tej samej kolorystyce oraz z tym samym charakterem kresek, kształtów i klimatem co grafika wzorcowa. '
+                . ($prompt !== '' ? 'Motyw / nazwa działu: ' . $prompt . '. ' : '')
+                . 'Prosty, czytelny, wyrazisty motyw, wyśrodkowany, na jednolitym jasnym lub przezroczystym tle. Bez żadnego tekstu i napisów.';
+        } else {
+            $fullPrompt = $prompt
+                . ($style !== '' ? ' Styl: ' . $style . '.' : '')
+                . ' Ilustracja do szkolnej gazetki. Bez żadnych napisów ani tekstu na obrazie.';
+        }
 
         try {
-            $dataUri = $this->ai->generateImage($fullPrompt, owner: $this->currentUser());
+            $dataUri = $this->ai->generateImage($fullPrompt, owner: $this->currentUser(), referenceImages: $refUris);
             [$url, $w, $h] = $this->storeDataUriImage($dataUri);
         } catch (\RuntimeException $e) {
             return new JsonResponse(['ok' => false, 'error' => $e->getMessage()], 502);
@@ -313,6 +333,69 @@ class GazetkaController extends AbstractController
         }
     }
 
+    #[Route('/{id}/media', name: 'app_gazetka_media_list', methods: ['GET'])]
+    public function mediaList(Newsletter $newsletter): JsonResponse
+    {
+        $this->denyUnlessOwner($newsletter);
+
+        try {
+            [$absDir, $relDir] = $this->ownerUploadDir();
+        } catch (\RuntimeException) {
+            return new JsonResponse(['ok' => true, 'items' => []]);
+        }
+
+        $items = [];
+        foreach (glob($absDir . '/*') ?: [] as $path) {
+            if (!is_file($path)) {
+                continue;
+            }
+            $info = @getimagesize($path);
+            if (!$info) {
+                continue; // tylko prawidłowe obrazy
+            }
+            $name = basename($path);
+            // Pochodzenie po prefiksie nazwy (patrz storeDataUriImage / stockImport / upload).
+            $kind = str_starts_with($name, 'ai_') ? 'ai'
+                : (str_starts_with($name, 'px_') ? 'stock' : 'upload');
+
+            $items[] = [
+                'url' => $relDir . '/' . $name,
+                'name' => $name,
+                'kind' => $kind,
+                'width' => $info[0],
+                'height' => $info[1],
+                'size' => @filesize($path) ?: 0,
+                'mtime' => @filemtime($path) ?: 0,
+            ];
+        }
+        // Najnowsze na górze.
+        usort($items, static fn (array $a, array $b): int => $b['mtime'] <=> $a['mtime']);
+
+        return new JsonResponse(['ok' => true, 'items' => $items]);
+    }
+
+    #[Route('/{id}/media-delete', name: 'app_gazetka_media_delete', methods: ['POST'])]
+    public function mediaDelete(Newsletter $newsletter, Request $request): JsonResponse
+    {
+        $this->denyUnlessOwner($newsletter);
+
+        if (!$this->isCsrfTokenValid('gazetka', (string) $request->headers->get('X-CSRF-Token'))) {
+            return new JsonResponse(['ok' => false, 'error' => 'Nieprawidłowy token CSRF.'], 419);
+        }
+
+        $url = trim((string) (json_decode($request->getContent(), true)['url'] ?? ''));
+        $abs = $url !== '' ? $this->ownedUploadAbsPath($url) : null;
+        if ($abs === null) {
+            return new JsonResponse(['ok' => false, 'error' => 'Nie znaleziono grafiki.'], 400);
+        }
+
+        if (!@unlink($abs)) {
+            return new JsonResponse(['ok' => false, 'error' => 'Nie udało się usunąć pliku.'], 500);
+        }
+
+        return new JsonResponse(['ok' => true]);
+    }
+
     /**
      * Katalog uploadów bieżącego użytkownika (tworzy go w razie potrzeby).
      *
@@ -327,6 +410,55 @@ class GazetkaController extends AbstractController
         }
 
         return [$absDir, $relDir];
+    }
+
+    /**
+     * Zamienia URL grafiki na bezwzględną ścieżkę pliku TYLKO jeśli wskazuje na własny upload
+     * bieżącego użytkownika. Zwraca null w każdym innym przypadku.
+     * Twarda ochrona przed path-traversal i sięganiem do cudzych/obcych plików (IDOR).
+     */
+    private function ownedUploadAbsPath(string $url): ?string
+    {
+        [$absDir, $relDir] = $this->ownerUploadDir();
+        // Tylko pojedynczy segment nazwy pliku w katalogu tego użytkownika (bez „/", więc bez wyjścia z katalogu).
+        if (!preg_match('#^' . preg_quote($relDir, '#') . '/([A-Za-z0-9._-]+)$#', $url, $m)) {
+            return null;
+        }
+
+        $abs = realpath($absDir . '/' . $m[1]);
+        $base = realpath($absDir);
+        if ($abs === false || $base === false || !str_starts_with($abs, $base . \DIRECTORY_SEPARATOR)) {
+            return null;
+        }
+
+        return $abs;
+    }
+
+    /**
+     * Zamienia URL grafiki wzorcowej (z uploadów BIEŻĄCEGO użytkownika lub data URI) na data URI base64
+     * do wysłania jako wzór do AI. Zwraca null, gdy URL nie wskazuje na własny, prawidłowy plik graficzny.
+     */
+    private function refImageDataUri(string $url): ?string
+    {
+        if (str_starts_with($url, 'data:image/')) {
+            return $url;
+        }
+
+        $abs = $this->ownedUploadAbsPath($url);
+        if ($abs === null) {
+            return null;
+        }
+
+        $bytes = @file_get_contents($abs);
+        if ($bytes === false || $bytes === '') {
+            return null;
+        }
+        $info = @getimagesizefromstring($bytes);
+        if (!$info) {
+            return null;
+        }
+
+        return 'data:' . image_type_to_mime_type($info[2]) . ';base64,' . base64_encode($bytes);
     }
 
     /**

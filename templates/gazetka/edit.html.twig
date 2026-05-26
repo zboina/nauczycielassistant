@@ -14,9 +14,18 @@
     .gz-topbar .gz-title:hover, .gz-topbar .gz-title:focus { border-color:#cdd3da; outline:none; }
     .gz-status { font-size:.78rem; color:#626976; min-width:120px; }
     .gz-main { flex:1; display:flex; min-height:0; }
-    .gz-toolbar { width:58px; background:#fff; border-right:1px solid #e3e6ea; padding:.4rem; display:flex; flex-direction:column; gap:.3rem; overflow-y:auto; flex-shrink:0; }
+    .gz-toolbar { width:58px; background:#fff; border-right:1px solid #e3e6ea; padding:.4rem; display:flex; flex-direction:column; gap:.3rem; overflow-y:auto; flex-shrink:0; transition:width .15s ease; }
     .gz-toolbar .btn { width:42px; height:42px; padding:0; display:flex; align-items:center; justify-content:center; }
+    .gz-toolbar .btn .gz-label { display:none; }
     .gz-toolbar .gz-sep { height:1px; background:#e3e6ea; margin:.25rem 2px; }
+    .gz-toolbar .gz-cap { display:none; }
+    /* Rozwinięty pasek — ikony z opisami i nagłówkami sekcji */
+    .gz-toolbar--expanded { width:206px; }
+    .gz-toolbar--expanded .btn { width:100%; height:38px; justify-content:flex-start; gap:.6rem; padding:0 .7rem; font-size:.85rem; }
+    .gz-toolbar--expanded .btn i { font-size:1.05rem; flex-shrink:0; }
+    .gz-toolbar--expanded .btn .gz-label { display:inline; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .gz-toolbar--expanded .gz-sep { display:none; }
+    .gz-toolbar--expanded .gz-cap { display:block; font-size:.66rem; text-transform:uppercase; letter-spacing:.04em; color:#94a0ad; font-weight:600; padding:.5rem .2rem .1rem; }
     .gz-canvas-wrap { flex:1; overflow:auto; display:flex; justify-content:center; align-items:flex-start; padding:1.5rem; }
     .gz-stage { line-height:0; }
     .gz-props { width:286px; background:#fff; border-left:1px solid #e3e6ea; padding:.75rem .85rem; overflow-y:auto; flex-shrink:0; font-size:.84rem; }
@@ -41,6 +50,12 @@
     .gz-tpl .col { display:flex; flex-direction:column; gap:3px; flex:1; }
     .gz-tpl-title { height:8px; background:#0b1f3a; border-radius:1px; }
     .gz-tpl-card .card-body { padding:.75rem; }
+    /* Magazyn mediów */
+    .gz-media-item { position:relative; }
+    .gz-media-item .gz-media-thumb { width:100%; height:96px; object-fit:contain; background:#f6f8fa; border-radius:3px; display:block; }
+    .gz-media-item .gz-media-del { position:absolute; top:4px; right:4px; opacity:0; transition:opacity .12s; z-index:2; }
+    .gz-media-item:hover .gz-media-del, .gz-media-item:focus-within .gz-media-del { opacity:1; }
+    .gz-media-badge { position:absolute; bottom:4px; left:4px; z-index:2; pointer-events:none; }
 </style>
 {% endblock %}
 
@@ -59,6 +74,8 @@
      data-gazetka-editor-ai-image-url-value="{{ path('app_gazetka_ai_image', {id: newsletter.id}) }}"
      data-gazetka-editor-stock-search-url-value="{{ path('app_gazetka_stock_search', {id: newsletter.id}) }}"
      data-gazetka-editor-stock-import-url-value="{{ path('app_gazetka_stock_import', {id: newsletter.id}) }}"
+     data-gazetka-editor-media-list-url-value="{{ path('app_gazetka_media_list', {id: newsletter.id}) }}"
+     data-gazetka-editor-media-delete-url-value="{{ path('app_gazetka_media_delete', {id: newsletter.id}) }}"
      data-gazetka-editor-csrf-value="{{ csrf_token('gazetka') }}"
      data-gazetka-editor-doc-value="{{ doc }}"
      data-gazetka-editor-initial-template-value="{{ app.request.query.get('template')|default('') }}">
@@ -96,25 +113,31 @@
     <div class="gz-main">
 
         {# Pasek narzędzi #}
-        <aside class="gz-toolbar">
-            <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzTemplatesModal" title="Szablony stron"><i class="ti ti-layout-grid"></i></button>
-            <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzAiModal" title="Asystent AI — tekst i obrazy"><i class="ti ti-sparkles"></i></button>
-            <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzIconModal" title="Ikony (Tabler Icons)"><i class="ti ti-shape"></i></button>
-            <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzStockModal" title="Grafiki (Pixabay)"><i class="ti ti-library-photo"></i></button>
+        <aside class="gz-toolbar" data-gazetka-editor-target="toolbar">
+            <button class="btn btn-ghost-secondary gz-toolbar-toggle" data-action="gazetka-editor#toggleToolbar" title="Rozwiń / zwiń menu (opisy przy ikonach)"><i class="ti ti-menu-2"></i><span class="gz-label">Zwiń menu</span></button>
             <div class="gz-sep"></div>
-            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#addHeading" title="Nagłówek"><i class="ti ti-heading"></i></button>
-            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#addText" title="Tekst / szpalty"><i class="ti ti-text-size"></i></button>
-            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#pickImage" title="Zdjęcie"><i class="ti ti-photo"></i></button>
-            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#addRect" title="Prostokąt / ramka"><i class="ti ti-square"></i></button>
-            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#addLine" title="Linia"><i class="ti ti-line"></i></button>
+            <div class="gz-cap">Biblioteki i AI</div>
+            <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzTemplatesModal" title="Szablony stron"><i class="ti ti-layout-grid"></i><span class="gz-label">Szablony</span></button>
+            <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzAiModal" title="Asystent AI — tekst i obrazy"><i class="ti ti-sparkles"></i><span class="gz-label">Asystent AI</span></button>
+            <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzIconModal" title="Ikony (Tabler Icons)"><i class="ti ti-shape"></i><span class="gz-label">Ikony</span></button>
+            <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzStockModal" title="Grafiki (Pixabay)"><i class="ti ti-library-photo"></i><span class="gz-label">Grafiki Pixabay</span></button>
+            <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzMediaModal" title="Magazyn mediów — Twoje grafiki (wgrane, AI, Pixabay)"><i class="ti ti-folder"></i><span class="gz-label">Magazyn mediów</span></button>
             <div class="gz-sep"></div>
-            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#duplicateSelected" title="Duplikuj (Ctrl+D)"><i class="ti ti-copy"></i></button>
-            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#copySelected" title="Kopiuj (Ctrl+C)"><i class="ti ti-clipboard-copy"></i></button>
-            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#cutSelected" title="Wytnij (Ctrl+X)"><i class="ti ti-scissors"></i></button>
-            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#pasteClipboard" title="Wklej na tę stronę (Ctrl+V)"><i class="ti ti-clipboard-plus"></i></button>
-            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#bringForward" title="Na wierzch"><i class="ti ti-stack-forward"></i></button>
-            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#sendBackward" title="Pod spód"><i class="ti ti-stack-backward"></i></button>
-            <button class="btn btn-ghost-danger" data-action="gazetka-editor#deleteSelected" title="Usuń (Delete)"><i class="ti ti-trash"></i></button>
+            <div class="gz-cap">Dodaj element</div>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#addHeading" title="Nagłówek"><i class="ti ti-heading"></i><span class="gz-label">Nagłówek</span></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#addText" title="Tekst / szpalty"><i class="ti ti-text-size"></i><span class="gz-label">Tekst / szpalty</span></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#pickImage" title="Zdjęcie"><i class="ti ti-photo"></i><span class="gz-label">Zdjęcie</span></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#addRect" title="Prostokąt / ramka"><i class="ti ti-square"></i><span class="gz-label">Prostokąt</span></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#addLine" title="Linia"><i class="ti ti-line"></i><span class="gz-label">Linia</span></button>
+            <div class="gz-sep"></div>
+            <div class="gz-cap">Edycja</div>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#duplicateSelected" title="Duplikuj (Ctrl+D)"><i class="ti ti-copy"></i><span class="gz-label">Duplikuj</span></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#copySelected" title="Kopiuj (Ctrl+C)"><i class="ti ti-clipboard-copy"></i><span class="gz-label">Kopiuj</span></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#cutSelected" title="Wytnij (Ctrl+X)"><i class="ti ti-scissors"></i><span class="gz-label">Wytnij</span></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#pasteClipboard" title="Wklej na tę stronę (Ctrl+V)"><i class="ti ti-clipboard-plus"></i><span class="gz-label">Wklej</span></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#bringForward" title="Na wierzch"><i class="ti ti-stack-forward"></i><span class="gz-label">Na wierzch</span></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#sendBackward" title="Pod spód"><i class="ti ti-stack-backward"></i><span class="gz-label">Pod spód</span></button>
+            <button class="btn btn-ghost-danger" data-action="gazetka-editor#deleteSelected" title="Usuń (Delete)"><i class="ti ti-trash"></i><span class="gz-label">Usuń</span></button>
         </aside>
 
         {# Płótno #}
@@ -134,7 +157,7 @@
             <div class="gz-group" data-for="text">
                 <label class="form-label">Treść <span class="text-secondary text-lowercase fw-normal" style="letter-spacing:0;">(podgląd szpalt na stronie na żywo)</span></label>
                 <textarea class="form-control mb-1" rows="8" data-prop="text" style="resize:vertical; font-size:.8rem; line-height:1.45;"></textarea>
-                <div class="text-secondary mb-2" style="font-size:.7rem;">Tu edytujesz cały tekst (z przewijaniem). Zawijanie i podział na szpalty aktualizują się na stronie podczas pisania. Dwuklik na ramce = szybka edycja w miejscu.</div>
+                <div class="text-secondary mb-2" style="font-size:.7rem;">Tu edytujesz cały tekst (z przewijaniem). Zawijanie i podział na szpalty aktualizują się na stronie podczas pisania. <strong>Pogrubienie/kursywa fragmentu:</strong> dwuklik na ramce, zaznacz tekst i kliknij <strong>B</strong>/<strong>I</strong> (lub Ctrl+B / Ctrl+I). Uwaga: edycja tekstu w tym polu usuwa formatowanie fragmentów.</div>
                 <div class="gz-row mb-2">
                     <div>
                         <label class="form-label">Czcionka</label>
@@ -439,6 +462,31 @@
         </div>
     </div>
 
+    {# ── Modal: magazyn mediów ─────────────────── #}
+    <div class="modal modal-blur fade" id="gzMediaModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ti ti-folder me-2"></i>Magazyn mediów</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-primary active" data-media-filter="all" data-action="gazetka-editor#filterMedia" data-gazetka-editor-filter-param="all">Wszystkie</button>
+                            <button type="button" class="btn btn-outline-primary" data-media-filter="upload" data-action="gazetka-editor#filterMedia" data-gazetka-editor-filter-param="upload">Wgrane</button>
+                            <button type="button" class="btn btn-outline-primary" data-media-filter="ai" data-action="gazetka-editor#filterMedia" data-gazetka-editor-filter-param="ai">AI</button>
+                            <button type="button" class="btn btn-outline-primary" data-media-filter="stock" data-action="gazetka-editor#filterMedia" data-gazetka-editor-filter-param="stock">Pixabay</button>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-ghost-secondary ms-auto" data-action="gazetka-editor#loadMedia" title="Odśwież"><i class="ti ti-refresh me-1"></i>Odśwież</button>
+                    </div>
+                    <div class="small mb-2 text-secondary" data-media="status">Wszystkie Twoje grafiki — wgrane, wygenerowane przez AI i pobrane z Pixabay — w jednym miejscu, do ponownego użycia w każdej gazetce.</div>
+                    <div class="row row-cols-3 row-cols-md-5 g-2" data-media="grid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {# ── Modal: ikony ──────────────────────────── #}
     <div class="modal modal-blur fade" id="gzIconModal" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
@@ -478,10 +526,11 @@
                     <div class="d-flex justify-content-center mb-3" style="background:#f1f5f9;border-radius:6px;padding:10px;">
                         <div data-gazetka-editor-target="cropContainer" style="line-height:0;"></div>
                     </div>
-                    <label class="form-label">Powiększenie</label>
-                    <input type="range" class="form-range" min="1" max="5" step="0.05" value="1"
-                           data-gazetka-editor-target="cropZoom" data-action="input->gazetka-editor#setCropZoom">
-                    <div class="text-secondary small mt-1">Przeciągnij ramkę kadru, by wybrać fragment; suwakiem zmieniasz powiększenie. Proporcje kadru = proporcje ramki na stronie (bez zniekształceń).</div>
+                    <label class="form-check mb-1">
+                        <input type="checkbox" class="form-check-input" data-action="change->gazetka-editor#toggleCropRatio">
+                        <span class="form-check-label">Zachowaj proporcje ramki na stronie (nie zmieniaj jej kształtu)</span>
+                    </label>
+                    <div class="text-secondary small mt-1">Przeciągaj <strong>uchwyty</strong>, aby zaznaczyć dowolny fragment zdjęcia; chwyć środek, by przesunąć zaznaczenie. Po zatwierdzeniu ramka na stronie przyjmie proporcje wybranego fragmentu (bez zniekształceń). Zaznacz opcję powyżej, jeśli kształt ramki ma pozostać bez zmian.</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-link" data-bs-dismiss="modal">Anuluj</button>
@@ -556,6 +605,17 @@
 
                         {# Obraz #}
                         <div class="tab-pane" id="gzAiImagePane">
+                            {# Wzór (styl/kolorystyka) — widoczne, gdy zaznaczono grafikę #}
+                            <div class="mb-2 p-2 rounded" data-ai="refBlock" style="display:none; background:#f3f6fb; border:1px solid #e1e8f4;">
+                                <label class="form-check mb-1">
+                                    <input type="checkbox" class="form-check-input" data-ai="refUse">
+                                    <span class="form-check-label"><strong>Generuj na podstawie zaznaczonej grafiki</strong> — AI zachowa jej styl, kolory i charakter (np. mini-winietki działów/cykli).</span>
+                                </label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <img data-ai="refThumb" alt="wzór" style="height:44px;width:auto;max-width:120px;border:1px solid #d7dde8;border-radius:4px;background:#fff;object-fit:contain;">
+                                    <span class="text-secondary small">W polu „Opis" wpisz nazwę działu/cyklu, np. „Sport", „Kącik czytelnika", „Z życia szkoły".</span>
+                                </div>
+                            </div>
                             <div class="mb-2">
                                 <label class="form-label">Opis obrazu</label>
                                 <textarea class="form-control" rows="3" data-ai="imgPrompt" placeholder="np. Jesienny park ze szkołą w tle, dzieci grające w piłkę"></textarea>

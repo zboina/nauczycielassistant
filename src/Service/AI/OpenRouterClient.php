@@ -137,9 +137,21 @@ class OpenRouterClient
         ?User $owner = null,
         ?string $model = null,
         string $module = 'gazetka_image',
+        array $referenceImages = [],
     ): string {
         $model ??= self::DEFAULT_IMAGE_MODEL;
         $startMs = hrtime(true);
+
+        // Z grafiką wzorcową (image-to-image): wiadomość multimodalna tekst + obraz(y).
+        $content = $prompt;
+        if ($referenceImages) {
+            $content = [['type' => 'text', 'text' => $prompt]];
+            foreach ($referenceImages as $ref) {
+                if (is_string($ref) && $ref !== '') {
+                    $content[] = ['type' => 'image_url', 'image_url' => ['url' => $ref]];
+                }
+            }
+        }
 
         try {
             $response = $this->httpClient->request('POST', self::BASE_URL, [
@@ -152,7 +164,7 @@ class OpenRouterClient
                 'json' => [
                     'model' => $model,
                     'modalities' => ['image', 'text'],
-                    'messages' => [['role' => 'user', 'content' => $prompt]],
+                    'messages' => [['role' => 'user', 'content' => $content]],
                 ],
                 'timeout' => 120,
             ]);

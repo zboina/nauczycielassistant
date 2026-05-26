@@ -9,7 +9,7 @@ import { Controller } from '@hotwired/stimulus';
  * dzięki czemu edytor i eksport PDF mają identyczną geometrię.
  */
 export default class extends Controller {
-    static targets = ['container', 'thumbs', 'title', 'file', 'status', 'props', 'zoomLabel', 'pageInfo', 'gridBtn', 'undoBtn', 'redoBtn', 'cropContainer', 'cropZoom'];
+    static targets = ['container', 'thumbs', 'title', 'file', 'status', 'props', 'zoomLabel', 'pageInfo', 'gridBtn', 'undoBtn', 'redoBtn', 'cropContainer', 'toolbar'];
     static values = {
         saveUrl: String,
         uploadUrl: String,
@@ -17,6 +17,8 @@ export default class extends Controller {
         aiImageUrl: String,
         stockSearchUrl: String,
         stockImportUrl: String,
+        mediaListUrl: String,
+        mediaDeleteUrl: String,
         csrf: String,
         doc: Object,
         initialTemplate: String,
@@ -56,6 +58,10 @@ export default class extends Controller {
         this.renderPage();
         this.updateZoomLabel();
 
+        // Pasek narzędzi: przywróć zapisany stan (rozwinięty z opisami / zwinięty same ikony).
+        try { this._toolbarExpanded = localStorage.getItem('gzToolbarExpanded') === '1'; } catch (e) { this._toolbarExpanded = false; }
+        this.applyToolbarState();
+
         // Ustaw kontrolkę numeracji stron zgodnie z dokumentem.
         const pnSel = this.element.querySelector('[data-pagenum]');
         if (pnSel) pnSel.value = this.doc.pageNumbers.show ? this.doc.pageNumbers.position : 'off';
@@ -94,6 +100,14 @@ export default class extends Controller {
         // Przeglądarka ikon — wczytaj pełną listę po otwarciu.
         const iconModal = document.getElementById('gzIconModal');
         if (iconModal) iconModal.addEventListener('shown.bs.modal', () => this.loadIconList());
+
+        // Okno AI — przy otwarciu sprawdź, czy zaznaczono grafikę (wzór do generowania w jej stylu).
+        const aiModal = document.getElementById('gzAiModal');
+        if (aiModal) aiModal.addEventListener('show.bs.modal', () => this.prepareAiRef());
+
+        // Magazyn mediów — wczytaj listę grafik po otwarciu okna.
+        const mediaModal = document.getElementById('gzMediaModal');
+        if (mediaModal) mediaModal.addEventListener('shown.bs.modal', () => this.loadMedia());
 
         // Po załadowaniu czcionek (Google Fonts) przerysuj — inaczej Konva mierzy/rysuje fallbackiem.
         if (document.fonts && document.fonts.ready) {
@@ -336,6 +350,11 @@ export default class extends Controller {
             const tgroup = new K.Group({ x: pad, y: pad });
             group.add(tgroup);
             isOverflow = this.renderFlowedText(tgroup, inner, exAdj, lineHpx, common, align, cols, colW, gap);
+        } else if (Array.isArray(el.runs) && el.runs.length) {
+            // Tekst z pogrubieniem/kursywą fragmentów (runs) — renderowanie słowo po słowie.
+            const tgroup = new K.Group({ x: pad, y: pad });
+            group.add(tgroup);
+            isOverflow = this.renderRichColumns(tgroup, inner, cols, colW, gap, lineHpx, align, valign, common);
         } else {
             // Zawinięte linie (na szerokość kolumny) + przepływ wg wysokości.
             const lines = this.wrapLines(inner.text || '', colW, common);
@@ -487,10 +506,10 @@ export default class extends Controller {
         return best;
     }
 
-    /** Łamanie tekstu ze zmienną szerokością wiersza, z przepływem przez kolumny (1–3) i oblewaniem obrazów. Zwraca true przy przepełnieniu. */
+    /** Łamanie tekstu ze zmienną szerokością wiersza, z przepływem przez kolumny (1–3) i oblewaniem obrazów. Zwraca true przy przepełnieniu. Obsługuje formatowanie fragmentów (el.runs). */
     renderFlowedText(group, el, exclusions, lineHpx, common, align, cols, colW, gap) {
         const ctx = this.measureCtx();
-        ctx.font = this.fontShorthand(el);
+        ctx.font = this.segFont(el, false, false);
         const spaceW = ctx.measureText(' ').width || (el.fontSize || 14) * 0.28;
         const frameH = el.height;
         const colX = (c) => c * (colW + gap);
@@ -509,9 +528,9 @@ export default class extends Controller {
             return true;
         };
 
-        const paragraphs = (el.text || '').split('\n');
-        for (let p = 0; p < paragraphs.length && !overflow; p++) {
-            const words = paragraphs[p].split(/\s+/).filter(Boolean);
+        const paras = this.richWords(el); // akapity → słowa z segmentami stylu
+        for (let p = 0; p < paras.length && !overflow; p++) {
+            const words = paras[p];
             if (words.length === 0) {
                 if (!ensureRoom()) { overflow = true; break; }
                 y += lineHpx; // pusty wiersz / odstęp akapitu
@@ -529,7 +548,7 @@ export default class extends Controller {
                 const lineWords = [];
                 let w = 0;
                 while (i < words.length) {
-                    const wordW = ctx.measureText(words[i]).width;
+                    const wordW = this.measureWord(words[i], el);
                     const add = (lineWords.length ? spaceW : 0) + wordW;
                     if (w + add > availW && lineWords.length > 0) break;
                     lineWords.push(words[i]); w += add; i++;
@@ -537,31 +556,140 @@ export default class extends Controller {
                 if (lineWords.length === 0) { lineWords.push(words[i]); i++; } // słowo szersze niż wiersz
 
                 const lastLineOfPara = i >= words.length;
-                this.renderTextLine(group, lineWords, ctx, seg[0], y, availW, spaceW, common, align, lastLineOfPara);
+                this.renderRichLine(group, { words: lineWords, lastOfPara: lastLineOfPara }, el, seg[0], y, availW, spaceW, align, lastLineOfPara, common);
                 y += lineHpx;
             }
         }
         return overflow;
     }
 
-    /** Renderuje jeden wiersz w przedziale [x0, x0+availW] z wybranym wyrównaniem (w tym justowaniem). */
-    renderTextLine(group, words, ctx, x0, y, availW, spaceW, common, align, isLastLine) {
-        const K = this.Konva;
-        if (align === 'justify' && !isLastLine && words.length > 1) {
-            const ww = words.map((w) => ctx.measureText(w).width);
-            const natural = ww.reduce((a, b) => a + b, 0) + spaceW * (words.length - 1);
-            if (natural >= availW * 0.5) {
-                const extra = Math.max(0, (availW - natural) / (words.length - 1));
-                let x = 0;
-                for (let w = 0; w < words.length; w++) {
-                    group.add(new K.Text({ x: x0 + x, y, text: words[w], align: 'left', wrap: 'none', ...common }));
-                    x += ww[w] + spaceW + extra;
-                }
-                return;
+    // ─── Tekst z formatowaniem fragmentów (bold/italic — el.runs) ───
+
+    /**
+     * Rozbija tekst (z el.runs lub el.text) na akapity → słowa → segmenty o jednolitym stylu.
+     * Zwraca: [ [ {segs:[{text,bold,italic}]}, … ] , … ] (akapity rozdzielone znakiem nowej linii).
+     * Styl bazowy ramki (el.fontStyle) sumuje się z formatowaniem fragmentu (OR).
+     */
+    richWords(el) {
+        const baseB = (el.fontStyle || '').includes('bold');
+        const baseI = (el.fontStyle || '').includes('italic');
+        const runs = (Array.isArray(el.runs) && el.runs.length) ? el.runs : [{ t: el.text || '' }];
+
+        const paras = [[]];
+        let cur = null;
+        const pushWord = () => { if (cur) { paras[paras.length - 1].push({ segs: cur }); cur = null; } };
+
+        for (const r of runs) {
+            const b = baseB || !!r.b;
+            const i = baseI || !!r.i;
+            for (const ch of String(r.t)) {
+                if (ch === '\n') { pushWord(); paras.push([]); continue; }
+                if (/\s/.test(ch)) { pushWord(); continue; }
+                if (!cur) cur = [];
+                const last = cur[cur.length - 1];
+                if (last && last.bold === b && last.italic === i) last.text += ch;
+                else cur.push({ text: ch, bold: b, italic: i });
             }
         }
-        const a = align === 'justify' ? 'left' : align;
-        group.add(new K.Text({ x: x0, y, width: availW, text: words.join(' '), align: a, wrap: 'none', ...common }));
+        pushWord();
+        return paras;
+    }
+
+    segFont(el, bold, italic) {
+        return (italic ? 'italic ' : '') + (bold ? 'bold ' : '')
+            + (el.fontSize || 14) + 'px ' + (el.fontFamily || 'Georgia');
+    }
+
+    segStyle(bold, italic) {
+        return ((italic ? 'italic ' : '') + (bold ? 'bold' : '')).trim() || 'normal';
+    }
+
+    /** Szerokość słowa = suma szerokości jego segmentów (każdy mierzony własną czcionką). Wynik cache'owany w word._w. */
+    measureWord(word, el) {
+        const ctx = this.measureCtx();
+        let w = 0;
+        for (const s of word.segs) { ctx.font = this.segFont(el, s.bold, s.italic); w += ctx.measureText(s.text).width; }
+        word._w = w;
+        return w;
+    }
+
+    /** Rysuje słowo od (x,y): kolejne segmenty z własnym fontStyle, dosuwane wg zmierzonej szerokości. */
+    renderWord(group, word, el, x, y, common) {
+        const K = this.Konva;
+        const ctx = this.measureCtx();
+        let cx = x;
+        for (const s of word.segs) {
+            ctx.font = this.segFont(el, s.bold, s.italic);
+            group.add(new K.Text({ x: cx, y, text: s.text, wrap: 'none', ...common, fontStyle: this.segStyle(s.bold, s.italic) }));
+            cx += ctx.measureText(s.text).width;
+        }
+    }
+
+    /** Łamie słowa (z richWords) na linie szerokości colW. Zwraca {lines:[{words,lastOfPara}], spaceW}. */
+    wrapRichWords(paras, colW, el) {
+        const ctx = this.measureCtx();
+        ctx.font = this.segFont(el, false, false);
+        const spaceW = ctx.measureText(' ').width || (el.fontSize || 14) * 0.28;
+        const lines = [];
+        for (const words of paras) {
+            if (words.length === 0) { lines.push({ words: [], lastOfPara: true }); continue; }
+            let line = [], w = 0;
+            for (const word of words) {
+                const wW = this.measureWord(word, el);
+                const add = (line.length ? spaceW : 0) + wW;
+                if (w + add > colW && line.length > 0) { lines.push({ words: line, lastOfPara: false }); line = [word]; w = wW; }
+                else { line.push(word); w += add; }
+            }
+            lines.push({ words: line, lastOfPara: true });
+        }
+        return { lines, spaceW };
+    }
+
+    /** Renderuje sformatowany tekst w kolumnach (1–3) z wyrównaniem w pionie i poziomie. Zwraca true przy przepełnieniu. */
+    renderRichColumns(group, el, cols, colW, gap, lineHpx, align, valign, common) {
+        const { lines, spaceW } = this.wrapRichWords(this.richWords(el), colW, el);
+        const fit = Math.max(1, Math.floor((el.height + 1) / lineHpx));
+        const balanced = Math.max(1, Math.ceil(lines.length / cols));
+        const perCol = Math.min(balanced, fit);
+        const overflow = lines.length > cols * perCol;
+
+        const usedLines = cols === 1 ? Math.min(lines.length, fit) : Math.min(perCol, lines.length);
+        let yOffset = 0;
+        const contentH = usedLines * lineHpx;
+        if (valign === 'middle') yOffset = Math.max(0, (el.height - contentH) / 2);
+        else if (valign === 'bottom') yOffset = Math.max(0, el.height - contentH);
+
+        const lastVisible = Math.min(lines.length, cols * perCol) - 1;
+        for (let c = 0; c < cols; c++) {
+            const cx = c * (colW + gap);
+            for (let i = 0; i < perCol; i++) {
+                const gi = c * perCol + i;
+                if (gi >= lines.length) break;
+                const line = lines[gi];
+                if (!line.words.length) continue;
+                this.renderRichLine(group, line, el, cx, yOffset + i * lineHpx, colW, spaceW, align, gi === lastVisible, common);
+            }
+        }
+        return overflow;
+    }
+
+    /** Renderuje jedną sformatowaną linię z wyrównaniem (w tym justowaniem przez rozsuwanie słów). */
+    renderRichLine(group, line, el, cx, y, colW, spaceW, align, isLastVisible, common) {
+        const words = line.words;
+        const widths = words.map((w) => (w._w != null ? w._w : this.measureWord(w, el)));
+        const natural = widths.reduce((a, b) => a + b, 0) + spaceW * (words.length - 1);
+
+        if (align === 'justify' && !isLastVisible && !line.lastOfPara && words.length > 1 && natural >= colW * 0.5) {
+            const extra = (colW - natural) / (words.length - 1);
+            let x = cx;
+            for (let k = 0; k < words.length; k++) { this.renderWord(group, words[k], el, x, y, common); x += widths[k] + spaceW + extra; }
+            return;
+        }
+
+        let x = cx;
+        if (align === 'center') x = cx + (colW - natural) / 2;
+        else if (align === 'right') x = cx + (colW - natural);
+        for (let k = 0; k < words.length; k++) { this.renderWord(group, words[k], el, x, y, common); x += widths[k] + spaceW; }
     }
 
     /** Resize tekstu na żywo: zamienia skalę transformera na realną szerokość i przelewa tekst w trakcie ciągnięcia. */
@@ -644,7 +772,7 @@ export default class extends Controller {
         this.select(el.id);
     }
 
-    // ─── Edycja tekstu (textarea overlay) ───────────────────
+    // ─── Edycja tekstu (contenteditable + pasek B/I) ───────────
 
     editText(el, node) {
         const box = node.getClientRect({ relativeTo: this.stage });
@@ -654,15 +782,22 @@ export default class extends Controller {
         node.hide();
         this.tr.nodes([]);
         this.layer.draw();
+        try { document.execCommand('styleWithCSS', false, false); } catch (e) { /* starsze przeglądarki */ }
 
         const cap = Math.round(window.innerHeight * 0.6);
-        const ta = document.createElement('textarea');
-        document.body.appendChild(ta);
-        ta.value = el.text || '';
-        Object.assign(ta.style, {
+        const left = stageBox.left + window.scrollX + box.x * z;
+        const top = stageBox.top + window.scrollY + box.y * z;
+
+        // Edytowalne pole z formatowaniem fragmentów (bold/italic).
+        const ed = document.createElement('div');
+        ed.contentEditable = 'true';
+        ed.spellcheck = false;
+        ed.innerHTML = this.htmlFromRuns(el);
+        document.body.appendChild(ed);
+        Object.assign(ed.style, {
             position: 'absolute',
-            left: (stageBox.left + window.scrollX + box.x * z) + 'px',
-            top: (stageBox.top + window.scrollY + box.y * z) + 'px',
+            left: left + 'px',
+            top: top + 'px',
             width: Math.max(80, box.width * z) + 'px',
             minHeight: Math.max(40, box.height * z) + 'px',
             maxHeight: cap + 'px',
@@ -672,32 +807,111 @@ export default class extends Controller {
             color: el.fill || '#1a2330',
             textAlign: el.align === 'justify' ? 'left' : (el.align || 'left'),
             padding: '2px 4px', margin: '0', border: '2px solid #1a56db', borderRadius: '3px',
-            background: '#fff', outline: 'none', resize: 'vertical',
-            zIndex: 2000, overflow: 'auto', boxSizing: 'border-box',
+            background: '#fff', outline: 'none', whiteSpace: 'pre-wrap', wordWrap: 'break-word',
+            zIndex: 2000, overflowY: 'auto', boxSizing: 'border-box',
             boxShadow: '0 6px 18px rgba(0,0,0,.18)',
         });
 
-        // Auto-rozrost do treści (z przewijaniem powyżej limitu) — żeby długi tekst dało się edytować w całości.
-        const grow = () => {
-            ta.style.height = 'auto';
-            ta.style.height = Math.min(ta.scrollHeight + 2, cap) + 'px';
+        // Pasek B / I nad polem (mousedown→preventDefault, by nie tracić zaznaczenia/fokusu).
+        const bar = document.createElement('div');
+        Object.assign(bar.style, {
+            position: 'absolute', left: left + 'px', top: Math.max(0, top - 34) + 'px',
+            display: 'flex', gap: '4px', padding: '3px', background: '#1a2330',
+            borderRadius: '6px', zIndex: 2001, boxShadow: '0 4px 12px rgba(0,0,0,.25)',
+        });
+        const mkBtn = (label, cmd, fontStyle) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = label;
+            Object.assign(b.style, {
+                width: '28px', height: '26px', border: 'none', borderRadius: '4px',
+                background: '#2b3954', color: '#fff', cursor: 'pointer',
+                fontFamily: 'Georgia, serif', fontSize: '15px', lineHeight: '1', ...fontStyle,
+            });
+            b.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                document.execCommand(cmd, false, null);
+                ed.focus();
+            });
+            return b;
         };
-        ta.addEventListener('input', grow);
-        ta.focus();
-        ta.select();
-        grow();
+        bar.appendChild(mkBtn('B', 'bold', { fontWeight: 'bold' }));
+        bar.appendChild(mkBtn('I', 'italic', { fontStyle: 'italic' }));
+        document.body.appendChild(bar);
 
+        ed.focus();
+        // Zaznacz całość przy wejściu.
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(ed);
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        let done = false;
         const commit = () => {
-            el.text = ta.value;
-            ta.remove();
+            if (done) return;
+            done = true;
+            const { text, runs } = this.runsFromHtml(ed);
+            el.text = text;
+            if (runs.some((r) => r.b || r.i)) el.runs = runs;
+            else delete el.runs;
+            ed.remove();
+            bar.remove();
             this.markDirty();
             this.renderPage();
             this.select(el.id);
         };
-        ta.addEventListener('blur', commit);
-        ta.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') { e.preventDefault(); ta.blur(); }
+        ed.addEventListener('blur', commit);
+        ed.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { e.preventDefault(); ed.blur(); }
         });
+    }
+
+    /** Buduje HTML pola edycji z el.runs (lub el.text) — <b>/<i> + <br> na nowe linie. */
+    htmlFromRuns(el) {
+        const runs = (Array.isArray(el.runs) && el.runs.length) ? el.runs : [{ t: el.text || '' }];
+        let html = '';
+        for (const r of runs) {
+            let t = escapeHtml(r.t).replace(/\n/g, '<br>');
+            if (r.i) t = '<i>' + t + '</i>';
+            if (r.b) t = '<b>' + t + '</b>';
+            html += t;
+        }
+        return html || '';
+    }
+
+    /** Serializuje contenteditable do {text, runs}. <b>/<strong>/font-weight→bold, <i>/<em>/font-style→italic, bloki/BR→\n. */
+    runsFromHtml(root) {
+        const runs = [];
+        let started = false;
+        const push = (t, b, i) => {
+            if (!t) return;
+            const last = runs[runs.length - 1];
+            if (last && !!last.b === !!b && !!last.i === !!i) last.t += t;
+            else runs.push({ t, b: b || undefined, i: i || undefined });
+            started = true;
+        };
+        const walk = (node, b, i) => {
+            for (const child of node.childNodes) {
+                if (child.nodeType === 3) { push(child.nodeValue, b, i); continue; }
+                if (child.nodeType !== 1) continue;
+                const tag = child.tagName;
+                if (tag === 'BR') {
+                    // Pomiń „filler" BR będący jedynym/ostatnim dzieckiem bloku.
+                    if (child.nextSibling) push('\n', b, i);
+                    continue;
+                }
+                const st = child.style || {};
+                const fw = st.fontWeight;
+                const nb = b || tag === 'B' || tag === 'STRONG' || fw === 'bold' || (fw && parseInt(fw, 10) >= 600);
+                const ni = i || tag === 'I' || tag === 'EM' || st.fontStyle === 'italic';
+                if (/^(DIV|P)$/.test(tag) && started) push('\n', b, i);
+                walk(child, nb, ni);
+            }
+        };
+        walk(root, false, false);
+        const text = runs.map((r) => r.t).join('');
+        return { text, runs };
     }
 
     // ─── Akcje paska narzędzi ───────────────────────────────
@@ -988,6 +1202,10 @@ export default class extends Controller {
         if (input.dataset.type === 'number') value = parseFloat(value) || 0;
         el[key] = value;
 
+        // Edycja zwykłego tekstu w panelu zastępuje całość — kasujemy formatowanie fragmentów (runs).
+        // Pogrubienie/kursywę fragmentu ustawia się przez dwuklik w ramkę i zaznaczenie tekstu.
+        if (key === 'text') delete el.runs;
+
         // Ikona: zmiana koloru kreski / wypełnienia → przebuduj SVG.
         if (el.type === 'icon' && (key === 'iconColor' || key === 'iconFill' || key === 'iconFilled')) {
             this.regenIconSrc(el);
@@ -1081,6 +1299,18 @@ export default class extends Controller {
     zoomFit() { this.zoom = this.fitZoom(); this.applyZoom(); }
     updateZoomLabel() {
         if (this.hasZoomLabelTarget) this.zoomLabelTarget.textContent = Math.round(this.zoom * 100) + '%';
+    }
+
+    // ─── Pasek narzędzi (zwijany / z opisami) ───────────────
+
+    toggleToolbar() {
+        this._toolbarExpanded = !this._toolbarExpanded;
+        this.applyToolbarState();
+        try { localStorage.setItem('gzToolbarExpanded', this._toolbarExpanded ? '1' : '0'); } catch (e) { /* brak localStorage */ }
+    }
+
+    applyToolbarState() {
+        if (this.hasToolbarTarget) this.toolbarTarget.classList.toggle('gz-toolbar--expanded', !!this._toolbarExpanded);
     }
 
     // ─── Siatka i przyciąganie ──────────────────────────────
@@ -1400,24 +1630,52 @@ export default class extends Controller {
         this.select(null);
     }
 
+    /** Przy otwarciu okna AI: jeśli zaznaczono grafikę, pokaż opcję „generuj wg wzoru" z miniaturą. */
+    prepareAiRef() {
+        const root = this.element;
+        const block = root.querySelector('[data-ai="refBlock"]');
+        const chk = root.querySelector('[data-ai="refUse"]');
+        const thumb = root.querySelector('[data-ai="refThumb"]');
+        const promptEl = root.querySelector('[data-ai="imgPrompt"]');
+        const el = this.selectedEl();
+
+        if (block && el && el.type === 'image' && el.src) {
+            this._refSrc = el.src;
+            block.style.display = '';
+            if (thumb) thumb.src = el.src;
+            if (chk) chk.checked = true;
+            if (promptEl) promptEl.placeholder = 'Nazwa działu / cyklu, np. „Sport", „Kącik czytelnika", „Z życia szkoły"';
+        } else {
+            this._refSrc = null;
+            if (block) block.style.display = 'none';
+            if (chk) chk.checked = false;
+            if (promptEl) promptEl.placeholder = 'np. Jesienny park ze szkołą w tle, dzieci grające w piłkę';
+        }
+    }
+
     async generateAiImage() {
         const root = this.element;
         const prompt = (root.querySelector('[data-ai="imgPrompt"]').value || '').trim();
-        if (!prompt) { this.setAiStatus('img', 'Opisz, co ma przedstawiać obraz.', true); return; }
+        const useRef = !!root.querySelector('[data-ai="refUse"]')?.checked;
+        const ref = (useRef && this._refSrc) ? this._refSrc : '';
+        if (!prompt && !ref) { this.setAiStatus('img', 'Opisz, co ma przedstawiać obraz.', true); return; }
 
-        const style = root.querySelector('[data-ai="imgStyle"]').value;
+        // Przy wzorze styl nadaje grafika wzorcowa — nie wysyłamy stylu z listy, by się nie „kłóciły".
+        const style = ref ? '' : root.querySelector('[data-ai="imgStyle"]').value;
         this.setAiBusy('img', true);
-        this.setAiStatus('img', 'Generuję obraz… (może potrwać do ~1 min)');
+        this.setAiStatus('img', ref ? 'Tworzę grafikę w stylu wzoru… (może potrwać do ~1 min)' : 'Generuję obraz… (może potrwać do ~1 min)');
         try {
             const res = await fetch(this.aiImageUrlValue, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': this.csrfValue, 'X-Requested-With': 'XMLHttpRequest' },
-                body: JSON.stringify({ prompt, style }),
+                body: JSON.stringify({ prompt, style, ref }),
             });
             const data = await res.json();
             if (!data.ok) throw new Error(data.error || 'Błąd generowania.');
 
-            const maxW = this.pageW * 0.6, maxH = this.pageH * 0.5;
+            // Mini-winietki wstawiamy mniejsze niż zwykłą ilustrację.
+            const maxW = ref ? 150 : this.pageW * 0.6;
+            const maxH = ref ? 110 : this.pageH * 0.5;
             let w = data.width || 320, h = data.height || 320;
             const ratio = Math.min(maxW / w, maxH / h, 1);
             w = round(w * ratio); h = round(h * ratio);
@@ -1479,71 +1737,102 @@ export default class extends Controller {
         layer.add(new K.Image({ image: img, width: sw, height: sh, listening: false }));
         layer.add(new K.Rect({ x: 0, y: 0, width: sw, height: sh, fill: 'black', opacity: 0.5, listening: false }));
 
-        const ratio = el.width / el.height;
-        const maxCropW = Math.min(natW, natH * ratio);
-        let cw, ch, cx, cy;
+        // Początkowy kadr: istniejący el.crop, w przeciwnym razie cały obraz.
+        let cx, cy, cw, ch;
         if (el.crop && el.crop.width) {
-            cw = el.crop.width; ch = el.crop.height; cx = el.crop.x; cy = el.crop.y;
+            cx = el.crop.x; cy = el.crop.y; cw = el.crop.width; ch = el.crop.height;
         } else {
-            cw = maxCropW; ch = cw / ratio; cx = (natW - cw) / 2; cy = (natH - ch) / 2;
+            cx = 0; cy = 0; cw = natW; ch = natH;
         }
 
+        // Jasny fragment (kadr) leżący na przyciemnionym obrazie — „reflektor".
         const cropImg = new K.Image({ image: img, draggable: true });
         layer.add(cropImg);
         const border = new K.Rect({ stroke: '#ffffff', strokeWidth: 2, dash: [6, 4], listening: false, shadowColor: '#000', shadowBlur: 3 });
         layer.add(border);
 
+        // Swobodne zaznaczanie dowolnego fragmentu — pełny transformer (bez obrotu).
+        const tr = new K.Transformer({
+            nodes: [cropImg], rotateEnabled: false, keepRatio: !!this._cropKeepRatio,
+            anchorSize: 10, borderStroke: '#1a56db', anchorStroke: '#1a56db', anchorCornerRadius: 2,
+            enabledAnchors: ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'],
+            boundBoxFunc: (oldB, newB) => (newB.width < 16 || newB.height < 16 ? oldB : newB),
+        });
+        layer.add(tr);
+
         this._cropStage = stage;
-        this._crop = { el, img, natW, natH, dispScale, ratio, maxCropW, cw, ch, cx, cy, cropImg, border, layer, sw, sh };
+        this._crop = { el, img, natW, natH, dispScale, cx, cy, cw, ch, cropImg, border, tr, layer, sw, sh };
 
         cropImg.dragBoundFunc((pos) => {
             const c = this._crop;
-            const rw = c.cw * c.dispScale, rh = c.ch * c.dispScale;
-            return { x: clamp(pos.x, 0, c.sw - rw), y: clamp(pos.y, 0, c.sh - rh) };
+            const w = c.cropImg.width(), h = c.cropImg.height();
+            return { x: clamp(pos.x, 0, c.sw - w), y: clamp(pos.y, 0, c.sh - h) };
         });
         cropImg.on('dragmove', () => {
             const c = this._crop;
-            c.cx = cropImg.x() / c.dispScale;
-            c.cy = cropImg.y() / c.dispScale;
-            this.syncCrop();
+            const x = c.cropImg.x(), y = c.cropImg.y();
+            c.cx = x / c.dispScale; c.cy = y / c.dispScale;
+            c.cropImg.crop({ x: c.cx, y: c.cy, width: c.cw, height: c.ch });
+            c.border.setAttrs({ x, y, width: c.cropImg.width(), height: c.cropImg.height() });
+            c.layer.batchDraw();
         });
+        cropImg.on('transform', () => this.readCropNode());
 
-        this.syncCrop();
-        if (this.hasCropZoomTarget) this.cropZoomTarget.value = String((maxCropW / cw).toFixed(2));
+        // Ustaw początkową geometrię węzła z modelu i dopasuj transformer.
+        this.placeCropNode();
+        tr.forceUpdate();
+        layer.batchDraw();
     }
 
-    syncCrop() {
+    /** Model (cx,cy,cw,ch w px źródła) → węzeł kadru (display) + spotlight + obwódka. */
+    placeCropNode() {
         const c = this._crop;
         if (!c) return;
-        // utrzymaj proporcje ramki i zmieść kadr w obrazie
-        c.cw = clamp(c.cw, 16, c.natW);
-        c.ch = c.cw / c.ratio;
-        if (c.ch > c.natH) { c.ch = c.natH; c.cw = c.ch * c.ratio; }
+        c.cw = clamp(c.cw, 8, c.natW);
+        c.ch = clamp(c.ch, 8, c.natH);
         c.cx = clamp(c.cx, 0, c.natW - c.cw);
         c.cy = clamp(c.cy, 0, c.natH - c.ch);
-
         const x = c.cx * c.dispScale, y = c.cy * c.dispScale, w = c.cw * c.dispScale, h = c.ch * c.dispScale;
-        c.cropImg.setAttrs({ x, y, width: w, height: h, crop: { x: c.cx, y: c.cy, width: c.cw, height: c.ch } });
+        c.cropImg.setAttrs({ x, y, width: w, height: h, scaleX: 1, scaleY: 1, crop: { x: c.cx, y: c.cy, width: c.cw, height: c.ch } });
+        c.border.setAttrs({ x, y, width: w, height: h });
+    }
+
+    /** Węzeł kadru po przeskalowaniu (transformer) → model. Zamienia skalę na rozmiar i przelicza na px źródła. */
+    readCropNode() {
+        const c = this._crop;
+        if (!c) return;
+        const node = c.cropImg;
+        let w = Math.max(8, Math.round(node.width() * node.scaleX()));
+        let h = Math.max(8, Math.round(node.height() * node.scaleY()));
+        node.scaleX(1); node.scaleY(1);
+        node.width(w); node.height(h);
+        const x = clamp(node.x(), 0, c.sw - w), y = clamp(node.y(), 0, c.sh - h);
+        node.x(x); node.y(y);
+        c.cx = x / c.dispScale; c.cy = y / c.dispScale;
+        c.cw = w / c.dispScale; c.ch = h / c.dispScale;
+        node.crop({ x: c.cx, y: c.cy, width: c.cw, height: c.ch });
         c.border.setAttrs({ x, y, width: w, height: h });
         c.layer.batchDraw();
     }
 
-    setCropZoom(e) {
-        const c = this._crop;
-        if (!c) return;
-        const z = Math.max(1, parseFloat(e.target.value) || 1);
-        const cenX = c.cx + c.cw / 2, cenY = c.cy + c.ch / 2;
-        c.cw = c.maxCropW / z;
-        c.ch = c.cw / c.ratio;
-        c.cx = cenX - c.cw / 2;
-        c.cy = cenY - c.ch / 2;
-        this.syncCrop();
+    /** Przełącznik: czy podczas zaznaczania trzymać proporcje ramki na stronie. */
+    toggleCropRatio(e) {
+        this._cropKeepRatio = !!e.target.checked;
+        if (this._crop && this._crop.tr) {
+            this._crop.tr.keepRatio(this._cropKeepRatio);
+            this._crop.layer.batchDraw();
+        }
     }
 
     applyCrop() {
         const c = this._crop;
         if (!c) return;
-        c.el.crop = { x: Math.round(c.cx), y: Math.round(c.cy), width: Math.round(c.cw), height: Math.round(c.ch) };
+        const cw = Math.max(1, Math.round(c.cw)), ch = Math.max(1, Math.round(c.ch));
+        c.el.crop = { x: Math.round(c.cx), y: Math.round(c.cy), width: cw, height: ch };
+        // Domyślnie ramka przyjmuje proporcje wybranego fragmentu (bez zniekształceń); szerokość zostaje.
+        if (!this._cropKeepRatio) {
+            c.el.height = Math.max(12, Math.round(c.el.width * ch / cw));
+        }
         this.markDirty();
         this.renderPage();
         this.select(c.el.id);
@@ -1747,6 +2036,139 @@ export default class extends Controller {
         }
     }
 
+    // ─── Magazyn mediów (wgrane / AI / Pixabay — wszystkie własne grafiki) ───
+
+    setMediaStatus(msg, err) {
+        const el = this.element.querySelector('[data-media="status"]');
+        if (el) { el.textContent = msg; el.className = 'small mb-2 ' + (err ? 'text-danger' : 'text-secondary'); }
+    }
+
+    /** Wczytuje listę grafik z magazynu (katalog uploadów użytkownika) i odświeża siatkę. */
+    async loadMedia() {
+        if (!this._mediaFilter) this._mediaFilter = 'all';
+        this.setMediaStatus('Wczytuję magazyn…');
+        const grid = this.element.querySelector('[data-media="grid"]');
+        if (grid) grid.innerHTML = '';
+        try {
+            const res = await fetch(this.mediaListUrlValue, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error || 'Błąd wczytywania.');
+            this._media = data.items || [];
+            this.renderMediaGrid();
+        } catch (e) {
+            this.setMediaStatus('Błąd: ' + e.message, true);
+        }
+    }
+
+    filterMedia(e) {
+        this._mediaFilter = (e.params && e.params.filter) || 'all';
+        this.element.querySelectorAll('[data-media-filter]').forEach(
+            (b) => b.classList.toggle('active', b.dataset.mediaFilter === this._mediaFilter));
+        this.renderMediaGrid();
+    }
+
+    renderMediaGrid() {
+        const grid = this.element.querySelector('[data-media="grid"]');
+        if (!grid || !this._media) return;
+
+        if (!this._media.length) {
+            grid.innerHTML = '';
+            this.setMediaStatus('Magazyn jest pusty. Wgraj zdjęcie, wygeneruj grafikę AI lub pobierz z Pixabay — wszystko pojawi się tutaj do ponownego użycia.');
+            return;
+        }
+
+        const f = this._mediaFilter || 'all';
+        const items = f === 'all' ? this._media : this._media.filter((it) => it.kind === f);
+        this.setMediaStatus(items.length + ' grafik — kliknij, by wstawić na bieżącą stronę. Ikoną kosza usuniesz grafikę z magazynu.');
+
+        const label = { upload: 'Wgrane', ai: 'AI', stock: 'Pixabay' };
+        const badgeCls = { upload: 'bg-secondary', ai: 'bg-purple', stock: 'bg-azure' };
+        const frag = document.createDocumentFragment();
+        for (const it of items) {
+            const col = document.createElement('div');
+            col.className = 'col';
+            const wrap = document.createElement('div');
+            wrap.className = 'gz-media-item';
+
+            const ins = document.createElement('button');
+            ins.type = 'button';
+            ins.className = 'btn btn-outline-secondary w-100 p-1';
+            ins.title = it.name + ' · ' + it.width + '×' + it.height + ' px';
+            const img = document.createElement('img');
+            img.src = it.url;
+            img.loading = 'lazy';
+            img.className = 'gz-media-thumb';
+            ins.appendChild(img);
+            ins.addEventListener('click', () => this.insertMedia(it));
+
+            const badge = document.createElement('span');
+            badge.className = 'badge gz-media-badge ' + (badgeCls[it.kind] || 'bg-secondary');
+            badge.textContent = label[it.kind] || it.kind;
+
+            const del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'btn btn-icon btn-sm btn-danger gz-media-del';
+            del.title = 'Usuń z magazynu';
+            del.innerHTML = '<i class="ti ti-trash"></i>';
+            del.addEventListener('click', (ev) => { ev.stopPropagation(); this.deleteMedia(it, del); });
+
+            wrap.appendChild(ins);
+            wrap.appendChild(badge);
+            wrap.appendChild(del);
+            col.appendChild(wrap);
+            frag.appendChild(col);
+        }
+        grid.innerHTML = '';
+        grid.appendChild(frag);
+    }
+
+    /** Wstawia grafikę z magazynu na bieżącą stronę (jak upload / Pixabay). */
+    insertMedia(it) {
+        const maxW = this.pageW * 0.6, maxH = this.pageH * 0.5;
+        let w = it.width || 320, h = it.height || 320;
+        const ratio = Math.min(maxW / w, maxH / h, 1);
+        w = round(w * ratio); h = round(h * ratio);
+        this.addElement({
+            id: uid(), type: 'image', x: round((this.pageW - w) / 2), y: 80,
+            width: w, height: h, rotation: 0, opacity: 1, src: it.url, wrapText: true,
+        });
+        const cb = document.querySelector('#gzMediaModal [data-bs-dismiss="modal"]');
+        if (cb) cb.click();
+    }
+
+    /** Ile razy dana grafika jest użyta w bieżącej gazetce (ostrzeżenie przy usuwaniu). */
+    mediaUsageCount(url) {
+        let n = 0;
+        for (const p of this.doc.pages) {
+            for (const el of p.elements) if (el.type === 'image' && el.src === url) n++;
+        }
+        return n;
+    }
+
+    async deleteMedia(it, btn) {
+        const used = this.mediaUsageCount(it.url);
+        const msg = used > 0
+            ? 'Ta grafika jest używana w tej gazetce (' + used + '×). Po usunięciu pliku zniknie ze stron. Usunąć mimo to?'
+            : 'Usunąć tę grafikę z magazynu? Tej operacji nie można cofnąć.';
+        if (!confirm(msg)) return;
+        if (btn) btn.disabled = true;
+        try {
+            const res = await fetch(this.mediaDeleteUrlValue, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': this.csrfValue, 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ url: it.url }),
+            });
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error || 'Błąd usuwania.');
+            this._media = this._media.filter((m) => m.url !== it.url);
+            this.renderMediaGrid();
+            if (used > 0) { delete this.imageCache[it.url]; this.renderPage(); }
+        } catch (e) {
+            this.setMediaStatus('Błąd: ' + e.message, true);
+            if (btn) btn.disabled = false;
+        }
+    }
+
     // ─── Podgląd rozkładówki (2 strony obok siebie) ─────────
 
     setupSpread() {
@@ -1792,7 +2214,7 @@ export default class extends Controller {
     bindGlobalKeys() {
         this._keyHandler = (e) => {
             const tag = (e.target.tagName || '').toLowerCase();
-            if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+            if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
             if (document.querySelector('.modal.show')) return; // nie przechwytuj skrótów przy otwartym oknie
 
             if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId) {
@@ -1830,6 +2252,9 @@ export default class extends Controller {
 function uid() { return 'el_' + Math.random().toString(36).slice(2, 9); }
 function round(n) { return Math.round(n); }
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 const LOREM_PL = 'W tym miejscu wpisz treść artykułu. Możesz tu opisać szkolne wydarzenie, '
     + 'przeprowadzony wywiad albo relację z wycieczki. Tekst automatycznie układa się w kolumnach, '

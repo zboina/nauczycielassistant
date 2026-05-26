@@ -128,6 +128,7 @@
             <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzIconModal" title="Ikony (Tabler Icons)"><i class="ti ti-shape"></i><span class="gz-label">Ikony</span></button>
             <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzStockModal" title="Grafiki (Pixabay)"><i class="ti ti-library-photo"></i><span class="gz-label">Grafiki Pixabay</span></button>
             <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzMediaModal" title="Magazyn mediów — Twoje grafiki (wgrane, AI, Pixabay)"><i class="ti ti-folder"></i><span class="gz-label">Magazyn mediów</span></button>
+            <button class="btn btn-ghost-primary" data-bs-toggle="modal" data-bs-target="#gzBlocksModal" title="Magazyn bloków — zapisane, zgrupowane zestawy elementów"><i class="ti ti-stack-2"></i><span class="gz-label">Magazyn bloków</span></button>
             <div class="gz-sep"></div>
             <div class="gz-cap">Dodaj element</div>
             <button class="btn btn-ghost-secondary" data-action="gazetka-editor#addHeading" title="Nagłówek"><i class="ti ti-heading"></i><span class="gz-label">Nagłówek</span></button>
@@ -141,6 +142,8 @@
             <button class="btn btn-ghost-secondary" data-action="gazetka-editor#copySelected" title="Kopiuj (Ctrl+C)"><i class="ti ti-clipboard-copy"></i><span class="gz-label">Kopiuj</span></button>
             <button class="btn btn-ghost-secondary" data-action="gazetka-editor#cutSelected" title="Wytnij (Ctrl+X)"><i class="ti ti-scissors"></i><span class="gz-label">Wytnij</span></button>
             <button class="btn btn-ghost-secondary" data-action="gazetka-editor#pasteClipboard" title="Wklej na tę stronę (Ctrl+V)"><i class="ti ti-clipboard-plus"></i><span class="gz-label">Wklej</span></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#groupSelected" title="Grupuj zaznaczone (Ctrl+G)"><i class="ti ti-vector-triangle"></i><span class="gz-label">Grupuj</span></button>
+            <button class="btn btn-ghost-secondary" data-action="gazetka-editor#ungroupSelected" title="Rozgrupuj (Ctrl+Shift+G)"><i class="ti ti-vector-triangle-off"></i><span class="gz-label">Rozgrupuj</span></button>
             <button class="btn btn-ghost-secondary" data-action="gazetka-editor#bringForward" title="Na wierzch"><i class="ti ti-stack-forward"></i><span class="gz-label">Na wierzch</span></button>
             <button class="btn btn-ghost-secondary" data-action="gazetka-editor#sendBackward" title="Pod spód"><i class="ti ti-stack-backward"></i><span class="gz-label">Pod spód</span></button>
             <button class="btn btn-ghost-danger" data-action="gazetka-editor#deleteSelected" title="Usuń (Delete)"><i class="ti ti-trash"></i><span class="gz-label">Usuń</span></button>
@@ -156,7 +159,18 @@
             <div class="gz-empty" data-empty>
                 <i class="ti ti-click" style="font-size:1.6rem;display:block;margin-bottom:.4rem;opacity:.5;"></i>
                 Kliknij element, aby zobaczyć jego właściwości.<br>
-                <span class="text-muted">Dwuklik na tekście = edycja.</span>
+                <span class="text-muted">Dwuklik na tekście = edycja. Shift+klik lub ramka = zaznacz wiele.</span>
+            </div>
+
+            {# Selekcja wielokrotna / grupa #}
+            <div class="gz-group" data-multi style="display:none;">
+                <label class="form-label">Zaznaczono <span data-multi-count>0</span> elementów</label>
+                <div class="d-grid gap-1 mb-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-act="group" data-action="gazetka-editor#groupSelected"><i class="ti ti-vector-triangle me-1"></i>Grupuj (Ctrl+G)</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-act="ungroup" data-action="gazetka-editor#ungroupSelected"><i class="ti ti-vector-triangle-off me-1"></i>Rozgrupuj (Ctrl+Shift+G)</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="gazetka-editor#saveSelectionAsBlock"><i class="ti ti-stack-push me-1"></i>Zapisz jako blok</button>
+                </div>
+                <div class="text-secondary" style="font-size:.72rem;">Zgrupowane elementy przesuwają się, kopiują i usuwają razem. Możesz je skopiować (Ctrl+C) i wkleić (Ctrl+V) na innej stronie, albo zapisać jako blok do wielokrotnego użytku.</div>
             </div>
 
             {# Tekst #}
@@ -490,6 +504,26 @@
                     </div>
                     <div class="small mb-2 text-secondary" data-media="status">Wszystkie Twoje grafiki — wgrane, wygenerowane przez AI i pobrane z Pixabay — w jednym miejscu, do ponownego użycia w każdej gazetce.</div>
                     <div class="row row-cols-3 row-cols-md-5 g-2" data-media="grid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ── Modal: magazyn bloków ─────────────────── #}
+    <div class="modal modal-blur fade" id="gzBlocksModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ti ti-stack-2 me-2"></i>Magazyn bloków</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-primary" data-action="gazetka-editor#saveSelectionAsBlock"><i class="ti ti-stack-push me-1"></i>Zapisz zaznaczenie jako blok</button>
+                        <span class="text-secondary small">Najpierw zaznacz elementy na stronie (Shift+klik lub ramką), potem zapisz.</span>
+                    </div>
+                    <div class="small mb-2 text-secondary" data-block="status">Zapisane, zgrupowane zestawy elementów — wstaw je na dowolnej stronie jako gotową grupę. Bloki są zapisane w tej przeglądarce.</div>
+                    <div class="row row-cols-2 row-cols-md-4 g-2" data-block="grid"></div>
                 </div>
             </div>
         </div>

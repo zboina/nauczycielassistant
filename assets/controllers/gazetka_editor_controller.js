@@ -41,6 +41,7 @@ export default class extends Controller {
 
         this.current = 0;
         this.selectedId = null;
+        this.selectedIds = [];      // pełna selekcja (1 = pojedyncza, >1 = wielokrotna/grupa)
         this.imageCache = {};
         this.dirty = false;
         this.clipboard = null;
@@ -109,6 +110,10 @@ export default class extends Controller {
         const mediaModal = document.getElementById('gzMediaModal');
         if (mediaModal) mediaModal.addEventListener('shown.bs.modal', () => this.loadMedia());
 
+        // Magazyn bloków — odśwież paletę po otwarciu okna.
+        const blocksModal = document.getElementById('gzBlocksModal');
+        if (blocksModal) blocksModal.addEventListener('shown.bs.modal', () => this.renderBlockPalette());
+
         // Po załadowaniu czcionek (Google Fonts) przerysuj — inaczej Konva mierzy/rysuje fallbackiem.
         if (document.fonts && document.fonts.ready) {
             document.fonts.ready.then(() => { this.renderPage(); this.renderThumbs(); });
@@ -160,12 +165,39 @@ export default class extends Controller {
             },
         });
         this.ui.add(this.tr);
+        // Koniec skalowania/obracania (też wielu naraz): zapisz wszystkie zaznaczone węzły.
+        this.tr.on('transformend', () => this.commitTransform());
 
-        // Klik w puste tło = odznacz.
+        // Zaznaczanie ramką (rubber-band) na pustym tle + klik = odznacz.
         this.stage.on('mousedown touchstart', (e) => {
-            if (e.target === this.stage || e.target.name() === 'page-bg') {
-                this.select(null);
-            }
+            if (e.target !== this.stage && e.target.name() !== 'page-bg') return;
+            const pos = this.stage.getPointerPosition();
+            if (!pos) return;
+            this._band = { x0: pos.x / this.zoom, y0: pos.y / this.zoom, x1: pos.x / this.zoom, y1: pos.y / this.zoom, moved: false, additive: !!(e.evt && e.evt.shiftKey) };
+            this._bandRect = new K.Rect({ stroke: '#1a56db', strokeWidth: 1, dash: [4, 3], fill: 'rgba(26,86,219,0.08)', listening: false });
+            this.ui.add(this._bandRect);
+        });
+        this.stage.on('mousemove touchmove', () => {
+            if (!this._band) return;
+            const pos = this.stage.getPointerPosition();
+            if (!pos) return;
+            const x = pos.x / this.zoom, y = pos.y / this.zoom;
+            this._band.x1 = x; this._band.y1 = y;
+            if (Math.abs(x - this._band.x0) > 3 || Math.abs(y - this._band.y0) > 3) this._band.moved = true;
+            this._bandRect.setAttrs({ x: Math.min(this._band.x0, x), y: Math.min(this._band.y0, y), width: Math.abs(x - this._band.x0), height: Math.abs(y - this._band.y0) });
+            this.ui.batchDraw();
+        });
+        this.stage.on('mouseup touchend', () => {
+            if (!this._band) return;
+            const b = this._band; this._band = null;
+            if (this._bandRect) { this._bandRect.destroy(); this._bandRect = null; this.ui.batchDraw(); }
+            if (!b.moved) { this.select(null); return; } // zwykły klik w tło = odznacz
+            const rx0 = Math.min(b.x0, b.x1), ry0 = Math.min(b.y0, b.y1), rx1 = Math.max(b.x0, b.x1), ry1 = Math.max(b.y0, b.y1);
+            const hits = this.expandGroups(this.page().elements.filter((el) => this.elIntersectsRect(el, rx0, ry0, rx1, ry1)).map((el) => el.id));
+            this.selectedIds = b.additive ? Array.from(new Set([...this.selectedIds, ...hits])) : hits;
+            this.selectedId = this.selectedIds.length === 1 ? this.selectedIds[0] : null;
+            this.reattachTransformer();
+            this.syncProps();
         });
     }
 
@@ -202,9 +234,15 @@ export default class extends Controller {
     }
 
     reattachTransformer() {
-        if (!this.selectedId) { this.tr.nodes([]); this.ui.draw(); return; }
-        const node = this.layer.findOne('#' + this.selectedId);
-        this.tr.nodes(node ? [node] : []);
+        const ids = this.selectedIds || [];
+        if (!ids.length) { this.tr.nodes([]); this.ui.draw(); return; }
+        const nodes = ids.map((id) => this.layer.findOne('#' + id)).filter(Boolean);
+        // Skalowanie/obrót tylko dla POJEDYNCZEGO elementu. Grupa/wielokrotna selekcja:
+        // sama ramka + przesuwanie (skalowanie bloku nie zmieniałoby wielkości czcionek → mylące).
+        const single = nodes.length === 1;
+        this.tr.resizeEnabled(single);
+        this.tr.rotateEnabled(single);
+        this.tr.nodes(nodes);
         this.ui.draw();
     }
 
@@ -256,17 +294,53 @@ export default class extends Controller {
 
         if (interactive) {
             node.dragBoundFunc((pos) => this.snapPos(pos));
-            node.on('mousedown touchstart', () => this.select(el.id));
-            node.on('dragend', () => {
-                el.x = round(node.x());
-                el.y = round(node.y());
-                this.markDirty();
-                this.renderPage();      // reflow tekstu oblewającego po przesunięciu (np. obrazka)
-                this.select(el.id);
+            node.on('mousedown touchstart', (e) => {
+                const additive = !!(e.evt && e.evt.shiftKey);
+                this.select(el.id, additive);
             });
-            node.on('transformend', () => this.commitTransform(el, node));
+            node.on('dragstart', () => {
+                // Przeciąganie grupy/wielu zaznaczonych razem — zapamiętaj pozycje startowe.
+                if (this.selectedIds.length > 1 && this.selectedIds.includes(el.id)) {
+                    this._groupDrag = {};
+                    for (const id of this.selectedIds) {
+                        const n = this.layer.findOne('#' + id);
+                        if (n) this._groupDrag[id] = { x: n.x(), y: n.y() };
+                    }
+                } else {
+                    this._groupDrag = null;
+                }
+            });
+            node.on('dragmove', () => {
+                if (!this._groupDrag || !this._groupDrag[el.id]) return;
+                const dx = node.x() - this._groupDrag[el.id].x, dy = node.y() - this._groupDrag[el.id].y;
+                for (const id of this.selectedIds) {
+                    if (id === el.id) continue;
+                    const n = this.layer.findOne('#' + id), s = this._groupDrag[id];
+                    if (n && s) n.position({ x: s.x + dx, y: s.y + dy });
+                }
+                this.tr.forceUpdate();
+                this.layer.batchDraw();
+            });
+            node.on('dragend', () => {
+                if (this._groupDrag) {
+                    for (const id of this.selectedIds) {
+                        const n = this.layer.findOne('#' + id), e2 = this.elById(id);
+                        if (n && e2) { e2.x = round(n.x()); e2.y = round(n.y()); }
+                    }
+                    this._groupDrag = null;
+                    this.markDirty();
+                    this.renderPage();
+                    this.reattachTransformer();
+                } else {
+                    el.x = round(node.x());
+                    el.y = round(node.y());
+                    this.markDirty();
+                    this.renderPage();      // reflow tekstu oblewającego po przesunięciu (np. obrazka)
+                    this.select(el.id);
+                }
+            });
             if (el.type === 'text') {
-                node.on('transform', () => this.liveReflowText(el, node));
+                node.on('transform', () => { if (this.selectedIds.length === 1) this.liveReflowText(el, node); });
                 node.on('dblclick dbltap', () => this.editText(el, node));
             }
         }
@@ -760,32 +834,79 @@ export default class extends Controller {
 
     // ─── Selekcja + transform ───────────────────────────────
 
-    select(id) {
-        this.selectedId = id;
+    /** Zaznacza element. additive (Shift) = dołącz/odłącz jednostkę; klik w element grupy = cała grupa. */
+    select(id, additive = false) {
+        if (id == null) {
+            this.selectedIds = [];
+        } else if (additive) {
+            const unit = this.unitIds(id);                       // grupa → wszyscy członkowie, inaczej [id]
+            const allIn = unit.every((u) => this.selectedIds.includes(u));
+            this.selectedIds = allIn
+                ? this.selectedIds.filter((s) => !unit.includes(s))
+                : Array.from(new Set([...this.selectedIds, ...unit]));
+        } else if (this.selectedIds.length > 1 && this.selectedIds.includes(id)) {
+            // Klik w element istniejącej selekcji wielokrotnej — zachowaj ją (by dało się przeciągać całość).
+        } else {
+            this.selectedIds = this.unitIds(id);
+        }
+        this.selectedId = this.selectedIds.length === 1 ? this.selectedIds[0] : null;
         this.reattachTransformer();
         this.syncProps();
     }
 
-    selectedEl() {
-        return this.page().elements.find((e) => e.id === this.selectedId) || null;
+    /** Jednostka selekcji dla elementu: wszyscy członkowie jego grupy albo on sam. */
+    unitIds(id) {
+        const el = this.elById(id);
+        if (el && el.groupId) return this.page().elements.filter((e) => e.groupId === el.groupId).map((e) => e.id);
+        return [id];
     }
 
-    commitTransform(el, node) {
-        const sx = node.scaleX();
-        const sy = node.scaleY();
-        el.x = round(node.x());
-        el.y = round(node.y());
-        el.rotation = round(node.rotation());
-        if (el.type === 'line') {
-            el.width = Math.max(4, round(el.width * sx));
-        } else {
-            el.width = Math.max(12, round(el.width * sx));
-            el.height = Math.max(12, round(el.height * sy));
+    elById(id) {
+        return this.page().elements.find((e) => e.id === id) || null;
+    }
+
+    selectedEl() {
+        return this.selectedId ? this.elById(this.selectedId) : null;
+    }
+
+    /** Elementy bieżącej selekcji (w kolejności z dokumentu). */
+    selectedElements() {
+        return this.page().elements.filter((e) => this.selectedIds.includes(e.id));
+    }
+
+    /** Rozszerza listę id o wszystkich współtowarzyszy grupy. */
+    expandGroups(ids) {
+        const out = new Set();
+        for (const id of ids) for (const u of this.unitIds(id)) out.add(u);
+        return Array.from(out);
+    }
+
+    elIntersectsRect(el, rx0, ry0, rx1, ry1) {
+        const ex1 = el.x + (el.width || 0), ey1 = el.y + (el.height || 1);
+        return !(ex1 < rx0 || el.x > rx1 || ey1 < ry0 || el.y > ry1);
+    }
+
+    /** Zapisuje transformację WSZYSTKICH zaznaczonych węzłów (skala→rozmiar, pozycja, obrót). */
+    commitTransform() {
+        for (const id of this.selectedIds) {
+            const node = this.layer.findOne('#' + id);
+            const el = this.elById(id);
+            if (!node || !el) continue;
+            const sx = node.scaleX(), sy = node.scaleY();
+            el.x = round(node.x());
+            el.y = round(node.y());
+            el.rotation = round(node.rotation());
+            if (el.type === 'line') {
+                el.width = Math.max(4, round(el.width * sx));
+            } else {
+                el.width = Math.max(12, round(el.width * sx));
+                el.height = Math.max(12, round(el.height * sy));
+            }
+            node.scale({ x: 1, y: 1 });
         }
-        node.scale({ x: 1, y: 1 });
         this.markDirty();
         this.renderPage();
-        this.select(el.id);
+        this.reattachTransformer();
     }
 
     // ─── Edycja tekstu (contenteditable + pasek B/I) ───────────
@@ -1021,51 +1142,98 @@ export default class extends Controller {
     }
 
     deleteSelected() {
-        const el = this.selectedEl();
-        if (!el) return;
-        this.page().elements = this.page().elements.filter((e) => e.id !== el.id);
+        if (!this.selectedIds.length) return;
+        const ids = new Set(this.selectedIds);
+        this.page().elements = this.page().elements.filter((e) => !ids.has(e.id));
         this.select(null);
         this.markDirty();
         this.renderPage();
     }
 
     duplicateSelected() {
-        const el = this.selectedEl();
-        if (!el) return;
-        const copy = JSON.parse(JSON.stringify(el));
-        copy.id = uid();
-        copy.x = (el.x || 0) + 16;
-        copy.y = (el.y || 0) + 16;
-        this.addElement(copy);
+        const els = this.selectedElements();
+        if (!els.length) return;
+        const block = this.cloneBlock(els, 16, 16);
+        for (const c of block) this.page().elements.push(c);
+        this.selectAll(block.map((c) => c.id));
     }
 
-    // ─── Schowek (kopiuj / wytnij / wklej — także między stronami) ───
+    // ─── Grupowanie ─────────────────────────────────────────
+
+    groupSelected() {
+        if (this.selectedIds.length < 2) {
+            this.statusTarget.textContent = 'Zaznacz co najmniej 2 elementy (Shift+klik lub ramką), aby zgrupować.';
+            return;
+        }
+        const gid = 'g_' + Math.random().toString(36).slice(2, 9);
+        for (const id of this.selectedIds) { const el = this.elById(id); if (el) el.groupId = gid; }
+        this.markDirty();
+        this.renderPage();
+        this.reattachTransformer();
+        this.statusTarget.textContent = 'Zgrupowano ' + this.selectedIds.length + ' elementów.';
+    }
+
+    ungroupSelected() {
+        let n = 0;
+        for (const id of this.selectedIds) { const el = this.elById(id); if (el && el.groupId) { delete el.groupId; n++; } }
+        if (n) {
+            this.markDirty();
+            this.renderPage();
+            this.reattachTransformer();
+            this.statusTarget.textContent = 'Rozgrupowano.';
+        }
+    }
+
+    /** Ustawia selekcję na podaną listę id (po dodaniu/wklejeniu elementów). */
+    selectAll(ids) {
+        this.selectedIds = ids.slice();
+        this.selectedId = ids.length === 1 ? ids[0] : null;
+        this.markDirty();
+        this.renderPage();
+        this.reattachTransformer();
+        this.syncProps();
+    }
+
+    /** Klonuje blok elementów: świeże id, offset (dx,dy); zachowuje wewn. grupy (nowe groupId) lub wymusza jedną grupę. */
+    cloneBlock(els, dx = 0, dy = 0, oneGroup = null) {
+        const gmap = {};
+        return els.map((src) => {
+            const c = JSON.parse(JSON.stringify(src));
+            c.id = uid();
+            c.x = (c.x || 0) + dx;
+            c.y = (c.y || 0) + dy;
+            if (oneGroup) c.groupId = oneGroup;
+            else if (c.groupId) { if (!gmap[c.groupId]) gmap[c.groupId] = 'g_' + Math.random().toString(36).slice(2, 9); c.groupId = gmap[c.groupId]; }
+            return c;
+        });
+    }
+
+    // ─── Schowek (kopiuj / wytnij / wklej — bloki, także między stronami) ───
 
     copySelected() {
-        const el = this.selectedEl();
-        if (!el) return;
-        this.clipboard = JSON.parse(JSON.stringify(el));
-        this.statusTarget.textContent = 'Skopiowano element — wklej (Ctrl+V) na dowolnej stronie';
+        const els = this.selectedElements();
+        if (!els.length) return;
+        this.clipboard = els.map((e) => JSON.parse(JSON.stringify(e)));
+        this.statusTarget.textContent = 'Skopiowano ' + els.length + ' el. — wklej (Ctrl+V) na dowolnej stronie';
     }
 
     cutSelected() {
-        const el = this.selectedEl();
-        if (!el) return;
-        this.clipboard = JSON.parse(JSON.stringify(el));
-        this.page().elements = this.page().elements.filter((e) => e.id !== el.id);
+        const els = this.selectedElements();
+        if (!els.length) return;
+        this.clipboard = els.map((e) => JSON.parse(JSON.stringify(e)));
+        const ids = new Set(this.selectedIds);
+        this.page().elements = this.page().elements.filter((e) => !ids.has(e.id));
         this.select(null);
         this.markDirty();
         this.renderPage();
-        this.statusTarget.textContent = 'Wycięto element — wklej (Ctrl+V) na dowolnej stronie';
+        this.statusTarget.textContent = 'Wycięto ' + els.length + ' el. — wklej (Ctrl+V) na dowolnej stronie';
     }
 
     pasteClipboard() {
-        if (!this.clipboard) return;
-        const copy = JSON.parse(JSON.stringify(this.clipboard));
-        copy.id = uid();
-        copy.x = clamp((copy.x || 0) + 16, 0, Math.max(0, this.pageW - 20));
-        copy.y = clamp((copy.y || 0) + 16, 0, Math.max(0, this.pageH - 20));
-        this.addElement(copy); // wkleja na BIEŻĄCĄ stronę
+        if (!this.clipboard || !this.clipboard.length) return;
+        const block = this.cloneBlock(this.clipboard, 16, 16); // świeże id, zachowane grupy
+        for (const c of block) this.page().elements.push(c);   // wkleja na BIEŻĄCĄ stronę
+        this.selectAll(block.map((c) => c.id));
     }
 
     bringForward() {
@@ -1088,6 +1256,139 @@ export default class extends Controller {
             this.renderPage();
             this.select(this.selectedId);
         }
+    }
+
+    // ─── Magazyn bloków (zapisane, zgrupowane zestawy elementów — localStorage) ───
+
+    loadBlocks() {
+        if (this._blocks) return this._blocks;
+        try { this._blocks = JSON.parse(localStorage.getItem('gzBlocks') || '[]'); }
+        catch (e) { this._blocks = []; }
+        if (!Array.isArray(this._blocks)) this._blocks = [];
+        return this._blocks;
+    }
+
+    persistBlocks() {
+        try { localStorage.setItem('gzBlocks', JSON.stringify(this._blocks || [])); }
+        catch (e) { this.setBlockStatus('Nie udało się zapisać (limit pamięci przeglądarki?).', true); }
+    }
+
+    setBlockStatus(msg, err) {
+        const el = this.element.querySelector('[data-block="status"]');
+        if (el) { el.textContent = msg; el.className = 'small mb-2 ' + (err ? 'text-danger' : 'text-secondary'); }
+    }
+
+    /** Zapisuje bieżącą selekcję jako blok wielokrotnego użytku (z miniaturą). */
+    saveSelectionAsBlock() {
+        const els = this.selectedElements();
+        if (!els.length) { this.setBlockStatus('Najpierw zaznacz elementy (Shift+klik lub ramką).', true); return; }
+        const bb = this.blockBBox(els);
+        const norm = els.map((e) => { const c = JSON.parse(JSON.stringify(e)); c.x = (c.x || 0) - bb.x; c.y = (c.y || 0) - bb.y; return c; });
+        const name = (prompt('Nazwa bloku:', 'Mój blok') || '').trim();
+        if (!name) return;
+        this.loadBlocks();
+        this._blocks.unshift({
+            id: 'b_' + Math.random().toString(36).slice(2, 9),
+            name: name.slice(0, 60),
+            w: Math.round(bb.w), h: Math.round(bb.h),
+            count: norm.length,
+            preview: this.blockPreview(norm, bb.w, bb.h),
+            els: norm,
+        });
+        this.persistBlocks();
+        this.renderBlockPalette();
+        this.statusTarget.textContent = 'Zapisano blok „' + name + '" do magazynu bloków.';
+    }
+
+    blockBBox(els) {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const e of els) {
+            x0 = Math.min(x0, e.x); y0 = Math.min(y0, e.y);
+            x1 = Math.max(x1, e.x + (e.width || 0)); y1 = Math.max(y1, e.y + (e.height || 1));
+        }
+        return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+    }
+
+    /** Renderuje znormalizowane elementy (origin 0,0) do małego PNG (miniatura bloku). */
+    blockPreview(els, w, h) {
+        try {
+            const K = this.Konva;
+            const cont = document.createElement('div');
+            const stage = new K.Stage({ container: cont, width: w, height: h });
+            const layer = new K.Layer();
+            stage.add(layer);
+            layer.add(new K.Rect({ x: 0, y: 0, width: w, height: h, fill: '#ffffff' }));
+            for (const el of els) { const n = this.buildNode(el, false); if (n) layer.add(n); }
+            layer.draw();
+            const pr = Math.min(2, 240 / Math.max(w, h));
+            const url = stage.toDataURL({ pixelRatio: pr, mimeType: 'image/png' });
+            stage.destroy();
+            return url;
+        } catch (e) { return ''; }
+    }
+
+    renderBlockPalette() {
+        const grid = this.element.querySelector('[data-block="grid"]');
+        if (!grid) return;
+        this.loadBlocks();
+        if (!this._blocks.length) {
+            grid.innerHTML = '';
+            this.setBlockStatus('Brak zapisanych bloków. Zaznacz elementy na stronie i kliknij „Zapisz zaznaczenie jako blok".');
+            return;
+        }
+        this.setBlockStatus(this._blocks.length + ' bloków — kliknij, by wstawić na bieżącą stronę (jako gotową grupę).');
+        const frag = document.createDocumentFragment();
+        for (const b of this._blocks) {
+            const col = document.createElement('div');
+            col.className = 'col';
+            const wrap = document.createElement('div');
+            wrap.className = 'gz-media-item';
+            const ins = document.createElement('button');
+            ins.type = 'button';
+            ins.className = 'btn btn-outline-secondary w-100 p-1 d-flex flex-column align-items-center';
+            ins.title = b.name + ' · ' + (b.count || b.els.length) + ' el. · ' + b.w + '×' + b.h + ' pt';
+            if (b.preview) { const img = document.createElement('img'); img.src = b.preview; img.className = 'gz-media-thumb'; ins.appendChild(img); }
+            const cap = document.createElement('span');
+            cap.className = 'small text-truncate w-100 mt-1';
+            cap.style.maxWidth = '100%';
+            cap.textContent = b.name;
+            ins.appendChild(cap);
+            ins.addEventListener('click', () => this.insertBlock(b.id));
+            const del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'btn btn-icon btn-sm btn-danger gz-media-del';
+            del.title = 'Usuń blok';
+            del.innerHTML = '<i class="ti ti-trash"></i>';
+            del.addEventListener('click', (ev) => { ev.stopPropagation(); this.deleteBlock(b.id); });
+            wrap.appendChild(ins); wrap.appendChild(del);
+            col.appendChild(wrap);
+            frag.appendChild(col);
+        }
+        grid.innerHTML = '';
+        grid.appendChild(frag);
+    }
+
+    insertBlock(blockId) {
+        this.loadBlocks();
+        const b = this._blocks.find((x) => x.id === blockId);
+        if (!b) return;
+        const ox = Math.max(10, Math.round((this.pageW - b.w) / 2));
+        const oy = 60;
+        const gid = 'g_' + Math.random().toString(36).slice(2, 9);
+        const block = this.cloneBlock(b.els, ox, oy, gid); // wstawiany jako JEDNA grupa
+        for (const c of block) this.page().elements.push(c);
+        this.selectAll(block.map((c) => c.id));
+        const cb = document.querySelector('#gzBlocksModal [data-bs-dismiss="modal"]');
+        if (cb) cb.click();
+        this.statusTarget.textContent = 'Wstawiono blok „' + b.name + '" (jako grupa).';
+    }
+
+    deleteBlock(blockId) {
+        if (!confirm('Usunąć ten blok z magazynu?')) return;
+        this.loadBlocks();
+        this._blocks = this._blocks.filter((x) => x.id !== blockId);
+        this.persistBlocks();
+        this.renderBlockPalette();
     }
 
     // ─── Szablony startowe ──────────────────────────────────
@@ -1190,13 +1491,27 @@ export default class extends Controller {
     syncProps() {
         const el = this.selectedEl();
         const panel = this.propsTarget;
+        const multi = this.selectedIds.length > 1;
 
         panel.querySelectorAll('[data-for]').forEach((group) => {
             const types = group.dataset.for.split(' ');
             const show = el && (types.includes('any') || types.includes(el.type));
             group.style.display = show ? '' : 'none';
         });
-        panel.querySelector('[data-empty]')?.style.setProperty('display', el ? 'none' : '');
+        // Panel selekcji wielokrotnej (grupowanie / blok).
+        const mp = panel.querySelector('[data-multi]');
+        if (mp) {
+            mp.style.display = multi ? '' : 'none';
+            if (multi) {
+                const cnt = mp.querySelector('[data-multi-count]');
+                if (cnt) cnt.textContent = this.selectedIds.length;
+                const grouped = this.selectedElements().some((e) => e.groupId);
+                const gb = mp.querySelector('[data-act="group"]'), ub = mp.querySelector('[data-act="ungroup"]');
+                if (gb) gb.disabled = false;
+                if (ub) ub.disabled = !grouped;
+            }
+        }
+        panel.querySelector('[data-empty]')?.style.setProperty('display', (el || multi) ? 'none' : '');
 
         if (!el) return;
         panel.querySelectorAll('[data-prop]').forEach((input) => {
@@ -2563,31 +2878,32 @@ export default class extends Controller {
             if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
             if (document.querySelector('.modal.show')) return; // nie przechwytuj skrótów przy otwartym oknie
 
-            if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId) {
+            const hasSel = this.selectedIds.length > 0;
+            if ((e.key === 'Delete' || e.key === 'Backspace') && hasSel) {
                 e.preventDefault(); this.deleteSelected();
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
+                e.preventDefault(); if (e.shiftKey) this.ungroupSelected(); else this.groupSelected();
             } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                 e.preventDefault(); if (e.shiftKey) this.redo(); else this.undo();
             } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
                 e.preventDefault(); this.redo();
             } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
                 e.preventDefault(); this.save();
-            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && this.selectedId) {
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && hasSel) {
                 e.preventDefault(); this.duplicateSelected();
-            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && this.selectedId) {
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && hasSel) {
                 e.preventDefault(); this.copySelected();
-            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x' && this.selectedId) {
+            } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x' && hasSel) {
                 e.preventDefault(); this.cutSelected();
             } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && this.clipboard) {
                 e.preventDefault(); this.pasteClipboard();
-            } else if (this.selectedId && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+            } else if (hasSel && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
                 e.preventDefault();
-                const el = this.selectedEl();
                 const step = e.shiftKey ? 10 : 1;
-                if (e.key === 'ArrowUp') el.y -= step;
-                if (e.key === 'ArrowDown') el.y += step;
-                if (e.key === 'ArrowLeft') el.x -= step;
-                if (e.key === 'ArrowRight') el.x += step;
-                this.markDirty(); this.renderPage(); this.select(el.id);
+                const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+                const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+                for (const id of this.selectedIds) { const el = this.elById(id); if (el) { el.x += dx; el.y += dy; } }
+                this.markDirty(); this.renderPage(); this.reattachTransformer();
             }
         };
         window.addEventListener('keydown', this._keyHandler);

@@ -478,8 +478,12 @@ export default class extends Controller {
         return res;
     }
 
-    /** Najszerszy wolny przedział poziomy [x0,x1] w wierszu [yTop,yBot] w obrębie [rx0,rx1] po odjęciu obrazów; null gdy brak miejsca. */
-    freeIntervalInRange(yTop, yBot, rx0, rx1, exclusions) {
+    /**
+     * WSZYSTKIE wolne przedziały poziome [x0,x1] w wierszu [yTop,yBot] w obrębie [rx0,rx1] po odjęciu obrazów,
+     * od lewej do prawej. Dzięki temu tekst może oblewać obraz Z OBU STRON (przedział z lewej i z prawej w tej samej linii).
+     * Pomija skrawki węższe niż minW (zbyt wąskie, by ładnie zmieścić tekst). Zwraca [] gdy brak miejsca.
+     */
+    freeIntervalsInRange(yTop, yBot, rx0, rx1, exclusions, minW) {
         const blocked = [];
         for (const ex of exclusions) {
             if (ex.y0 < yBot && ex.y1 > yTop) {
@@ -487,32 +491,32 @@ export default class extends Controller {
                 if (bx1 > bx0) blocked.push([bx0, bx1]);
             }
         }
-        if (!blocked.length) return [rx0, rx1];
+        if (!blocked.length) return [[rx0, rx1]];
 
         blocked.sort((a, b) => a[0] - b[0]);
         const free = [];
         let cur = rx0;
         for (const [bx0, bx1] of blocked) {
-            if (bx0 > cur) free.push([cur, bx0]);
+            if (bx0 - cur >= minW) free.push([cur, bx0]); // wolny pasek przed blokiem (np. z lewej obrazu)
             cur = Math.max(cur, bx1);
         }
-        if (cur < rx1) free.push([cur, rx1]);
-
-        let best = null, bw = 8; // ignoruj skrawki węższe niż 8 pt
-        for (const f of free) {
-            const w = f[1] - f[0];
-            if (w > bw) { bw = w; best = f; }
-        }
-        return best;
+        if (rx1 - cur >= minW) free.push([cur, rx1]); // pasek po ostatnim bloku (np. z prawej obrazu)
+        return free;
     }
 
-    /** Łamanie tekstu ze zmienną szerokością wiersza, z przepływem przez kolumny (1–3) i oblewaniem obrazów. Zwraca true przy przepełnieniu. Obsługuje formatowanie fragmentów (el.runs). */
+    /**
+     * Łamanie tekstu ze zmienną szerokością wiersza, z przepływem przez kolumny (1–3) i oblewaniem obrazów
+     * Z OBU STRON (w jednym wierszu wypełniamy kolejno wszystkie wolne paski: z lewej i z prawej obrazu).
+     * Zwraca true przy przepełnieniu. Obsługuje formatowanie fragmentów (el.runs).
+     */
     renderFlowedText(group, el, exclusions, lineHpx, common, align, cols, colW, gap) {
         const ctx = this.measureCtx();
         ctx.font = this.segFont(el, false, false);
         const spaceW = ctx.measureText(' ').width || (el.fontSize || 14) * 0.28;
         const frameH = el.height;
         const colX = (c) => c * (colW + gap);
+        // Pasków węższych niż to nie wypełniamy — za wąskie obok obrazu wyglądałyby źle (tekst poleci tylko po szerszej stronie).
+        const minSegW = Math.max(32, (el.fontSize || 14) * 2.2);
 
         let col = 0;
         let y = 0;
@@ -541,22 +545,33 @@ export default class extends Controller {
             while (i < words.length) {
                 if (!ensureRoom()) { overflow = true; break; }
                 const cx0 = colX(col);
-                const seg = this.freeIntervalInRange(y, y + lineHpx, cx0, cx0 + colW, exclusions);
-                if (!seg) { y += lineHpx; continue; } // wiersz zasłonięty przez obraz — w dół
+                // Wszystkie wolne paski w tym wierszu (od lewej do prawej) → oblewanie obrazu z obu stron.
+                const segs = this.freeIntervalsInRange(y, y + lineHpx, cx0, cx0 + colW, exclusions, minSegW);
+                if (!segs.length) { y += lineHpx; continue; } // cały wiersz zasłonięty przez obraz — w dół
 
-                const availW = seg[1] - seg[0];
-                const lineWords = [];
-                let w = 0;
-                while (i < words.length) {
-                    const wordW = this.measureWord(words[i], el);
-                    const add = (lineWords.length ? spaceW : 0) + wordW;
-                    if (w + add > availW && lineWords.length > 0) break;
-                    lineWords.push(words[i]); w += add; i++;
+                for (let s = 0; s < segs.length && i < words.length; s++) {
+                    const seg = segs[s];
+                    const availW = seg[1] - seg[0];
+                    const fullWidth = availW >= colW - 0.5; // pełna szerokość kolumny (brak obrazu w tym wierszu)
+                    const lineWords = [];
+                    let w = 0;
+                    while (i < words.length) {
+                        const wordW = this.measureWord(words[i], el);
+                        const add = (lineWords.length ? spaceW : 0) + wordW;
+                        if (w + add > availW) {
+                            // Pojedyncze słowo szersze niż pasek: wymuś tylko w pełnej szerokości (dłuższe niż kolumna);
+                            // w wąskim pasku obok obrazu zostaw je na pełny wiersz niżej.
+                            if (lineWords.length === 0 && fullWidth) { lineWords.push(words[i]); w += add; i++; }
+                            break;
+                        }
+                        lineWords.push(words[i]); w += add; i++;
+                    }
+                    if (!lineWords.length) continue; // nic nie weszło w ten pasek — spróbuj następnego
+
+                    // Justujemy/zwijamy każdy pasek tak, by „domykał się" do krawędzi obrazu/marginesu, gdy tekst trwa dalej.
+                    const moreWords = i < words.length;
+                    this.renderRichLine(group, { words: lineWords, lastOfPara: !moreWords }, el, seg[0], y, availW, spaceW, align, !moreWords, common);
                 }
-                if (lineWords.length === 0) { lineWords.push(words[i]); i++; } // słowo szersze niż wiersz
-
-                const lastLineOfPara = i >= words.length;
-                this.renderRichLine(group, { words: lineWords, lastOfPara: lastLineOfPara }, el, seg[0], y, availW, spaceW, align, lastLineOfPara, common);
                 y += lineHpx;
             }
         }

@@ -69,6 +69,40 @@ class GazetkaController extends AbstractController
         return $this->redirectToRoute('app_gazetka_edit', $params);
     }
 
+    /**
+     * Tworzy pustą gazetkę pod import projektu z pliku i zwraca URL-e (upload/save/edit).
+     * Reszta importu (wgranie grafik po jednej + zapis dokumentu) dzieje się po stronie przeglądarki —
+     * żeby ominąć limit post_max_size przy dużych paczkach.
+     */
+    #[Route('/import-create', name: 'app_gazetka_import_create', methods: ['POST'])]
+    public function importCreate(Request $request): JsonResponse
+    {
+        if (!$this->isCsrfTokenValid('gazetka', (string) $request->headers->get('X-CSRF-Token'))) {
+            return new JsonResponse(['ok' => false, 'error' => 'Nieprawidłowy token CSRF.'], 419);
+        }
+
+        $p = json_decode($request->getContent(), true);
+        $title = trim((string) ($p['title'] ?? '')) ?: 'Gazetka (import)';
+        $pageCount = max(4, min(40, (int) (ceil(((int) ($p['pageCount'] ?? 4)) / 4) * 4)));
+
+        $newsletter = new Newsletter();
+        $newsletter->setOwner($this->currentUser());
+        $newsletter->setTitle(mb_substr($title, 0, 200));
+        $newsletter->setPageCount($pageCount);
+        $newsletter->setContent(json_encode($this->blankDocument($pageCount), JSON_UNESCAPED_UNICODE));
+        $this->repo->save($newsletter);
+
+        $id = $newsletter->getId();
+
+        return new JsonResponse([
+            'ok' => true,
+            'id' => $id,
+            'uploadUrl' => $this->generateUrl('app_gazetka_upload', ['id' => $id]),
+            'saveUrl' => $this->generateUrl('app_gazetka_save', ['id' => $id]),
+            'editUrl' => $this->generateUrl('app_gazetka_edit', ['id' => $id]),
+        ]);
+    }
+
     #[Route('/{id}/edit', name: 'app_gazetka_edit', methods: ['GET'])]
     public function edit(Newsletter $newsletter): Response
     {

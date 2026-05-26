@@ -49,6 +49,19 @@
             </form>
         </div>
 
+        {# ── Wczytaj projekt z pliku ──────────────── #}
+        <div class="card mt-3" data-controller="gazetka-import"
+             data-gazetka-import-create-url-value="{{ path('app_gazetka_import_create') }}"
+             data-gazetka-import-csrf-value="{{ csrf_token('gazetka') }}">
+            <div class="card-header"><h3 class="card-title"><i class="ti ti-file-upload me-2"></i>Wczytaj projekt z pliku</h3></div>
+            <div class="card-body">
+                <p class="text-secondary small mb-2">Wczytaj plik <strong>.gazetka</strong> (zapisany w edytorze przez „Projekt → Zapisz do pliku"). Powstanie nowa gazetka wraz ze wszystkimi zdjęciami i grafikami.</p>
+                <button type="button" class="btn btn-outline-primary" data-action="gazetka-import#pick"><i class="ti ti-upload me-1"></i>Wybierz plik .gazetka</button>
+                <input type="file" accept=".json,.gazetka,application/json" hidden data-gazetka-import-target="file" data-action="change->gazetka-import#onChosen">
+                <div class="small mt-2 text-secondary" data-gazetka-import-target="status"></div>
+            </div>
+        </div>
+
         <div class="card mt-3">
             <div class="card-body">
                 <div class="d-flex gap-3">

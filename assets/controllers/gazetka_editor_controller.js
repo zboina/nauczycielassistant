@@ -9,7 +9,7 @@ import { Controller } from '@hotwired/stimulus';
  * dzięki czemu edytor i eksport PDF mają identyczną geometrię.
  */
 export default class extends Controller {
-    static targets = ['container', 'thumbs', 'title', 'file', 'status', 'props', 'zoomLabel', 'pageInfo', 'gridBtn', 'undoBtn', 'redoBtn', 'cropContainer', 'toolbar'];
+    static targets = ['container', 'thumbs', 'title', 'file', 'status', 'props', 'zoomLabel', 'pageInfo', 'gridBtn', 'undoBtn', 'redoBtn', 'cropContainer', 'toolbar', 'projectFile'];
     static values = {
         saveUrl: String,
         uploadUrl: String,
@@ -20,6 +20,7 @@ export default class extends Controller {
         mediaListUrl: String,
         mediaDeleteUrl: String,
         blocksUrl: String,
+        importCreateUrl: String,
         csrf: String,
         doc: Object,
         initialTemplate: String,
@@ -2253,6 +2254,128 @@ export default class extends Controller {
         document.body.appendChild(a);
         a.click();
         setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    }
+
+    // ─── Projekt: zapis do pliku / wczytanie z pliku (z grafikami) ───
+
+    /** Zapisuje całą gazetkę do jednego pliku .gazetka.json z WBUDOWANYMI zdjęciami/grafikami (data URI). */
+    async exportProject() {
+        this.statusTarget.textContent = 'Przygotowuję plik projektu…';
+        try {
+            if (this.dirty) await this.save();
+            await this.preloadAllImages();
+            const doc = JSON.parse(JSON.stringify(this.doc));
+
+            // Zbierz unikalne źródła grafik i zamień URL-e uploadów na data URI (ikony są już data URI).
+            const srcs = new Set();
+            for (const p of doc.pages) for (const el of (p.elements || [])) {
+                if ((el.type === 'image' || el.type === 'icon') && el.src) srcs.add(el.src);
+            }
+            const map = {};
+            for (const src of srcs) {
+                if (src.startsWith('data:')) { map[src] = src; continue; }
+                try { map[src] = await this.urlToDataUri(src); } catch (e) { map[src] = src; }
+            }
+            for (const p of doc.pages) for (const el of (p.elements || [])) {
+                if ((el.type === 'image' || el.type === 'icon') && el.src && map[el.src]) el.src = map[el.src];
+            }
+
+            const title = this.titleTarget.value || 'gazetka';
+            const bundle = { format: 'gazetka-bundle', version: 1, title, pageCount: doc.pages.length, savedAt: new Date().toISOString(), doc };
+            const fname = title.replace(/[^\p{L}\p{N}_-]+/gu, '_') + '.gazetka.json';
+            this.downloadBlob(new Blob([JSON.stringify(bundle)], { type: 'application/json' }), fname);
+            this.statusTarget.textContent = 'Zapisano projekt do pliku: ' + fname;
+        } catch (e) {
+            this.statusTarget.textContent = 'Błąd zapisu projektu: ' + e.message;
+            console.error(e);
+        }
+    }
+
+    /** Pobiera URL (same-origin) i zwraca jego zawartość jako data URI. */
+    urlToDataUri(url) {
+        return fetch(url)
+            .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+            .then((blob) => new Promise((resolve, reject) => {
+                const fr = new FileReader();
+                fr.onload = () => resolve(fr.result);
+                fr.onerror = reject;
+                fr.readAsDataURL(blob);
+            }));
+    }
+
+    pickProjectFile() {
+        if (this.hasProjectFileTarget) this.projectFileTarget.click();
+    }
+
+    /** Wczytuje plik .gazetka: tworzy NOWĄ gazetkę, wgrywa grafiki po jednej i zapisuje dokument. */
+    async onProjectChosen(event) {
+        const input = event.target;
+        const file = input.files && input.files[0];
+        input.value = '';
+        if (!file) return;
+        this.statusTarget.textContent = 'Wczytuję projekt…';
+        try {
+            const bundle = JSON.parse(await file.text());
+            const doc = bundle && bundle.doc;
+            if (!bundle || bundle.format !== 'gazetka-bundle' || !doc || !Array.isArray(doc.pages)) {
+                throw new Error('To nie jest plik projektu gazetki.');
+            }
+
+            // 1) Utwórz nową, pustą gazetkę (osobną — bieżąca zostaje nietknięta).
+            const crRes = await fetch(this.importCreateUrlValue, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': this.csrfValue, 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ title: bundle.title || 'Gazetka (import)', pageCount: doc.pages.length }),
+            });
+            const cr = await crRes.json();
+            if (!cr.ok) throw new Error(cr.error || 'Nie udało się utworzyć gazetki.');
+
+            // 2) Wgraj wbudowane zdjęcia (data: png/jpeg/webp/gif) po jednej — ikony (svg data URI) zostają.
+            const photos = new Set();
+            for (const p of doc.pages) for (const el of (p.elements || [])) {
+                if (el.type === 'image' && typeof el.src === 'string' && /^data:image\/(png|jpe?g|webp|gif)/i.test(el.src)) photos.add(el.src);
+            }
+            const map = {};
+            let done = 0;
+            for (const src of photos) {
+                this.statusTarget.textContent = 'Wgrywam grafiki… (' + (++done) + '/' + photos.size + ')';
+                map[src] = await this.uploadDataUri(cr.uploadUrl, src);
+            }
+            for (const p of doc.pages) for (const el of (p.elements || [])) {
+                if (el.type === 'image' && el.src && map[el.src]) el.src = map[el.src];
+            }
+
+            // 3) Zapisz dokument (już lekki — z URL-ami) do nowej gazetki i otwórz ją.
+            const svRes = await fetch(cr.saveUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': this.csrfValue, 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ doc, title: bundle.title || 'Gazetka (import)' }),
+            });
+            const sv = await svRes.json();
+            if (!sv.ok) throw new Error(sv.error || 'Nie udało się zapisać dokumentu.');
+
+            this.statusTarget.textContent = 'Wczytano — otwieram nową gazetkę…';
+            window.location = cr.editUrl;
+        } catch (e) {
+            this.statusTarget.textContent = 'Błąd wczytywania: ' + e.message;
+            alert('Nie udało się wczytać projektu: ' + e.message);
+        }
+    }
+
+    /** Wgrywa pojedynczą grafikę z data URI przez endpoint uploadu (multipart) i zwraca jej URL. */
+    async uploadDataUri(uploadUrl, dataUri) {
+        const blob = await (await fetch(dataUri)).blob();
+        const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+        const fd = new FormData();
+        fd.append('image', blob, 'import.' + ext);
+        const res = await fetch(uploadUrl, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': this.csrfValue, 'X-Requested-With': 'XMLHttpRequest' },
+            body: fd,
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Błąd wgrywania grafiki.');
+        return data.url;
     }
 
     // ─── Asystent AI ────────────────────────────────────────

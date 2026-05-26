@@ -78,6 +78,7 @@
      data-gazetka-editor-media-list-url-value="{{ path('app_gazetka_media_list', {id: newsletter.id}) }}"
      data-gazetka-editor-media-delete-url-value="{{ path('app_gazetka_media_delete', {id: newsletter.id}) }}"
      data-gazetka-editor-blocks-url-value="{{ path('app_gazetka_blocks_list') }}"
+     data-gazetka-editor-import-create-url-value="{{ path('app_gazetka_import_create') }}"
      data-gazetka-editor-csrf-value="{{ csrf_token('gazetka') }}"
      data-gazetka-editor-doc-value="{{ doc }}"
      data-gazetka-editor-initial-template-value="{{ app.request.query.get('template')|default('') }}">
@@ -101,6 +102,15 @@
             </div>
             <button class="btn btn-sm btn-ghost-secondary" data-bs-toggle="modal" data-bs-target="#gzSpreadModal" title="Podgląd rozkładówki (2 strony obok siebie)"><i class="ti ti-book-2"></i></button>
             <button class="btn btn-sm btn-outline-primary" data-action="gazetka-editor#save"><i class="ti ti-device-floppy me-1"></i>Zapisz</button>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-ghost-secondary" data-bs-toggle="dropdown" title="Projekt — zapis/wczytanie pliku z grafikami"><i class="ti ti-package me-1"></i>Projekt</button>
+                <div class="dropdown-menu dropdown-menu-end">
+                    <button class="dropdown-item" data-action="gazetka-editor#exportProject"><i class="ti ti-file-download me-2"></i>Zapisz projekt do pliku (.gazetka)</button>
+                    <button class="dropdown-item" data-action="gazetka-editor#pickProjectFile"><i class="ti ti-file-upload me-2"></i>Wczytaj projekt z pliku…</button>
+                    <div class="dropdown-divider"></div>
+                    <h6 class="dropdown-header text-wrap" style="max-width:240px;">Plik zawiera całą gazetkę wraz ze zdjęciami i grafikami. Wczytanie tworzy nową gazetkę.</h6>
+                </div>
+            </div>
             <div class="dropdown">
                 <button class="btn btn-sm btn-primary" data-bs-toggle="dropdown"><i class="ti ti-file-type-pdf me-1"></i>Eksport PDF</button>
                 <div class="dropdown-menu dropdown-menu-end">
@@ -421,6 +431,8 @@
 
     <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden
            data-gazetka-editor-target="file" data-action="change->gazetka-editor#onFileChosen">
+    <input type="file" accept=".json,.gazetka,application/json" hidden
+           data-gazetka-editor-target="projectFile" data-action="change->gazetka-editor#onProjectChosen">
 
     {# ── Modal: podgląd rozkładówki ────────────── #}
     <div class="modal modal-blur fade" id="gzSpreadModal" tabindex="-1">

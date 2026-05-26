@@ -431,8 +431,8 @@ export default class extends Controller {
             const tgroup = new K.Group({ x: pad, y: pad });
             group.add(tgroup);
             isOverflow = this.renderFlowedText(tgroup, inner, exAdj, lineHpx, common, align, cols, colW, gap);
-        } else if ((Array.isArray(el.runs) && el.runs.length) || el.list === 'bullet' || el.list === 'number') {
-            // Tekst z formatowaniem fragmentów (runs) LUB lista punktowana/numerowana — renderowanie słowo po słowie.
+        } else if ((Array.isArray(el.runs) && el.runs.length) || el.list === 'bullet' || el.list === 'number' || this.hasParaAlign(el)) {
+            // Tekst z formatowaniem fragmentów (runs), lista LUB wyrównanie per-akapit — renderowanie słowo po słowie.
             const tgroup = new K.Group({ x: pad, y: pad });
             group.add(tgroup);
             isOverflow = this.renderRichColumns(tgroup, inner, cols, colW, gap, lineHpx, align, valign, common);
@@ -618,6 +618,7 @@ export default class extends Controller {
         const paras = this.richWords(el); // akapity → słowa z segmentami stylu
         for (let p = 0; p < paras.length && !overflow; p++) {
             const words = paras[p];
+            const pAlign = this.paraAlignOf(el, p, align);
             if (words.length === 0) {
                 if (!ensureRoom()) { overflow = true; break; }
                 y += lineHpx; // pusty wiersz / odstęp akapitu
@@ -653,7 +654,7 @@ export default class extends Controller {
 
                     // Justujemy/zwijamy każdy pasek tak, by „domykał się" do krawędzi obrazu/marginesu, gdy tekst trwa dalej.
                     const moreWords = i < words.length;
-                    this.renderRichLine(group, { words: lineWords, lastOfPara: !moreWords }, el, seg[0], y, availW, spaceW, align, !moreWords, common);
+                    this.renderRichLine(group, { words: lineWords, lastOfPara: !moreWords }, el, seg[0], y, availW, spaceW, pAlign, !moreWords, common);
                 }
                 y += lineHpx;
             }
@@ -705,6 +706,17 @@ export default class extends Controller {
         return paras;
     }
 
+    /** Wyrównanie danego akapitu: nadpisanie z el.paraAlign[i] albo wyrównanie ramki (fallback). */
+    paraAlignOf(el, pIndex, fallback) {
+        const a = el.paraAlign && el.paraAlign[pIndex];
+        return a || fallback;
+    }
+
+    /** Czy element ma jakiekolwiek wyrównanie ustawione per-akapit? */
+    hasParaAlign(el) {
+        return Array.isArray(el.paraAlign) && el.paraAlign.some((a) => a);
+    }
+
     segFont(el, bold, italic) {
         return (italic ? 'italic ' : '') + (bold ? 'bold ' : '')
             + (el.fontSize || 14) + 'px ' + (el.fontFamily || 'Georgia');
@@ -741,16 +753,17 @@ export default class extends Controller {
         ctx.font = this.segFont(el, false, false);
         const spaceW = ctx.measureText(' ').width || (el.fontSize || 14) * 0.28;
         const lines = [];
-        for (const words of paras) {
-            if (words.length === 0) { lines.push({ words: [], lastOfPara: true }); continue; }
+        for (let pi = 0; pi < paras.length; pi++) {
+            const words = paras[pi];
+            if (words.length === 0) { lines.push({ words: [], lastOfPara: true, paraIndex: pi }); continue; }
             let line = [], w = 0;
             for (const word of words) {
                 const wW = this.measureWord(word, el);
                 const add = (line.length ? spaceW : 0) + wW;
-                if (w + add > colW && line.length > 0) { lines.push({ words: line, lastOfPara: false }); line = [word]; w = wW; }
+                if (w + add > colW && line.length > 0) { lines.push({ words: line, lastOfPara: false, paraIndex: pi }); line = [word]; w = wW; }
                 else { line.push(word); w += add; }
             }
-            lines.push({ words: line, lastOfPara: true });
+            lines.push({ words: line, lastOfPara: true, paraIndex: pi });
         }
         return { lines, spaceW };
     }
@@ -777,7 +790,7 @@ export default class extends Controller {
                 if (gi >= lines.length) break;
                 const line = lines[gi];
                 if (!line.words.length) continue;
-                this.renderRichLine(group, line, el, cx, yOffset + i * lineHpx, colW, spaceW, align, gi === lastVisible, common);
+                this.renderRichLine(group, line, el, cx, yOffset + i * lineHpx, colW, spaceW, this.paraAlignOf(el, line.paraIndex, align), gi === lastVisible, common);
             }
         }
         return overflow;
@@ -1207,6 +1220,35 @@ export default class extends Controller {
         bar.appendChild(mkBtn('B', 'bold', { fontWeight: 'bold' }));
         bar.appendChild(mkBtn('I', 'italic', { fontStyle: 'italic' }));
 
+        // Wyrównanie ZAZNACZONEGO akapitu (do lewej / środek / do prawej) — ustawia text-align na jego bloku/blokach.
+        const mkSep = () => { const s = document.createElement('span'); Object.assign(s.style, { width: '1px', alignSelf: 'stretch', margin: '2px 1px', background: '#3a4a66' }); return s; };
+        const setParaAlign = (align) => {
+            const sel = window.getSelection();
+            if (!sel || !sel.rangeCount) { ed.focus(); return; }
+            const range = sel.getRangeAt(0);
+            const blocks = Array.from(ed.children).filter((n) => n.nodeType === 1);
+            const targets = blocks.length ? blocks.filter((bk) => range.intersectsNode(bk)) : [ed];
+            for (const bk of targets) bk.style.textAlign = align;
+            ed.focus();
+        };
+        const mkAlignBtn = (icon, align, title) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.innerHTML = '<i class="ti ti-' + icon + '"></i>';
+            b.title = title;
+            Object.assign(b.style, {
+                width: '28px', height: '26px', border: 'none', borderRadius: '4px',
+                background: '#2b3954', color: '#fff', cursor: 'pointer', fontSize: '14px', lineHeight: '1',
+            });
+            b.addEventListener('mousedown', (e) => { e.preventDefault(); setParaAlign(align); });
+            return b;
+        };
+        bar.appendChild(mkSep());
+        bar.appendChild(mkAlignBtn('align-left', 'left', 'Akapit do lewej'));
+        bar.appendChild(mkAlignBtn('align-center', 'center', 'Akapit wyśrodkowany'));
+        bar.appendChild(mkAlignBtn('align-right', 'right', 'Akapit do prawej'));
+        bar.appendChild(mkSep());
+
         // Przycisk „AI" — redaguje zaznaczony fragment (lub cały tekst, gdy nic nie zaznaczono).
         const aiBtn = document.createElement('button');
         aiBtn.type = 'button';
@@ -1244,10 +1286,12 @@ export default class extends Controller {
         const commit = () => {
             if (done) return;
             done = true;
-            const { text, runs } = this.runsFromHtml(ed);
+            const { text, runs, paraAlign } = this.runsFromHtml(ed);
             el.text = text;
             if (runs.some((r) => r.b || r.i)) el.runs = runs;
             else delete el.runs;
+            if (paraAlign.some((a) => a)) el.paraAlign = paraAlign;
+            else delete el.paraAlign;
             ed.remove();
             bar.remove();
             if (aiPanel) { aiPanel.remove(); aiPanel = null; }
@@ -1284,51 +1328,97 @@ export default class extends Controller {
         return data.text;
     }
 
-    /** Buduje HTML pola edycji z el.runs (lub el.text) — <b>/<i> + <br> na nowe linie. */
+    /** Buduje HTML pola edycji: JEDEN <div> na akapit (z text-align z el.paraAlign), w środku <b>/<i>. */
     htmlFromRuns(el) {
         const runs = (Array.isArray(el.runs) && el.runs.length) ? el.runs : [{ t: el.text || '' }];
-        let html = '';
+        // Rozbij runs na akapity (po \n), zachowując style fragmentów.
+        const paras = [[]];
         for (const r of runs) {
-            let t = escapeHtml(r.t).replace(/\n/g, '<br>');
-            if (r.i) t = '<i>' + t + '</i>';
-            if (r.b) t = '<b>' + t + '</b>';
-            html += t;
+            const parts = String(r.t).split('\n');
+            for (let pi = 0; pi < parts.length; pi++) {
+                if (pi > 0) paras.push([]);
+                if (parts[pi]) paras[paras.length - 1].push({ t: parts[pi], b: r.b, i: r.i });
+            }
         }
-        return html || '';
+        let html = '';
+        paras.forEach((segRuns, idx) => {
+            let inner = '';
+            for (const r of segRuns) {
+                let t = escapeHtml(r.t);
+                if (r.i) t = '<i>' + t + '</i>';
+                if (r.b) t = '<b>' + t + '</b>';
+                inner += t;
+            }
+            if (!inner) inner = '<br>';
+            const a = (el.paraAlign && el.paraAlign[idx]) || '';
+            html += '<div' + (a ? ' style="text-align:' + a + '"' : '') + '>' + inner + '</div>';
+        });
+        return html || '<div><br></div>';
     }
 
-    /** Serializuje contenteditable do {text, runs}. <b>/<strong>/font-weight→bold, <i>/<em>/font-style→italic, bloki/BR→\n. */
+    /**
+     * Serializuje contenteditable do {text, runs, paraAlign}. Akapit = blok (DIV/P) lub fragment
+     * rozdzielony BR; wyrównanie akapitu = text-align jego bloku. <b>/<strong>/font-weight→bold,
+     * <i>/<em>/font-style→italic.
+     */
     runsFromHtml(root) {
-        const runs = [];
-        let started = false;
-        const push = (t, b, i) => {
+        const paras = [];          // { align:'', runs:[{t,b,i}] }
+        let cur = null;
+        let curAlign = '';
+        const startPara = () => { cur = { align: curAlign, runs: [] }; paras.push(cur); };
+        const pushText = (t, b, i) => {
             if (!t) return;
-            const last = runs[runs.length - 1];
+            if (!cur) startPara();
+            const last = cur.runs[cur.runs.length - 1];
             if (last && !!last.b === !!b && !!last.i === !!i) last.t += t;
-            else runs.push({ t, b: b || undefined, i: i || undefined });
-            started = true;
+            else cur.runs.push({ t, b: b || undefined, i: i || undefined });
         };
         const walk = (node, b, i) => {
             for (const child of node.childNodes) {
-                if (child.nodeType === 3) { push(child.nodeValue, b, i); continue; }
+                if (child.nodeType === 3) { pushText(child.nodeValue, b, i); continue; }
                 if (child.nodeType !== 1) continue;
                 const tag = child.tagName;
                 if (tag === 'BR') {
-                    // Pomiń „filler" BR będący jedynym/ostatnim dzieckiem bloku.
-                    if (child.nextSibling) push('\n', b, i);
+                    // BR z następnikiem = podział akapitu; samotny/filler BR tylko zapewnia (pusty) akapit.
+                    if (!cur) startPara();
+                    if (child.nextSibling) cur = null;
                     continue;
                 }
                 const st = child.style || {};
-                const fw = st.fontWeight;
-                const nb = b || tag === 'B' || tag === 'STRONG' || fw === 'bold' || (fw && parseInt(fw, 10) >= 600);
-                const ni = i || tag === 'I' || tag === 'EM' || st.fontStyle === 'italic';
-                if (/^(DIV|P)$/.test(tag) && started) push('\n', b, i);
-                walk(child, nb, ni);
+                if (/^(DIV|P)$/.test(tag)) {
+                    const prev = curAlign;
+                    const a = (st.textAlign || '').toLowerCase();
+                    curAlign = (a === 'left' || a === 'right' || a === 'center' || a === 'justify') ? a : prev;
+                    cur = null;            // granica bloku → nowy akapit
+                    startPara();
+                    walk(child, b, i);
+                    cur = null;            // treść po bloku → kolejny akapit
+                    curAlign = prev;
+                } else {
+                    const fw = st.fontWeight;
+                    const nb = b || tag === 'B' || tag === 'STRONG' || fw === 'bold' || (fw && parseInt(fw, 10) >= 600);
+                    const ni = i || tag === 'I' || tag === 'EM' || st.fontStyle === 'italic';
+                    walk(child, nb, ni);
+                }
             }
         };
         walk(root, false, false);
+        if (!paras.length) paras.push({ align: '', runs: [] });
+
+        // Złóż wynik: \n między akapitami; paraAlign indeksowany identycznie jak akapity richWords.
+        const runs = [];
+        const paraAlign = [];
+        paras.forEach((p, idx) => {
+            if (idx > 0) runs.push({ t: '\n' });
+            for (const r of p.runs) {
+                const last = runs[runs.length - 1];
+                if (last && !!last.b === !!r.b && !!last.i === !!r.i) last.t += r.t;
+                else runs.push({ t: r.t, b: r.b, i: r.i });
+            }
+            paraAlign.push(p.align || '');
+        });
         const text = runs.map((r) => r.t).join('');
-        return { text, runs };
+        return { text, runs, paraAlign };
     }
 
     // ─── Akcje paska narzędzi ───────────────────────────────
@@ -1828,7 +1918,8 @@ export default class extends Controller {
 
         // Edycja zwykłego tekstu w panelu zastępuje całość — kasujemy formatowanie fragmentów (runs).
         // Pogrubienie/kursywę fragmentu ustawia się przez dwuklik w ramkę i zaznaczenie tekstu.
-        if (key === 'text') delete el.runs;
+        // Nadpisanie całej treści kasuje też formatowanie fragmentów (runs) i wyrównanie per-akapit.
+        if (key === 'text') { delete el.runs; delete el.paraAlign; }
 
         // Ikona: zmiana koloru kreski / wypełnienia → przebuduj SVG.
         if (el.type === 'icon' && (key === 'iconColor' || key === 'iconFill' || key === 'iconFilled')) {
@@ -2436,16 +2527,17 @@ export default class extends Controller {
     pdfWrapRich(paras, colW, el) {
         const sp = this.pdfSpaceW(el);
         const lines = [];
-        for (const words of paras) {
-            if (!words.length) { lines.push({ words: [], lastOfPara: true }); continue; }
+        for (let pi = 0; pi < paras.length; pi++) {
+            const words = paras[pi];
+            if (!words.length) { lines.push({ words: [], lastOfPara: true, paraIndex: pi }); continue; }
             let line = [], w = 0;
             for (const word of words) {
                 const ww = this.pdfMeasureWord(word, el);
                 const add = (line.length ? sp : 0) + ww;
-                if (w + add > colW && line.length) { lines.push({ words: line, lastOfPara: false }); line = [word]; w = ww; }
+                if (w + add > colW && line.length) { lines.push({ words: line, lastOfPara: false, paraIndex: pi }); line = [word]; w = ww; }
                 else { line.push(word); w += add; }
             }
-            lines.push({ words: line, lastOfPara: true });
+            lines.push({ words: line, lastOfPara: true, paraIndex: pi });
         }
         return { lines, sp };
     }
@@ -2484,7 +2576,7 @@ export default class extends Controller {
                 if (gi >= lines.length) break;
                 const ln = lines[gi];
                 if (!ln.words.length) continue;
-                this.pdfRenderLine(page, ln, el, cx, yOff + i * lineHpx, colW, sp, align, gi === lastVis);
+                this.pdfRenderLine(page, ln, el, cx, yOff + i * lineHpx, colW, sp, this.paraAlignOf(el, ln.paraIndex, align), gi === lastVis);
             }
         }
     }
@@ -2499,6 +2591,7 @@ export default class extends Controller {
         const paras = this.richWords(el);
         for (let p = 0; p < paras.length && !overflow; p++) {
             const words = paras[p];
+            const pAlign = this.paraAlignOf(el, p, align);
             if (!words.length) { if (!ensureRoom()) { overflow = true; break; } y += lineHpx; continue; }
             let i = 0;
             while (i < words.length) {
@@ -2517,7 +2610,7 @@ export default class extends Controller {
                     }
                     if (!lineWords.length) continue;
                     const moreWords = i < words.length;
-                    this.pdfRenderLine(page, { words: lineWords, lastOfPara: !moreWords }, el, seg[0], y, availW, sp, align, !moreWords);
+                    this.pdfRenderLine(page, { words: lineWords, lastOfPara: !moreWords }, el, seg[0], y, availW, sp, pAlign, !moreWords);
                 }
                 y += lineHpx;
             }

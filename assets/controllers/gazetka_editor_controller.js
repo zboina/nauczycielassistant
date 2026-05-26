@@ -2058,9 +2058,11 @@ export default class extends Controller {
         for (const el of (box.elements || [])) {
             const top = oy + this.pageH - (el.y + (el.height || 0)); // dolna krawędź elementu w układzie PDF
             if (el.type === 'rect') {
-                const opts = { x: ox + el.x, y: top, width: el.width, height: el.height, color: this.pdfRgb(el.fill || '#e9eef5') };
-                if (el.stroke && (el.strokeWidth || 0) > 0) { opts.borderColor = this.pdfRgb(el.stroke); opts.borderWidth = el.strokeWidth; }
-                page.drawRectangle(opts);
+                this.pdfRect(page, ox + el.x, top, el.width, el.height, Math.max(0, el.cornerRadius || 0), {
+                    fill: el.fill || '#e9eef5',
+                    stroke: (el.stroke && (el.strokeWidth || 0) > 0) ? el.stroke : null,
+                    strokeWidth: el.strokeWidth || 0,
+                });
             } else if (el.type === 'line') {
                 page.drawLine({ start: { x: ox + el.x, y: oy + this.pageH - el.y }, end: { x: ox + el.x + el.width, y: oy + this.pageH - el.y }, thickness: el.strokeWidth || 2, color: this.pdfRgb(el.stroke || '#1a2330') });
             } else if (el.type === 'image' || el.type === 'icon') {
@@ -2071,6 +2073,18 @@ export default class extends Controller {
             }
         }
         this.pdfDrawPageNumber(page, ox, oy, pageIndex);
+    }
+
+    /** Prostokąt PDF z opcjonalnym zaokrągleniem rogów (drawSvgPath dla r>0, inaczej drawRectangle). bottomY = dolna krawędź w PDF. */
+    pdfRect(page, x, bottomY, w, h, r, opts) {
+        const o = {};
+        if (opts.fill) o.color = this.pdfRgb(opts.fill);
+        if (opts.stroke && (opts.strokeWidth || 0) > 0) { o.borderColor = this.pdfRgb(opts.stroke); o.borderWidth = opts.strokeWidth; }
+        if (r > 0.5) {
+            page.drawSvgPath(pdfRoundedRectPath(w, h, r), { x, y: bottomY + h, ...o }); // y = górna krawędź (oś SVG w dół)
+        } else {
+            page.drawRectangle({ x, y: bottomY, width: w, height: h, ...o });
+        }
     }
 
     pdfDrawPageNumber(page, ox, oy, pageIndex) {
@@ -2089,12 +2103,13 @@ export default class extends Controller {
 
     /** Rysuje ramkę tekstu (tło/obramowanie + tekst) — szpalty, justowanie, valign, runs, oblewanie z obu stron. */
     pdfDrawTextEl(page, el, els, ox, oy) {
+        const rad = Math.max(0, el.bgRadius || 0);
         if (el.bgOn && el.bgFill) {
-            page.drawRectangle({ x: ox + el.x, y: oy + this.pageH - (el.y + el.height), width: el.width, height: el.height, color: this.pdfRgb(el.bgFill) });
+            this.pdfRect(page, ox + el.x, oy + this.pageH - (el.y + el.height), el.width, el.height, rad, { fill: el.bgFill });
         }
         if (el.borderOn && (el.borderWidth || 0) > 0) {
             const sw = el.borderWidth;
-            page.drawRectangle({ x: ox + el.x + sw / 2, y: oy + this.pageH - (el.y + el.height) + sw / 2, width: el.width - sw, height: el.height - sw, borderColor: this.pdfRgb(el.borderColor || '#1a56db'), borderWidth: sw });
+            this.pdfRect(page, ox + el.x + sw / 2, oy + this.pageH - (el.y + el.height) + sw / 2, el.width - sw, el.height - sw, Math.max(0, rad - sw / 2), { stroke: el.borderColor || '#1a56db', strokeWidth: sw });
         }
         const pad = Math.max(0, el.padding || 0);
         const inner = pad > 0 ? Object.assign({}, el, { width: Math.max(8, el.width - 2 * pad), height: Math.max(8, el.height - 2 * pad) }) : el;
@@ -2950,6 +2965,12 @@ function pdfFileFor(manifest, family, bold, italic) {
     const s = italic ? 'i' : '';
     const cands = [`${id}-${w}${s}`, `${id}-${w}`, `${id}-400${s}`, `${id}-400`, 'gelasio-400'];
     return cands.find((c) => manifest.has(c)) || null;
+}
+
+/** Ścieżka SVG zaokrąglonego prostokąta (układ SVG: origin lewy-górny, oś Y w dół). */
+function pdfRoundedRectPath(w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
+    return `M ${r} 0 H ${w - r} A ${r} ${r} 0 0 1 ${w} ${r} V ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} H ${r} A ${r} ${r} 0 0 1 0 ${h - r} V ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`;
 }
 
 function hexToRgb01(hex) {

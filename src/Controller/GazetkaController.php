@@ -11,6 +11,7 @@ use App\Repository\GazetkaBlockRepository;
 use App\Repository\NewsletterRepository;
 use App\Service\AI\OpenRouterClient;
 use App\Service\AI\PromptBuilder\GazetkaArticlePromptBuilder;
+use App\Service\AI\PromptBuilder\GazetkaRedactPromptBuilder;
 use App\Service\PixabayClient;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -254,6 +255,62 @@ class GazetkaController extends AbstractController
             ?? ['title' => '', 'lead' => '', 'body' => trim($result)];
 
         return new JsonResponse(['ok' => true] + $parsed);
+    }
+
+    /**
+     * Redaguje z pomocą AI zaznaczony w ramce fragment tekstu (przeredaguj / skróć / rozwiń /
+     * popraw język / uprość / oficjalny ton / własne polecenie). Zwraca SAM zredagowany tekst.
+     */
+    #[Route('/{id}/ai-redact', name: 'app_gazetka_ai_redact', methods: ['POST'])]
+    public function aiRedact(Newsletter $newsletter, Request $request): JsonResponse
+    {
+        $this->denyUnlessOwner($newsletter);
+
+        if (!$this->isCsrfTokenValid('gazetka', (string) $request->headers->get('X-CSRF-Token'))) {
+            return new JsonResponse(['ok' => false, 'error' => 'Nieprawidłowy token CSRF.'], 419);
+        }
+
+        $p = json_decode($request->getContent(), true);
+        $fragment = trim((string) ($p['text'] ?? ''));
+        if ($fragment === '') {
+            return new JsonResponse(['ok' => false, 'error' => 'Zaznacz fragment tekstu do zredagowania.'], 400);
+        }
+        if (mb_strlen($fragment) > 4000) {
+            return new JsonResponse(['ok' => false, 'error' => 'Zaznaczony fragment jest zbyt długi (max 4000 znaków).'], 400);
+        }
+
+        $allowed = ['rephrase', 'shorten', 'expand', 'fix', 'simplify', 'formal', 'custom'];
+        $action = in_array($p['action'] ?? '', $allowed, true) ? (string) $p['action'] : 'rephrase';
+        $instruction = mb_substr(trim((string) ($p['instruction'] ?? '')), 0, 400);
+        $context = mb_substr(trim((string) ($p['context'] ?? '')), 0, 4000);
+
+        $builder = new GazetkaRedactPromptBuilder();
+        $userPrompt = $builder->buildUserPrompt($action, $instruction, $fragment, $context);
+
+        // Limit odpowiedzi proporcjonalny do długości fragmentu (z zapasem na rozwinięcie).
+        $maxTokens = max(256, min(3000, (int) (mb_strlen($fragment) / 2) + 400));
+        if ($action === 'expand') {
+            $maxTokens = (int) min(3000, $maxTokens * 2);
+        }
+
+        try {
+            $result = $this->ai->generate(
+                userPrompt: $userPrompt,
+                systemPrompt: GazetkaRedactPromptBuilder::SYSTEM_PROMPT,
+                module: 'gazetka_redact',
+                maxTokens: $maxTokens,
+                owner: $this->currentUser(),
+            );
+        } catch (\RuntimeException $e) {
+            return new JsonResponse(['ok' => false, 'error' => $e->getMessage()], 502);
+        }
+
+        $text = $this->cleanRedactedText($result);
+        if ($text === '') {
+            return new JsonResponse(['ok' => false, 'error' => 'AI nie zwróciło tekstu.'], 502);
+        }
+
+        return new JsonResponse(['ok' => true, 'text' => $text]);
     }
 
     #[Route('/{id}/ai-image', name: 'app_gazetka_ai_image', methods: ['POST'])]
@@ -601,6 +658,28 @@ class GazetkaController extends AbstractController
         [$w, $h] = @getimagesizefromstring($raw) ?: [0, 0];
 
         return [$relDir . '/' . $name, (int) $w, (int) $h];
+    }
+
+    /**
+     * Sprząta odpowiedź AI dla redagowania fragmentu: zdejmuje ewentualne ```fences```
+     * oraz pojedynczą parę otaczających cudzysłowów, którą model mógł dodać mimo zakazu.
+     */
+    private function cleanRedactedText(string $s): string
+    {
+        $s = trim($s);
+        $s = (string) preg_replace('/^```[a-z]*\s*/i', '', $s);
+        $s = (string) preg_replace('/\s*```$/', '', $s);
+        $s = trim($s);
+
+        if (mb_strlen($s) >= 2) {
+            $pairs = ['"' => '"', '„' => '”', '«' => '»', '»' => '«', '”' => '„'];
+            $first = mb_substr($s, 0, 1);
+            if (isset($pairs[$first]) && mb_substr($s, -1) === $pairs[$first]) {
+                $s = trim(mb_substr($s, 1, mb_strlen($s) - 2));
+            }
+        }
+
+        return $s;
     }
 
     /**

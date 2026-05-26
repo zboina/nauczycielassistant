@@ -14,6 +14,7 @@ export default class extends Controller {
         saveUrl: String,
         uploadUrl: String,
         aiTextUrl: String,
+        aiRedactUrl: String,
         aiImageUrl: String,
         stockSearchUrl: String,
         stockImportUrl: String,
@@ -115,6 +116,10 @@ export default class extends Controller {
         // Magazyn bloków — odśwież paletę po otwarciu okna.
         const blocksModal = document.getElementById('gzBlocksModal');
         if (blocksModal) blocksModal.addEventListener('shown.bs.modal', () => this.renderBlockPalette());
+
+        // Znaki specjalne — zbuduj paletę przy pierwszym otwarciu.
+        const charsModal = document.getElementById('gzCharsModal');
+        if (charsModal) charsModal.addEventListener('shown.bs.modal', () => this.renderCharGrid());
 
         // Po załadowaniu czcionek (Google Fonts) przerysuj — inaczej Konva mierzy/rysuje fallbackiem.
         if (document.fonts && document.fonts.ready) {
@@ -426,8 +431,8 @@ export default class extends Controller {
             const tgroup = new K.Group({ x: pad, y: pad });
             group.add(tgroup);
             isOverflow = this.renderFlowedText(tgroup, inner, exAdj, lineHpx, common, align, cols, colW, gap);
-        } else if (Array.isArray(el.runs) && el.runs.length) {
-            // Tekst z pogrubieniem/kursywą fragmentów (runs) — renderowanie słowo po słowie.
+        } else if ((Array.isArray(el.runs) && el.runs.length) || el.list === 'bullet' || el.list === 'number') {
+            // Tekst z formatowaniem fragmentów (runs) LUB lista punktowana/numerowana — renderowanie słowo po słowie.
             const tgroup = new K.Group({ x: pad, y: pad });
             group.add(tgroup);
             isOverflow = this.renderRichColumns(tgroup, inner, cols, colW, gap, lineHpx, align, valign, common);
@@ -685,6 +690,18 @@ export default class extends Controller {
             }
         }
         pushWord();
+
+        // Lista punktowana / numerowana — prefiks na początku każdego NIEPUSTEGO akapitu.
+        // Robione tu (wspólny punkt), więc działa na ekranie i w PDF, w kolumnach i przy oblewaniu.
+        if (el.list === 'bullet' || el.list === 'number') {
+            let n = 0;
+            for (const para of paras) {
+                if (!para.length) continue;
+                n++;
+                const marker = el.list === 'bullet' ? '•' : (n + '.');
+                para.unshift({ segs: [{ text: marker, bold: baseB, italic: baseI }] });
+            }
+        }
         return paras;
     }
 
@@ -952,6 +969,218 @@ export default class extends Controller {
             boxShadow: '0 6px 18px rgba(0,0,0,.18)',
         });
 
+        // ── Redagowanie z AI (działa na zaznaczonym fragmencie) ──
+        let aiOpen = false;     // gdy panel otwarty — blur NIE zatwierdza edycji
+        let aiPanel = null;
+        let savedRange = null;  // zaznaczenie zapamiętane w chwili kliknięcia „AI"
+
+        // Zastępuje treść zakresu czystym tekstem (\n → <br>) i zwraca zakres obejmujący wstawione węzły.
+        const replaceRangeWithText = (range, text) => {
+            range.deleteContents();
+            const frag = document.createDocumentFragment();
+            const nodes = [];
+            String(text).split('\n').forEach((part, i) => {
+                if (i) { const br = document.createElement('br'); frag.appendChild(br); nodes.push(br); }
+                const tn = document.createTextNode(part); frag.appendChild(tn); nodes.push(tn);
+            });
+            range.insertNode(frag);
+            const nr = document.createRange();
+            if (nodes.length) { nr.setStartBefore(nodes[0]); nr.setEndAfter(nodes[nodes.length - 1]); }
+            else { nr.selectNodeContents(ed); nr.collapse(false); }
+            return nr;
+        };
+        const restoreSelection = () => {
+            if (!savedRange) return;
+            ed.focus();
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(savedRange);
+        };
+
+        const closeAiPanel = (commitNow) => {
+            if (aiPanel) { aiPanel.remove(); aiPanel = null; }
+            aiOpen = false;
+            if (commitNow) commit();
+            else restoreSelection();
+        };
+
+        const openAiPanel = () => {
+            if (aiPanel) return;
+            aiOpen = true;
+
+            const PANEL_W = 232;
+            aiPanel = document.createElement('div');
+            Object.assign(aiPanel.style, {
+                position: 'absolute', width: PANEL_W + 'px',
+                background: '#1a2330', color: '#fff', borderRadius: '8px',
+                padding: '9px', zIndex: 2002, boxShadow: '0 10px 28px rgba(0,0,0,.35)',
+                fontFamily: 'system-ui, sans-serif', fontSize: '12px',
+            });
+            // Pozycja: z PRAWEJ strony ramki; gdy brak miejsca → z lewej; ostatecznie pod ramką.
+            const place = () => {
+                const r = ed.getBoundingClientRect();
+                let left = r.right + 8;
+                let top = r.top;
+                if (left + PANEL_W > window.innerWidth - 6) {
+                    const leftSide = r.left - PANEL_W - 8;
+                    if (leftSide >= 6) left = leftSide;
+                    else { left = Math.min(r.left, window.innerWidth - PANEL_W - 6); top = r.bottom + 6; }
+                }
+                aiPanel.style.left = (window.scrollX + Math.max(6, left)) + 'px';
+                aiPanel.style.top = (window.scrollY + Math.max(6, top)) + 'px';
+            };
+
+            const head = document.createElement('div');
+            head.innerHTML = '<span style="font-weight:600;font-size:12.5px"><span style="opacity:.85">✨ </span>Redaguj z AI</span>';
+            Object.assign(head.style, { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '7px' });
+            const closeX = document.createElement('button');
+            closeX.type = 'button'; closeX.textContent = '✕';
+            Object.assign(closeX.style, { background: 'transparent', border: 'none', color: '#9aa7bd', cursor: 'pointer', fontSize: '14px', lineHeight: '1' });
+            closeX.addEventListener('mousedown', (e) => { e.preventDefault(); closeAiPanel(false); });
+            head.appendChild(closeX);
+            aiPanel.appendChild(head);
+
+            const status = document.createElement('div');
+            Object.assign(status.style, { fontSize: '11px', minHeight: '15px', margin: '0 0 7px', color: '#9aa7bd' });
+            const fragLen = (savedRange.toString() || '').trim().length;
+            status.textContent = fragLen
+                ? ('Zaznaczono ' + fragLen + ' znaków.')
+                : 'Brak zaznaczenia — zadziała na całym tekście.';
+            const setStatus = (msg, err) => { status.textContent = msg || ''; status.style.color = err ? '#ff9a9a' : '#9aa7bd'; };
+
+            // ── Sterowanie (presety + własne polecenie) ──
+            const controls = document.createElement('div');
+
+            const grid = document.createElement('div');
+            Object.assign(grid.style, { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: '6px' });
+            const presets = [
+                ['rephrase', 'Przeredaguj'],
+                ['fix', 'Popraw język'],
+                ['shorten', 'Skróć'],
+                ['expand', 'Rozwiń'],
+                ['simplify', 'Uprość'],
+                ['formal', 'Oficjalny ton'],
+            ];
+
+            const setBusy = (busy) => {
+                Array.from(aiPanel.querySelectorAll('button')).forEach((b) => { if (b !== closeX) b.disabled = busy; });
+            };
+
+            // Po odpowiedzi AI — pokaż porównanie stary ↔ nowy z akceptacją.
+            const showCompare = (oldText, newText) => {
+                controls.style.display = 'none';
+                oldBox.textContent = oldText;
+                newArea.value = newText;
+                compare.style.display = '';
+                setStatus('Sprawdź zmianę i zaakceptuj lub odrzuć.');
+            };
+            const hideCompare = () => { compare.style.display = 'none'; controls.style.display = ''; };
+
+            const runAction = async (action, instruction) => {
+                const fragment = savedRange.toString();
+                if (!fragment.trim()) { setStatus('Najpierw zaznacz fragment tekstu.', true); return; }
+                setBusy(true);
+                setStatus('AI redaguje…');
+                try {
+                    const out = await this.aiRedact(action, instruction || '', fragment, el.text || '');
+                    showCompare(fragment, out);
+                } catch (e) {
+                    setStatus('Błąd: ' + (e.message || e), true);
+                } finally {
+                    setBusy(false);
+                }
+            };
+
+            for (const [action, label] of presets) {
+                const b = document.createElement('button');
+                b.type = 'button'; b.textContent = label;
+                Object.assign(b.style, {
+                    border: 'none', borderRadius: '6px', background: '#2b3954', color: '#fff',
+                    padding: '6px 5px', cursor: 'pointer', fontSize: '11.5px',
+                });
+                b.addEventListener('mouseenter', () => { if (!b.disabled) b.style.background = '#37496b'; });
+                b.addEventListener('mouseleave', () => { b.style.background = '#2b3954'; });
+                b.addEventListener('mousedown', (e) => { e.preventDefault(); runAction(action); });
+                grid.appendChild(b);
+            }
+            controls.appendChild(grid);
+
+            const row = document.createElement('div');
+            Object.assign(row.style, { display: 'flex', gap: '5px' });
+            const inp = document.createElement('input');
+            inp.type = 'text'; inp.placeholder = 'Własne polecenie…';
+            Object.assign(inp.style, {
+                flex: '1', minWidth: '0', border: '1px solid #38466a', borderRadius: '6px',
+                background: '#0f1726', color: '#fff', padding: '6px 7px', fontSize: '11.5px', outline: 'none',
+            });
+            inp.addEventListener('keydown', (e) => {
+                e.stopPropagation();
+                if (e.key === 'Enter') { e.preventDefault(); runAction('custom', inp.value); }
+                else if (e.key === 'Escape') { e.preventDefault(); closeAiPanel(false); }
+            });
+            const send = document.createElement('button');
+            send.type = 'button'; send.textContent = '➜';
+            send.title = 'Wyślij własne polecenie';
+            Object.assign(send.style, { border: 'none', borderRadius: '6px', background: '#4263eb', color: '#fff', padding: '6px 10px', cursor: 'pointer', fontSize: '12px' });
+            send.addEventListener('mousedown', (e) => { e.preventDefault(); runAction('custom', inp.value); });
+            row.appendChild(inp); row.appendChild(send);
+            controls.appendChild(row);
+            aiPanel.appendChild(controls);
+
+            // ── Porównanie stary ↔ nowy (ukryte do czasu odpowiedzi) ──
+            const compare = document.createElement('div');
+            compare.style.display = 'none';
+            const lbl = (t) => { const d = document.createElement('div'); d.textContent = t; Object.assign(d.style, { fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '.04em', color: '#7e8aa3', margin: '0 0 3px' }); return d; };
+            const boxStyle = { maxHeight: '92px', overflowY: 'auto', borderRadius: '6px', padding: '6px 7px', fontSize: '11.5px', lineHeight: '1.35', whiteSpace: 'pre-wrap', wordWrap: 'break-word' };
+
+            compare.appendChild(lbl('Stary tekst'));
+            const oldBox = document.createElement('div');
+            Object.assign(oldBox.style, { ...boxStyle, background: '#241a1f', color: '#e6b3b3', border: '1px solid #5a2f38', marginBottom: '6px' });
+            compare.appendChild(oldBox);
+
+            compare.appendChild(lbl('Nowy tekst'));
+            const newArea = document.createElement('textarea');
+            newArea.rows = 4;
+            Object.assign(newArea.style, { ...boxStyle, width: '100%', boxSizing: 'border-box', resize: 'vertical', background: '#16241b', color: '#a8e6b8', border: '1px solid #2f5a3a', outline: 'none', fontFamily: 'inherit', marginBottom: '7px' });
+            newArea.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Escape') { e.preventDefault(); hideCompare(); setStatus('Odrzucono.'); } });
+            compare.appendChild(newArea);
+
+            const cmpBtns = document.createElement('div');
+            Object.assign(cmpBtns.style, { display: 'flex', gap: '6px' });
+            const acceptBtn = document.createElement('button');
+            acceptBtn.type = 'button'; acceptBtn.textContent = '✓ Akceptuj';
+            Object.assign(acceptBtn.style, { flex: '1', border: 'none', borderRadius: '6px', background: '#2f9e44', color: '#fff', padding: '7px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' });
+            acceptBtn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                restoreSelection();
+                savedRange = replaceRangeWithText(savedRange, newArea.value);
+                restoreSelection();
+                hideCompare();
+                setStatus('Zastosowano. Możesz redagować dalej.');
+            });
+            const rejectBtn = document.createElement('button');
+            rejectBtn.type = 'button'; rejectBtn.textContent = '✕ Odrzuć';
+            Object.assign(rejectBtn.style, { flex: '1', border: 'none', borderRadius: '6px', background: '#2b3954', color: '#fff', padding: '7px', cursor: 'pointer', fontSize: '12px' });
+            rejectBtn.addEventListener('mousedown', (e) => { e.preventDefault(); hideCompare(); setStatus('Odrzucono.'); });
+            cmpBtns.appendChild(acceptBtn); cmpBtns.appendChild(rejectBtn);
+            compare.appendChild(cmpBtns);
+            aiPanel.appendChild(compare);
+
+            aiPanel.appendChild(status);
+
+            const foot = document.createElement('div');
+            Object.assign(foot.style, { display: 'flex', justifyContent: 'flex-end', marginTop: '6px' });
+            const doneBtn = document.createElement('button');
+            doneBtn.type = 'button'; doneBtn.textContent = 'Gotowe';
+            Object.assign(doneBtn.style, { border: 'none', borderRadius: '6px', background: '#2b3954', color: '#fff', padding: '6px 12px', cursor: 'pointer', fontSize: '11.5px' });
+            doneBtn.addEventListener('mousedown', (e) => { e.preventDefault(); closeAiPanel(false); });
+            foot.appendChild(doneBtn);
+            aiPanel.appendChild(foot);
+
+            document.body.appendChild(aiPanel);
+            place();
+        };
+
         // Pasek B / I nad polem (mousedown→preventDefault, by nie tracić zaznaczenia/fokusu).
         const bar = document.createElement('div');
         Object.assign(bar.style, {
@@ -977,6 +1206,30 @@ export default class extends Controller {
         };
         bar.appendChild(mkBtn('B', 'bold', { fontWeight: 'bold' }));
         bar.appendChild(mkBtn('I', 'italic', { fontStyle: 'italic' }));
+
+        // Przycisk „AI" — redaguje zaznaczony fragment (lub cały tekst, gdy nic nie zaznaczono).
+        const aiBtn = document.createElement('button');
+        aiBtn.type = 'button';
+        aiBtn.textContent = '✨ AI';
+        aiBtn.title = 'Redaguj zaznaczony fragment z pomocą AI';
+        Object.assign(aiBtn.style, {
+            height: '26px', padding: '0 9px', border: 'none', borderRadius: '4px',
+            background: '#5c33d6', color: '#fff', cursor: 'pointer',
+            fontFamily: 'system-ui, sans-serif', fontSize: '12.5px', fontWeight: '600', lineHeight: '1',
+        });
+        aiBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const sel = window.getSelection();
+            let r = (sel && sel.rangeCount) ? sel.getRangeAt(0).cloneRange() : null;
+            if (!r || r.collapsed || !ed.contains(r.commonAncestorContainer)) {
+                r = document.createRange();
+                r.selectNodeContents(ed);
+            }
+            savedRange = r;
+            openAiPanel();
+        });
+        bar.appendChild(aiBtn);
+
         document.body.appendChild(bar);
 
         ed.focus();
@@ -997,14 +1250,38 @@ export default class extends Controller {
             else delete el.runs;
             ed.remove();
             bar.remove();
+            if (aiPanel) { aiPanel.remove(); aiPanel = null; }
             this.markDirty();
             this.renderPage();
             this.select(el.id);
         };
-        ed.addEventListener('blur', commit);
+        // Gdy panel AI jest otwarty, utrata fokusu nie zamyka edycji.
+        ed.addEventListener('blur', () => { if (!aiOpen) commit(); });
         ed.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') { e.preventDefault(); ed.blur(); }
+            if (e.key === 'Escape') { e.preventDefault(); if (aiOpen) closeAiPanel(false); else ed.blur(); }
         });
+    }
+
+    /**
+     * Wywołuje serwerowe redagowanie fragmentu z pomocą AI i zwraca SAM zredagowany tekst.
+     * @param {string} action  — preset: rephrase|shorten|expand|fix|simplify|formal|custom
+     * @param {string} instruction — własne polecenie (dla action='custom')
+     * @param {string} fragment — zaznaczony tekst do zredagowania
+     * @param {string} context  — pełny tekst ramki (dla zachowania tonu/tematu)
+     */
+    async aiRedact(action, instruction, fragment, context) {
+        const res = await fetch(this.aiRedactUrlValue, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': this.csrfValue,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ action, instruction, text: fragment, context }),
+        });
+        const data = await res.json().catch(() => ({ ok: false, error: 'Błędna odpowiedź serwera.' }));
+        if (!data.ok) throw new Error(data.error || 'Nie udało się zredagować tekstu.');
+        return data.text;
     }
 
     /** Buduje HTML pola edycji z el.runs (lub el.text) — <b>/<i> + <br> na nowe linie. */
@@ -2776,6 +3053,53 @@ export default class extends Controller {
         el.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
     }
 
+    // ─── Znaki specjalne (kropki, kwadraciki, strzałki… w kolorach) ───
+
+    renderCharGrid() {
+        const grid = this.element.querySelector('[data-chars="grid"]');
+        if (!grid || grid.dataset.built === '1') return;
+        const frag = document.createDocumentFragment();
+        for (const g of SPECIAL_CHARS) {
+            const cap = document.createElement('div');
+            cap.className = 'col-12 fw-bold text-secondary small mt-1';
+            cap.textContent = g.group;
+            frag.appendChild(cap);
+            for (const ch of g.chars) {
+                const col = document.createElement('div');
+                col.className = 'col';
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-outline-secondary w-100 p-1';
+                btn.style.fontSize = '1.3rem';
+                btn.style.lineHeight = '1.4';
+                btn.textContent = ch;
+                btn.addEventListener('click', () => this.insertChar(ch));
+                col.appendChild(btn);
+                frag.appendChild(col);
+            }
+        }
+        grid.appendChild(frag);
+        grid.dataset.built = '1';
+    }
+
+    /** Wstawia znak jako element tekstowy w wybranym kolorze i rozmiarze. */
+    insertChar(ch) {
+        const colorEl = this.element.querySelector('[data-chars="color"]');
+        const sizeEl = this.element.querySelector('[data-chars="size"]');
+        const fill = (colorEl && colorEl.value) || '#1a2330';
+        const size = clamp(parseInt(sizeEl && sizeEl.value, 10) || 40, 6, 400);
+        const w = Math.max(16, Math.round(size * 1.6));
+        const h = Math.max(16, Math.round(size * 1.5));
+        this.addElement({
+            id: uid(), type: 'text',
+            x: round((this.pageW - w) / 2), y: 80, width: w, height: h, rotation: 0, opacity: 1,
+            text: ch, fontSize: size, fontFamily: 'DejaVu Sans', fontStyle: 'normal',
+            fill, align: 'center', valign: 'middle', lineHeight: 1.1, columns: 1, columnGap: 14,
+        });
+        const cb = document.querySelector('#gzCharsModal [data-bs-dismiss="modal"]');
+        if (cb) cb.click();
+    }
+
     // ─── Grafiki (Pixabay) ──────────────────────────────────
 
     setStockStatus(msg, err) {
@@ -3079,6 +3403,7 @@ const PDF_FONT_MAP = {
     'Lora': 'lora', 'Merriweather': 'merriweather', 'Playfair Display': 'playfair-display',
     'Roboto': 'roboto', 'Open Sans': 'open-sans', 'Lato': 'lato',
     'Montserrat': 'montserrat', 'Oswald': 'oswald', 'Raleway': 'raleway',
+    'DejaVu Sans': 'dejavu-sans', // krój z szerokim pokryciem symboli (znaki specjalne)
 };
 
 /** Nazwa pliku kroju (bez .ttf) dla rodziny+stylu, z fallbackami; null gdy brak w manifeście. */
@@ -3107,6 +3432,16 @@ function hexToRgb01(hex) {
 function escapeHtml(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+
+// Zestaw znaków specjalnych do palety (kropki/kwadraciki/strzałki/✓/typografia/matematyka/symbole).
+const SPECIAL_CHARS = [
+    { group: 'Punktory i kształty', chars: ['•', '◦', '‣', '▪', '▫', '■', '□', '●', '○', '◆', '◇', '★', '☆', '✦', '❖', '▶', '◀', '▲', '▼', '♦', '♥', '♣', '♠'] },
+    { group: 'Zaznaczenia', chars: ['✓', '✔', '✗', '✘', '☑', '☐', '☒', '✱', '✳'] },
+    { group: 'Strzałki', chars: ['→', '←', '↑', '↓', '↔', '↕', '⇒', '⇐', '⇑', '⇓', '➜', '➤', '↪', '↩'] },
+    { group: 'Typografia', chars: ['—', '–', '…', '«', '»', '„', '”', '‚', '’', '§', '¶', '†', '‡', '·', '※', '№'] },
+    { group: 'Matematyka', chars: ['×', '÷', '±', '≈', '≠', '≤', '≥', '∞', '√', '°', '½', '¼', '¾', '⅓', '²', '³', 'π'] },
+    { group: 'Symbole', chars: ['€', '£', '$', '©', '®', '™', '☀', '☁', '☂', '☃', '♪', '♫', '☺', '☹', '✉', '✏', '✂', '☎', '⚡'] },
+];
 
 const LOREM_PL = 'W tym miejscu wpisz treść artykułu. Możesz tu opisać szkolne wydarzenie, '
     + 'przeprowadzony wywiad albo relację z wycieczki. Tekst automatycznie układa się w kolumnach, '

@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Lato:wght@400;700&family=Montserrat:wght@400;700&family=Oswald:wght@400;700&family=Raleway:ital,wght@0,400;0,700;1,400;1,700&family=Lora:wght@400;700&family=Merriweather:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
 <style>
+    /* Krój z szerokim pokryciem symboli (znaki specjalne) — ten sam, którego używa eksport PDF, więc ekran = wydruk. */
+    @font-face { font-family:'DejaVu Sans'; src:url('/fonts/gazetka/dejavu-sans-400.ttf') format('truetype'); font-display:swap; }
     body { background:#e9edf2 !important; overflow:hidden; }
     .gz-app { display:flex; flex-direction:column; height:100vh; }
     .gz-topbar { display:flex; align-items:center; gap:.5rem; padding:.45rem .75rem; background:#fff; border-bottom:1px solid #e3e6ea; flex-shrink:0; }
@@ -72,6 +74,7 @@
      data-gazetka-editor-save-url-value="{{ path('app_gazetka_save', {id: newsletter.id}) }}"
      data-gazetka-editor-upload-url-value="{{ path('app_gazetka_upload', {id: newsletter.id}) }}"
      data-gazetka-editor-ai-text-url-value="{{ path('app_gazetka_ai_text', {id: newsletter.id}) }}"
+     data-gazetka-editor-ai-redact-url-value="{{ path('app_gazetka_ai_redact', {id: newsletter.id}) }}"
      data-gazetka-editor-ai-image-url-value="{{ path('app_gazetka_ai_image', {id: newsletter.id}) }}"
      data-gazetka-editor-stock-search-url-value="{{ path('app_gazetka_stock_search', {id: newsletter.id}) }}"
      data-gazetka-editor-stock-import-url-value="{{ path('app_gazetka_stock_import', {id: newsletter.id}) }}"
@@ -147,6 +150,7 @@
             <button class="btn btn-ghost-secondary" data-action="gazetka-editor#pickImage" title="Zdjęcie"><i class="ti ti-photo"></i><span class="gz-label">Zdjęcie</span></button>
             <button class="btn btn-ghost-secondary" data-action="gazetka-editor#addRect" title="Prostokąt / ramka"><i class="ti ti-square"></i><span class="gz-label">Prostokąt</span></button>
             <button class="btn btn-ghost-secondary" data-action="gazetka-editor#addLine" title="Linia"><i class="ti ti-line"></i><span class="gz-label">Linia</span></button>
+            <button class="btn btn-ghost-secondary" data-bs-toggle="modal" data-bs-target="#gzCharsModal" title="Znaki specjalne (kropki, kwadraciki, strzałki…)"><i class="ti ti-square-asterisk"></i><span class="gz-label">Znaki specjalne</span></button>
             <div class="gz-sep"></div>
             <div class="gz-cap">Edycja</div>
             <button class="btn btn-ghost-secondary" data-action="gazetka-editor#duplicateSelected" title="Duplikuj (Ctrl+D)"><i class="ti ti-copy"></i><span class="gz-label">Duplikuj</span></button>
@@ -256,6 +260,12 @@
                         <input type="number" class="form-control" data-prop="lineHeight" data-type="number" step="0.05" min="0.8" max="3">
                     </div>
                 </div>
+                <label class="form-label">Lista</label>
+                <select class="form-select mb-2" data-prop="list">
+                    <option value="">Bez listy</option>
+                    <option value="bullet">• Punktowana</option>
+                    <option value="number">1. Numerowana</option>
+                </select>
                 <label class="form-label">Kolor tekstu</label>
                 <input type="color" class="form-control form-control-color mb-2" data-prop="fill">
 
@@ -541,6 +551,32 @@
                     </div>
                     <div class="small mb-2 text-secondary" data-block="status">Zapisane, zgrupowane zestawy elementów — wstaw je na dowolnej stronie jako gotową grupę. Bloki są zapisane na Twoim koncie (dostępne na każdym urządzeniu, we wszystkich gazetkach).</div>
                     <div class="row row-cols-2 row-cols-md-4 g-2" data-block="grid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ── Modal: znaki specjalne ────────────────── #}
+    <div class="modal modal-blur fade" id="gzCharsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ti ti-square-asterisk me-2"></i>Znaki specjalne</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2 align-items-end mb-2">
+                        <div class="col-auto">
+                            <label class="form-label">Kolor</label>
+                            <input type="color" class="form-control form-control-color" data-chars="color" value="#1a2330">
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-label">Rozmiar (pt)</label>
+                            <input type="number" class="form-control" data-chars="size" value="40" min="6" max="400" style="width:90px;">
+                        </div>
+                        <div class="col text-secondary small">Kliknij znak, aby wstawić go na stronę w wybranym kolorze i rozmiarze (jako tekst — potem dowolnie przesuniesz/zmienisz).</div>
+                    </div>
+                    <div class="row row-cols-6 row-cols-md-10 g-1" data-chars="grid"></div>
                 </div>
             </div>
         </div>

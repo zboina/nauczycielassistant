@@ -77,6 +77,7 @@
      data-gazetka-editor-stock-import-url-value="{{ path('app_gazetka_stock_import', {id: newsletter.id}) }}"
      data-gazetka-editor-media-list-url-value="{{ path('app_gazetka_media_list', {id: newsletter.id}) }}"
      data-gazetka-editor-media-delete-url-value="{{ path('app_gazetka_media_delete', {id: newsletter.id}) }}"
+     data-gazetka-editor-blocks-url-value="{{ path('app_gazetka_blocks_list') }}"
      data-gazetka-editor-csrf-value="{{ csrf_token('gazetka') }}"
      data-gazetka-editor-doc-value="{{ doc }}"
      data-gazetka-editor-initial-template-value="{{ app.request.query.get('template')|default('') }}">
@@ -522,7 +523,7 @@
                         <button type="button" class="btn btn-sm btn-primary" data-action="gazetka-editor#saveSelectionAsBlock"><i class="ti ti-stack-push me-1"></i>Zapisz zaznaczenie jako blok</button>
                         <span class="text-secondary small">Najpierw zaznacz elementy na stronie (Shift+klik lub ramką), potem zapisz.</span>
                     </div>
-                    <div class="small mb-2 text-secondary" data-block="status">Zapisane, zgrupowane zestawy elementów — wstaw je na dowolnej stronie jako gotową grupę. Bloki są zapisane w tej przeglądarce.</div>
+                    <div class="small mb-2 text-secondary" data-block="status">Zapisane, zgrupowane zestawy elementów — wstaw je na dowolnej stronie jako gotową grupę. Bloki są zapisane na Twoim koncie (dostępne na każdym urządzeniu, we wszystkich gazetkach).</div>
                     <div class="row row-cols-2 row-cols-md-4 g-2" data-block="grid"></div>
                 </div>
             </div>

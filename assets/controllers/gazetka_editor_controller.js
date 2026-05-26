@@ -19,6 +19,7 @@ export default class extends Controller {
         stockImportUrl: String,
         mediaListUrl: String,
         mediaDeleteUrl: String,
+        blocksUrl: String,
         csrf: String,
         doc: Object,
         initialTemplate: String,
@@ -1258,46 +1259,44 @@ export default class extends Controller {
         }
     }
 
-    // ─── Magazyn bloków (zapisane, zgrupowane zestawy elementów — localStorage) ───
-
-    loadBlocks() {
-        if (this._blocks) return this._blocks;
-        try { this._blocks = JSON.parse(localStorage.getItem('gzBlocks') || '[]'); }
-        catch (e) { this._blocks = []; }
-        if (!Array.isArray(this._blocks)) this._blocks = [];
-        return this._blocks;
-    }
-
-    persistBlocks() {
-        try { localStorage.setItem('gzBlocks', JSON.stringify(this._blocks || [])); }
-        catch (e) { this.setBlockStatus('Nie udało się zapisać (limit pamięci przeglądarki?).', true); }
-    }
+    // ─── Magazyn bloków (zapisane, zgrupowane zestawy elementów — zapis na SERWERZE, per użytkownik) ───
 
     setBlockStatus(msg, err) {
         const el = this.element.querySelector('[data-block="status"]');
         if (el) { el.textContent = msg; el.className = 'small mb-2 ' + (err ? 'text-danger' : 'text-secondary'); }
     }
 
-    /** Zapisuje bieżącą selekcję jako blok wielokrotnego użytku (z miniaturą). */
-    saveSelectionAsBlock() {
+    /** Pobiera bloki użytkownika z serwera do this._blocks. */
+    async fetchBlocks() {
+        const res = await fetch(this.blocksUrlValue, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Błąd wczytywania bloków.');
+        this._blocks = data.items || [];
+        return this._blocks;
+    }
+
+    /** Zapisuje bieżącą selekcję jako blok wielokrotnego użytku (z miniaturą) na serwerze. */
+    async saveSelectionAsBlock() {
         const els = this.selectedElements();
         if (!els.length) { this.setBlockStatus('Najpierw zaznacz elementy (Shift+klik lub ramką).', true); return; }
         const bb = this.blockBBox(els);
         const norm = els.map((e) => { const c = JSON.parse(JSON.stringify(e)); c.x = (c.x || 0) - bb.x; c.y = (c.y || 0) - bb.y; return c; });
         const name = (prompt('Nazwa bloku:', 'Mój blok') || '').trim();
         if (!name) return;
-        this.loadBlocks();
-        this._blocks.unshift({
-            id: 'b_' + Math.random().toString(36).slice(2, 9),
-            name: name.slice(0, 60),
-            w: Math.round(bb.w), h: Math.round(bb.h),
-            count: norm.length,
-            preview: this.blockPreview(norm, bb.w, bb.h),
-            els: norm,
-        });
-        this.persistBlocks();
-        this.renderBlockPalette();
-        this.statusTarget.textContent = 'Zapisano blok „' + name + '" do magazynu bloków.';
+        this.setBlockStatus('Zapisywanie bloku…');
+        try {
+            const res = await fetch(this.blocksUrlValue, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': this.csrfValue, 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ name, w: Math.round(bb.w), h: Math.round(bb.h), preview: this.blockPreview(norm, bb.w, bb.h), els: norm }),
+            });
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error || 'Błąd zapisu bloku.');
+            await this.renderBlockPalette();
+            this.statusTarget.textContent = 'Zapisano blok „' + name + '" do magazynu bloków.';
+        } catch (e) {
+            this.setBlockStatus('Błąd: ' + e.message, true);
+        }
     }
 
     blockBBox(els) {
@@ -1327,10 +1326,18 @@ export default class extends Controller {
         } catch (e) { return ''; }
     }
 
-    renderBlockPalette() {
+    async renderBlockPalette() {
         const grid = this.element.querySelector('[data-block="grid"]');
-        if (!grid) return;
-        this.loadBlocks();
+        if (grid) grid.innerHTML = '';
+        this.setBlockStatus('Wczytuję bloki…');
+        try { await this.fetchBlocks(); }
+        catch (e) { this.setBlockStatus('Błąd: ' + e.message, true); return; }
+        this.renderBlockGrid();
+    }
+
+    renderBlockGrid() {
+        const grid = this.element.querySelector('[data-block="grid"]');
+        if (!grid || !this._blocks) return;
         if (!this._blocks.length) {
             grid.innerHTML = '';
             this.setBlockStatus('Brak zapisanych bloków. Zaznacz elementy na stronie i kliknij „Zapisz zaznaczenie jako blok".');
@@ -1369,8 +1376,7 @@ export default class extends Controller {
     }
 
     insertBlock(blockId) {
-        this.loadBlocks();
-        const b = this._blocks.find((x) => x.id === blockId);
+        const b = (this._blocks || []).find((x) => x.id === blockId);
         if (!b) return;
         const ox = Math.max(10, Math.round((this.pageW - b.w) / 2));
         const oy = 60;
@@ -1383,12 +1389,20 @@ export default class extends Controller {
         this.statusTarget.textContent = 'Wstawiono blok „' + b.name + '" (jako grupa).';
     }
 
-    deleteBlock(blockId) {
+    async deleteBlock(blockId) {
         if (!confirm('Usunąć ten blok z magazynu?')) return;
-        this.loadBlocks();
-        this._blocks = this._blocks.filter((x) => x.id !== blockId);
-        this.persistBlocks();
-        this.renderBlockPalette();
+        try {
+            const res = await fetch(this.blocksUrlValue + '/' + blockId + '/delete', {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': this.csrfValue, 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error || 'Błąd usuwania.');
+            this._blocks = (this._blocks || []).filter((x) => x.id !== blockId);
+            this.renderBlockGrid();
+        } catch (e) {
+            this.setBlockStatus('Błąd: ' + e.message, true);
+        }
     }
 
     // ─── Szablony startowe ──────────────────────────────────

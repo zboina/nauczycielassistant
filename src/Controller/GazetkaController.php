@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\GazetkaBlock;
 use App\Entity\Newsletter;
 use App\Entity\User;
+use App\Repository\GazetkaBlockRepository;
 use App\Repository\NewsletterRepository;
 use App\Service\AI\OpenRouterClient;
 use App\Service\AI\PromptBuilder\GazetkaArticlePromptBuilder;
@@ -392,6 +394,81 @@ class GazetkaController extends AbstractController
         if (!@unlink($abs)) {
             return new JsonResponse(['ok' => false, 'error' => 'Nie udało się usunąć pliku.'], 500);
         }
+
+        return new JsonResponse(['ok' => true]);
+    }
+
+    // ─── Magazyn bloków (zapisane, zgrupowane zestawy elementów — per użytkownik) ───
+
+    #[Route('/blocks', name: 'app_gazetka_blocks_list', methods: ['GET'])]
+    public function blocksList(GazetkaBlockRepository $blocks): JsonResponse
+    {
+        $items = array_map(static fn (GazetkaBlock $b): array => [
+            'id' => $b->getId(),
+            'name' => $b->getName(),
+            'w' => $b->getWidth(),
+            'h' => $b->getHeight(),
+            'count' => $b->getElementCount(),
+            'preview' => $b->getPreview(),
+            'els' => $b->getData(),
+        ], $blocks->findByOwner($this->currentUser()));
+
+        return new JsonResponse(['ok' => true, 'items' => $items]);
+    }
+
+    #[Route('/blocks', name: 'app_gazetka_blocks_create', methods: ['POST'])]
+    public function blocksCreate(Request $request, GazetkaBlockRepository $blocks): JsonResponse
+    {
+        if (!$this->isCsrfTokenValid('gazetka', (string) $request->headers->get('X-CSRF-Token'))) {
+            return new JsonResponse(['ok' => false, 'error' => 'Nieprawidłowy token CSRF.'], 419);
+        }
+
+        $p = json_decode($request->getContent(), true);
+        if (!is_array($p)) {
+            return new JsonResponse(['ok' => false, 'error' => 'Brak danych.'], 400);
+        }
+
+        $els = $p['els'] ?? null;
+        if (!is_array($els) || count($els) < 1) {
+            return new JsonResponse(['ok' => false, 'error' => 'Pusty blok.'], 400);
+        }
+        if (count($els) > 200 || strlen(json_encode($els)) > 500_000) {
+            return new JsonResponse(['ok' => false, 'error' => 'Blok jest zbyt duży.'], 400);
+        }
+        if ($blocks->countByOwner($this->currentUser()) >= 300) {
+            return new JsonResponse(['ok' => false, 'error' => 'Osiągnięto limit zapisanych bloków (300).'], 400);
+        }
+
+        // Miniatura — tylko mały data URI PNG/JPEG.
+        $preview = is_string($p['preview'] ?? null) ? $p['preview'] : null;
+        if ($preview !== null && (!preg_match('#^data:image/(png|jpeg);base64,#', $preview) || strlen($preview) > 600_000)) {
+            $preview = null;
+        }
+
+        $block = new GazetkaBlock();
+        $block->setOwner($this->currentUser());
+        $block->setName(mb_substr(trim((string) ($p['name'] ?? '')) ?: 'Blok', 0, 120));
+        $block->setWidth(max(1, min(5000, (int) ($p['w'] ?? 0))));
+        $block->setHeight(max(1, min(5000, (int) ($p['h'] ?? 0))));
+        $block->setElementCount(count($els));
+        $block->setPreview($preview);
+        $block->setData(array_values($els));
+        $blocks->save($block);
+
+        return new JsonResponse(['ok' => true, 'id' => $block->getId()]);
+    }
+
+    #[Route('/blocks/{block}/delete', name: 'app_gazetka_blocks_delete', methods: ['POST'])]
+    public function blocksDelete(GazetkaBlock $block, Request $request, GazetkaBlockRepository $blocks): JsonResponse
+    {
+        if (!$this->isCsrfTokenValid('gazetka', (string) $request->headers->get('X-CSRF-Token'))) {
+            return new JsonResponse(['ok' => false, 'error' => 'Nieprawidłowy token CSRF.'], 419);
+        }
+        if ($block->getOwner() !== $this->getUser()) {
+            throw $this->createAccessDeniedException('To nie jest Twój blok.');
+        }
+
+        $blocks->remove($block);
 
         return new JsonResponse(['ok' => true]);
     }

@@ -453,12 +453,13 @@ export default class extends Controller {
             + (el.fontSize || 14) + 'px ' + (el.fontFamily || 'Georgia');
     }
 
-    /** Prostokąty obrazów (w układzie lokalnym ramki tekstu) nakładające się na ramkę — z marginesem. */
-    imageExclusions(el) {
+    /** Prostokąty obrazów (w układzie lokalnym ramki tekstu) nakładające się na ramkę — z marginesem.
+     *  els domyślnie = bieżąca strona; eksport PDF podaje elementy konkretnej strony. */
+    imageExclusions(el, els = this.page().elements) {
         if (el.wrapImages === false) return [];
         const gutter = 9;
         const res = [];
-        for (const o of this.page().elements) {
+        for (const o of els) {
             if (o.rotation || o.id === el.id) continue;
             // Zdjęcia oblewają domyślnie; ikony tylko po włączeniu „Oblewaj tekstem".
             const wraps = o.type === 'image' ? (o.wrapText !== false)
@@ -1511,19 +1512,23 @@ export default class extends Controller {
         return url;
     }
 
-    async exportBooklet() { await this.exportPdf(true); }
-    async exportSequential() { await this.exportPdf(false); }
+    // Domyślnie: PDF z PRAWDZIWYM tekstem wektorowym (ostry, zaznaczalny, lekki).
+    async exportBooklet() { await this.exportVector(true); }
+    async exportSequential() { await this.exportVector(false); }
+    // Zapas: PDF rastrowy (cała strona jako obraz — gdyby ktoś użył nietypowej czcionki / chciał 1:1 z ekranem).
+    async exportRasterBooklet() { await this.exportRaster(true); }
+    async exportRasterSequential() { await this.exportRaster(false); }
 
-    async exportPdf(booklet) {
+    async exportRaster(booklet) {
         if (!window.PDFLib) { alert('Nie załadowano biblioteki pdf-lib.'); return; }
-        this.statusTarget.textContent = 'Generowanie PDF…';
+        this.statusTarget.textContent = 'Generowanie PDF (obraz)…';
 
         try {
             if (this.dirty) await this.save();
             await this.preloadAllImages();
-            if (document.fonts && document.fonts.ready) await document.fonts.ready; // czcionki Google na wydruku
+            if (document.fonts && document.fonts.ready) await document.fonts.ready;
 
-            const pixelRatio = 2.5; // ~180 DPI
+            const pixelRatio = 3.3; // ~240 DPI (ostrzej niż dawne 180)
             const pagePng = this.doc.pages.map((_, i) => this.pageToDataURL(i, pixelRatio));
 
             const { PDFDocument } = window.PDFLib;
@@ -1532,36 +1537,31 @@ export default class extends Controller {
             for (const url of pagePng) embeds.push(await pdf.embedPng(url));
 
             if (!booklet) {
-                // Po kolei: jedna strona A5 na stronę PDF.
                 for (const img of embeds) {
                     const p = pdf.addPage([this.pageW, this.pageH]);
                     p.drawImage(img, { x: 0, y: 0, width: this.pageW, height: this.pageH });
                 }
             } else {
-                // Składka: 2 strony A5 na arkuszu A4 poziomo, w kolejności do druku dwustronnego.
                 const total = this.padToFour(embeds.length);
                 const sheets = total / 4;
-                const at = (n) => (n >= 1 && n <= embeds.length) ? embeds[n - 1] : null; // 1-indeks; brakujące = puste
-                const sheetW = this.pageW * 2;
-                const sheetH = this.pageH;
-
+                const at = (n) => (n >= 1 && n <= embeds.length) ? embeds[n - 1] : null;
+                const sheetW = this.pageW * 2, sheetH = this.pageH;
                 const drawSide = (left, right) => {
                     const p = pdf.addPage([sheetW, sheetH]);
                     if (left) p.drawImage(left, { x: 0, y: 0, width: this.pageW, height: this.pageH });
                     if (right) p.drawImage(right, { x: this.pageW, y: 0, width: this.pageW, height: this.pageH });
                 };
-
                 for (let s = 0; s < sheets; s++) {
-                    drawSide(at(total - 2 * s), at(1 + 2 * s));        // przód arkusza
-                    drawSide(at(2 + 2 * s), at(total - 1 - 2 * s));    // tył arkusza
+                    drawSide(at(total - 2 * s), at(1 + 2 * s));
+                    drawSide(at(2 + 2 * s), at(total - 1 - 2 * s));
                 }
             }
 
             const bytes = await pdf.save();
             const fname = (this.titleTarget.value || 'gazetka').replace(/[^\p{L}\p{N}_-]+/gu, '_')
-                + (booklet ? '_do_druku' : '_po_kolei') + '.pdf';
+                + (booklet ? '_do_druku_obraz' : '_po_kolei_obraz') + '.pdf';
             this.downloadBlob(new Blob([bytes], { type: 'application/pdf' }), fname);
-            this.statusTarget.textContent = 'PDF gotowy: ' + fname;
+            this.statusTarget.textContent = 'PDF (obraz) gotowy: ' + fname;
         } catch (e) {
             this.statusTarget.textContent = 'Błąd PDF: ' + e.message;
             console.error(e);
@@ -1569,6 +1569,337 @@ export default class extends Controller {
     }
 
     padToFour(n) { return Math.ceil(n / 4) * 4; }
+
+    // ─── Eksport PDF — prawdziwy tekst wektorowy (pdf-lib + osadzone kroje Google) ───
+
+    async exportVector(booklet) {
+        if (!window.PDFLib) { alert('Nie załadowano biblioteki pdf-lib.'); return; }
+        if (!window.fontkit) { this.statusTarget.textContent = 'Brak fontkit — eksport obrazkowy.'; return this.exportRaster(booklet); }
+        this.statusTarget.textContent = 'Generowanie PDF (tekst wektorowy)…';
+
+        try {
+            if (this.dirty) await this.save();
+            await this.preloadAllImages();
+
+            const { PDFDocument } = window.PDFLib;
+            const pdf = await PDFDocument.create();
+            try {
+                await this.ensurePdfFonts(pdf);
+            } catch (e) {
+                console.error('Kroje PDF:', e);
+                this.statusTarget.textContent = 'Nie wczytano krojów — eksport obrazkowy.';
+                return this.exportRaster(booklet);
+            }
+            await this.pdfEmbedAllImages(pdf);
+
+            const N = this.doc.pages.length;
+            const needRaster = (idx) => (this.doc.pages[idx].elements || []).some((el) => el.rotation);
+            const rasterCache = {};
+            const ensureRaster = async (idx) => {
+                if (rasterCache[idx] === undefined) rasterCache[idx] = await pdf.embedPng(this.pageToDataURL(idx, 3.3));
+                return rasterCache[idx];
+            };
+            // Rysuje stronę idx na obszarze [ox, ox+pageW] danej strony PDF (wektorowo lub rastrowo dla obróconych).
+            const drawRegion = async (pdfPage, idx, ox) => {
+                if (idx == null || idx < 0 || idx >= N) return; // puste pole składki
+                if (needRaster(idx)) {
+                    const png = await ensureRaster(idx);
+                    pdfPage.drawImage(png, { x: ox, y: 0, width: this.pageW, height: this.pageH });
+                } else {
+                    this.pdfDrawPage(pdfPage, this.doc.pages[idx], ox, 0, idx);
+                }
+            };
+
+            if (!booklet) {
+                for (let i = 0; i < N; i++) {
+                    const p = pdf.addPage([this.pageW, this.pageH]);
+                    await drawRegion(p, i, 0);
+                }
+            } else {
+                const total = this.padToFour(N), sheets = total / 4;
+                const at = (n) => (n >= 1 && n <= N) ? (n - 1) : null;
+                for (let s = 0; s < sheets; s++) {
+                    let p = pdf.addPage([this.pageW * 2, this.pageH]);
+                    await drawRegion(p, at(total - 2 * s), 0);
+                    await drawRegion(p, at(1 + 2 * s), this.pageW);
+                    p = pdf.addPage([this.pageW * 2, this.pageH]);
+                    await drawRegion(p, at(2 + 2 * s), 0);
+                    await drawRegion(p, at(total - 1 - 2 * s), this.pageW);
+                }
+            }
+
+            const bytes = await pdf.save({ useObjectStreams: false }); // lepsza zgodność czytników
+            const fname = (this.titleTarget.value || 'gazetka').replace(/[^\p{L}\p{N}_-]+/gu, '_')
+                + (booklet ? '_do_druku' : '_po_kolei') + '.pdf';
+            this.downloadBlob(new Blob([bytes], { type: 'application/pdf' }), fname);
+            this.statusTarget.textContent = 'PDF gotowy (tekst wektorowy): ' + fname;
+        } catch (e) {
+            this.statusTarget.textContent = 'Błąd PDF: ' + e.message;
+            console.error(e);
+        }
+    }
+
+    /** Pobiera i osadza (subset) potrzebne kroje TTF dla bieżącego dokumentu. Rzuca, gdy nie ma nawet kroju bazowego. */
+    async ensurePdfFonts(pdf) {
+        if (!this._fontManifest) {
+            try { this._fontManifest = new Set(await (await fetch(PDF_FONTS_BASE + '/manifest.json')).json()); }
+            catch (e) { this._fontManifest = new Set(); }
+        }
+        pdf.registerFontkit(window.fontkit);
+        this._pdfFont = {};
+        if (!this._fontBytes) this._fontBytes = {}; // cache bajtów TTF między eksportami
+
+        const need = new Set(['gelasio-400', 'gelasio-700']);
+        for (const box of this.doc.pages) for (const el of (box.elements || [])) {
+            if (el.type !== 'text') continue;
+            const fam = el.fontFamily || 'Georgia';
+            for (const b of [0, 1]) for (const i of [0, 1]) {
+                const f = pdfFileFor(this._fontManifest, fam, b, i);
+                if (f) need.add(f);
+            }
+        }
+
+        for (const f of need) {
+            try {
+                if (!this._fontBytes[f]) {
+                    const r = await fetch(PDF_FONTS_BASE + '/' + f + '.ttf');
+                    if (!r.ok) continue;
+                    this._fontBytes[f] = await r.arrayBuffer();
+                }
+                this._pdfFont[f] = await pdf.embedFont(this._fontBytes[f], { subset: true });
+            } catch (e) { /* pomiń wadliwy krój — zadziała fallback */ }
+        }
+        if (!this._pdfFont['gelasio-400']) throw new Error('Brak bazowego kroju.');
+    }
+
+    pdfFontFor(family, bold, italic) {
+        const f = pdfFileFor(this._fontManifest, family || 'Georgia', bold, italic);
+        return (f && this._pdfFont[f]) || this._pdfFont['gelasio-400'];
+    }
+
+    pdfRgb(hex) { const c = hexToRgb01(hex); return window.PDFLib.rgb(c.r, c.g, c.b); }
+
+    /** Osadza wszystkie obrazy/ikony dokumentu (z kadrem) jako PNG/JPEG — raz, z cache po src+kadr. */
+    async pdfEmbedAllImages(pdf) {
+        this._pdfImg = {};
+        for (const box of this.doc.pages) for (const el of (box.elements || [])) {
+            if (el.type !== 'image' && el.type !== 'icon') continue;
+            const key = this.pdfImgKey(el);
+            if (this._pdfImg[key] !== undefined) continue;
+            try {
+                const enc = await this.pdfImageData(el);
+                this._pdfImg[key] = enc ? (enc.jpeg ? await pdf.embedJpg(enc.url) : await pdf.embedPng(enc.url)) : null;
+            } catch (e) { this._pdfImg[key] = null; }
+        }
+    }
+
+    pdfImgKey(el) {
+        const c = el.crop ? `${el.crop.x},${el.crop.y},${el.crop.width},${el.crop.height}` : '';
+        return (el.type) + '|' + (el.src || '') + '|' + c;
+    }
+
+    /** Rysuje obraz/ikonę (z kadrem) na canvas i zwraca {url, jpeg}. */
+    async pdfImageData(el) {
+        let img = this.imageCache[el.src];
+        if (!img) img = this.getImage(el.src);
+        if (!img.complete || !img.naturalWidth) {
+            await new Promise((res) => { img.addEventListener('load', res, { once: true }); img.addEventListener('error', res, { once: true }); setTimeout(res, 4000); });
+        }
+        if (!img.naturalWidth) return null;
+
+        let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+        if (el.type === 'image' && el.crop && el.crop.width) { sx = el.crop.x; sy = el.crop.y; sw = el.crop.width; sh = el.crop.height; }
+
+        let cw, ch;
+        if (el.type === 'icon') { const sc = 4; cw = Math.max(8, Math.round((el.width || 64) * sc)); ch = Math.max(8, Math.round((el.height || 64) * sc)); }
+        else { const cap = 2200, r = Math.min(1, cap / Math.max(sw, sh)); cw = Math.max(1, Math.round(sw * r)); ch = Math.max(1, Math.round(sh * r)); }
+
+        const cv = document.createElement('canvas');
+        cv.width = cw; cv.height = ch;
+        cv.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+
+        const jpeg = el.type === 'image' && /\.jpe?g($|\?)/i.test(el.src || '');
+        return { url: jpeg ? cv.toDataURL('image/jpeg', 0.9) : cv.toDataURL('image/png'), jpeg };
+    }
+
+    /** Rysuje całą stronę dokumentu na stronie PDF z offsetem (ox,oy w pt, układ od lewego-dolnego rogu obszaru). */
+    pdfDrawPage(page, box, ox, oy, pageIndex) {
+        page.drawRectangle({ x: ox, y: oy, width: this.pageW, height: this.pageH, color: this.pdfRgb(box.background || '#ffffff') });
+        for (const el of (box.elements || [])) {
+            const top = oy + this.pageH - (el.y + (el.height || 0)); // dolna krawędź elementu w układzie PDF
+            if (el.type === 'rect') {
+                const opts = { x: ox + el.x, y: top, width: el.width, height: el.height, color: this.pdfRgb(el.fill || '#e9eef5') };
+                if (el.stroke && (el.strokeWidth || 0) > 0) { opts.borderColor = this.pdfRgb(el.stroke); opts.borderWidth = el.strokeWidth; }
+                page.drawRectangle(opts);
+            } else if (el.type === 'line') {
+                page.drawLine({ start: { x: ox + el.x, y: oy + this.pageH - el.y }, end: { x: ox + el.x + el.width, y: oy + this.pageH - el.y }, thickness: el.strokeWidth || 2, color: this.pdfRgb(el.stroke || '#1a2330') });
+            } else if (el.type === 'image' || el.type === 'icon') {
+                const im = this._pdfImg[this.pdfImgKey(el)];
+                if (im) page.drawImage(im, { x: ox + el.x, y: top, width: el.width, height: el.height });
+            } else if (el.type === 'text') {
+                this.pdfDrawTextEl(page, el, box.elements, ox, oy);
+            }
+        }
+        this.pdfDrawPageNumber(page, ox, oy, pageIndex);
+    }
+
+    pdfDrawPageNumber(page, ox, oy, pageIndex) {
+        const pn = this.doc.pageNumbers;
+        if (!pn || !pn.show) return;
+        const num = pageIndex + 1, fontSize = 11, marginX = 32, marginBottom = 22;
+        const font = this.pdfFontFor('Georgia', false, false);
+        const txt = String(num);
+        const tw = font.widthOfTextAtSize(txt, fontSize);
+        let x;
+        if (pn.position === 'outer') x = (num % 2 === 1) ? (ox + this.pageW - marginX - tw) : (ox + marginX);
+        else x = ox + (this.pageW - tw) / 2;
+        const yTop = this.pageH - marginBottom - fontSize;
+        page.drawText(txt, { x, y: oy + this.pageH - (yTop + fontSize * PDF_ASCENT), size: fontSize, font, color: this.pdfRgb('#555555') });
+    }
+
+    /** Rysuje ramkę tekstu (tło/obramowanie + tekst) — szpalty, justowanie, valign, runs, oblewanie z obu stron. */
+    pdfDrawTextEl(page, el, els, ox, oy) {
+        if (el.bgOn && el.bgFill) {
+            page.drawRectangle({ x: ox + el.x, y: oy + this.pageH - (el.y + el.height), width: el.width, height: el.height, color: this.pdfRgb(el.bgFill) });
+        }
+        if (el.borderOn && (el.borderWidth || 0) > 0) {
+            const sw = el.borderWidth;
+            page.drawRectangle({ x: ox + el.x + sw / 2, y: oy + this.pageH - (el.y + el.height) + sw / 2, width: el.width - sw, height: el.height - sw, borderColor: this.pdfRgb(el.borderColor || '#1a56db'), borderWidth: sw });
+        }
+        const pad = Math.max(0, el.padding || 0);
+        const inner = pad > 0 ? Object.assign({}, el, { width: Math.max(8, el.width - 2 * pad), height: Math.max(8, el.height - 2 * pad) }) : el;
+        const cols = clamp(inner.columns || 1, 1, 3);
+        const lineHpx = (inner.fontSize || 14) * (inner.lineHeight || 1.3);
+        const gap = inner.columnGap ?? 14;
+        const colW = cols === 1 ? inner.width : (inner.width - gap * (cols - 1)) / cols;
+        const align = inner.align || 'left';
+        const valign = el.valign || 'top';
+        const ex = !el.rotation ? this.imageExclusions(el, els) : [];
+
+        this._pctx = { ox: ox + el.x + pad, oyB: oy, top: el.y + pad };
+        if (ex.length) {
+            const exAdj = pad > 0 ? ex.map((e) => ({ x0: e.x0 - pad, x1: e.x1 - pad, y0: e.y0 - pad, y1: e.y1 - pad })) : ex;
+            this.pdfRenderFlowed(page, inner, exAdj, lineHpx, align, cols, colW, gap);
+        } else {
+            this.pdfRenderColumns(page, inner, cols, colW, gap, lineHpx, align, valign);
+        }
+    }
+
+    pdfMeasureWord(word, el) {
+        const s = el.fontSize || 14; let w = 0;
+        for (const sg of word.segs) w += this.pdfFontFor(el.fontFamily, sg.bold, sg.italic).widthOfTextAtSize(sg.text, s);
+        word._w = w; return w;
+    }
+
+    pdfSpaceW(el) {
+        const f = this.pdfFontFor(el.fontFamily, false, false);
+        return f.widthOfTextAtSize(' ', el.fontSize || 14) || (el.fontSize || 14) * 0.28;
+    }
+
+    /** Rysuje słowo (segmenty z własnym stylem) od (x, yTop) w układzie ramki; przelicza na współrzędne PDF. */
+    pdfDrawWord(page, word, el, x, yTop) {
+        const s = el.fontSize || 14;
+        const col = this.pdfRgb(el.fill || '#1a2330');
+        const c = this._pctx;
+        const y = c.oyB + this.pageH - (c.top + yTop + s * PDF_ASCENT);
+        let cx = c.ox + x;
+        for (const sg of word.segs) {
+            const f = this.pdfFontFor(el.fontFamily, sg.bold, sg.italic);
+            page.drawText(sg.text, { x: cx, y, size: s, font: f, color: col });
+            cx += f.widthOfTextAtSize(sg.text, s);
+        }
+    }
+
+    pdfWrapRich(paras, colW, el) {
+        const sp = this.pdfSpaceW(el);
+        const lines = [];
+        for (const words of paras) {
+            if (!words.length) { lines.push({ words: [], lastOfPara: true }); continue; }
+            let line = [], w = 0;
+            for (const word of words) {
+                const ww = this.pdfMeasureWord(word, el);
+                const add = (line.length ? sp : 0) + ww;
+                if (w + add > colW && line.length) { lines.push({ words: line, lastOfPara: false }); line = [word]; w = ww; }
+                else { line.push(word); w += add; }
+            }
+            lines.push({ words: line, lastOfPara: true });
+        }
+        return { lines, sp };
+    }
+
+    pdfRenderLine(page, line, el, cx, y, colW, sp, align, isLastVisible) {
+        const ws = line.words;
+        const wd = ws.map((w) => (w._w != null ? w._w : this.pdfMeasureWord(w, el)));
+        const nat = wd.reduce((a, b) => a + b, 0) + sp * (ws.length - 1);
+        if (align === 'justify' && !isLastVisible && !line.lastOfPara && ws.length > 1 && nat >= colW * 0.5) {
+            const extra = (colW - nat) / (ws.length - 1);
+            let x = cx;
+            for (let k = 0; k < ws.length; k++) { this.pdfDrawWord(page, ws[k], el, x, y); x += wd[k] + sp + extra; }
+            return;
+        }
+        let x = cx;
+        if (align === 'center') x = cx + (colW - nat) / 2;
+        else if (align === 'right') x = cx + (colW - nat);
+        for (let k = 0; k < ws.length; k++) { this.pdfDrawWord(page, ws[k], el, x, y); x += wd[k] + sp; }
+    }
+
+    pdfRenderColumns(page, el, cols, colW, gap, lineHpx, align, valign) {
+        const { lines, sp } = this.pdfWrapRich(this.richWords(el), colW, el);
+        const fit = Math.max(1, Math.floor((el.height + 1) / lineHpx));
+        const balanced = Math.max(1, Math.ceil(lines.length / cols));
+        const perCol = Math.min(balanced, fit);
+        const used = cols === 1 ? Math.min(lines.length, fit) : Math.min(perCol, lines.length);
+        let yOff = 0;
+        const contentH = used * lineHpx;
+        if (valign === 'middle') yOff = Math.max(0, (el.height - contentH) / 2);
+        else if (valign === 'bottom') yOff = Math.max(0, el.height - contentH);
+        const lastVis = Math.min(lines.length, cols * perCol) - 1;
+        for (let c = 0; c < cols; c++) {
+            const cx = c * (colW + gap);
+            for (let i = 0; i < perCol; i++) {
+                const gi = c * perCol + i;
+                if (gi >= lines.length) break;
+                const ln = lines[gi];
+                if (!ln.words.length) continue;
+                this.pdfRenderLine(page, ln, el, cx, yOff + i * lineHpx, colW, sp, align, gi === lastVis);
+            }
+        }
+    }
+
+    pdfRenderFlowed(page, el, exclusions, lineHpx, align, cols, colW, gap) {
+        const sp = this.pdfSpaceW(el);
+        const frameH = el.height;
+        const colX = (c) => c * (colW + gap);
+        const minSegW = Math.max(32, (el.fontSize || 14) * 2.2);
+        let col = 0, y = 0, overflow = false;
+        const ensureRoom = () => { while (y + lineHpx > frameH + 1) { col++; y = 0; if (col >= cols) return false; } return true; };
+        const paras = this.richWords(el);
+        for (let p = 0; p < paras.length && !overflow; p++) {
+            const words = paras[p];
+            if (!words.length) { if (!ensureRoom()) { overflow = true; break; } y += lineHpx; continue; }
+            let i = 0;
+            while (i < words.length) {
+                if (!ensureRoom()) { overflow = true; break; }
+                const cx0 = colX(col);
+                const segs = this.freeIntervalsInRange(y, y + lineHpx, cx0, cx0 + colW, exclusions, minSegW);
+                if (!segs.length) { y += lineHpx; continue; }
+                for (let s = 0; s < segs.length && i < words.length; s++) {
+                    const seg = segs[s], availW = seg[1] - seg[0], fullWidth = availW >= colW - 0.5;
+                    const lineWords = []; let w = 0;
+                    while (i < words.length) {
+                        const wordW = this.pdfMeasureWord(words[i], el);
+                        const add = (lineWords.length ? sp : 0) + wordW;
+                        if (w + add > availW) { if (lineWords.length === 0 && fullWidth) { lineWords.push(words[i]); w += add; i++; } break; }
+                        lineWords.push(words[i]); w += add; i++;
+                    }
+                    if (!lineWords.length) continue;
+                    const moreWords = i < words.length;
+                    this.pdfRenderLine(page, { words: lineWords, lastOfPara: !moreWords }, el, seg[0], y, availW, sp, align, !moreWords);
+                }
+                y += lineHpx;
+            }
+        }
+    }
 
     downloadBlob(blob, filename) {
         const a = document.createElement('a');
@@ -2267,6 +2598,37 @@ export default class extends Controller {
 function uid() { return 'el_' + Math.random().toString(36).slice(2, 9); }
 function round(n) { return Math.round(n); }
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+
+// ─── Eksport PDF (wektor): mapowanie krojów + pomocnicze ──────
+// Katalog z osadzanymi krojami TTF (latin-ext). Kroje własnościowe → metrycznie zgodne, wolne odpowiedniki.
+const PDF_FONTS_BASE = '/fonts/gazetka';
+const PDF_ASCENT = 0.9; // baseline = top + fontSize*PDF_ASCENT (skalibrowane wizualnie)
+const PDF_FONT_MAP = {
+    'Georgia': 'gelasio', 'Times New Roman': 'tinos',
+    'Arial': 'arimo', 'Trebuchet MS': 'arimo', 'Verdana': 'arimo', 'Tahoma': 'arimo',
+    'Courier New': 'cousine',
+    'Lora': 'lora', 'Merriweather': 'merriweather', 'Playfair Display': 'playfair-display',
+    'Roboto': 'roboto', 'Open Sans': 'open-sans', 'Lato': 'lato',
+    'Montserrat': 'montserrat', 'Oswald': 'oswald', 'Raleway': 'raleway',
+};
+
+/** Nazwa pliku kroju (bez .ttf) dla rodziny+stylu, z fallbackami; null gdy brak w manifeście. */
+function pdfFileFor(manifest, family, bold, italic) {
+    const id = PDF_FONT_MAP[family] || 'gelasio';
+    const w = bold ? '700' : '400';
+    const s = italic ? 'i' : '';
+    const cands = [`${id}-${w}${s}`, `${id}-${w}`, `${id}-400${s}`, `${id}-400`, 'gelasio-400'];
+    return cands.find((c) => manifest.has(c)) || null;
+}
+
+function hexToRgb01(hex) {
+    hex = String(hex || '#000');
+    if (hex[0] === '#') hex = hex.slice(1);
+    if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+    const n = parseInt(hex, 16);
+    if (!Number.isFinite(n)) return { r: 0, g: 0, b: 0 };
+    return { r: ((n >> 16) & 255) / 255, g: ((n >> 8) & 255) / 255, b: (n & 255) / 255 };
+}
 function escapeHtml(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\GazetkaBlock;
+use App\Entity\GazetkaPageTemplate;
 use App\Entity\Newsletter;
 use App\Entity\User;
 use App\Repository\GazetkaBlockRepository;
+use App\Repository\GazetkaPageTemplateRepository;
 use App\Repository\NewsletterRepository;
 use App\Service\AI\OpenRouterClient;
 use App\Service\AI\PromptBuilder\GazetkaArticlePromptBuilder;
 use App\Service\AI\PromptBuilder\GazetkaRedactPromptBuilder;
 use App\Service\PixabayClient;
+use App\Service\UnsplashClient;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -26,6 +29,10 @@ class GazetkaController extends AbstractController
     private const PAGE_W = 420;
     private const PAGE_H = 595;
 
+    /** Wymiary strony A4 w punktach (np. plakat — pojedyncza strona). */
+    private const PAGE_A4_W = 595;
+    private const PAGE_A4_H = 842;
+
     private const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     private const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // 8 MB
 
@@ -33,38 +40,130 @@ class GazetkaController extends AbstractController
         private readonly NewsletterRepository $repo,
         private readonly OpenRouterClient $ai,
         private readonly PixabayClient $pixabay,
+        private readonly UnsplashClient $unsplash,
     ) {}
 
     #[Route('', name: 'app_gazetka_index', methods: ['GET'])]
     public function index(): Response
     {
+        $newsletters = $this->repo->findByOwner($this->currentUser());
+        $previews = [];
+        foreach ($newsletters as $n) {
+            $previews[$n->getId()] = $this->buildPreview($n);
+        }
+
         return $this->render('gazetka/index.html.twig', [
-            'newsletters' => $this->repo->findByOwner($this->currentUser()),
+            'newsletters' => $newsletters,
+            'previews' => $previews,
         ]);
+    }
+
+    /**
+     * Buduje LEKKI JSON podglądu pierwszej strony — bez ciężkich data URI (te są zastępowane
+     * placeholderem). URL-e uploadów zachowujemy. Renderer JS na liście używa tego do canvas.
+     *
+     * @return array<string,mixed>
+     */
+    private function buildPreview(Newsletter $n): array
+    {
+        $doc = $n->getContentArray();
+        $pageW = (int) ($doc['pageW'] ?? self::PAGE_W);
+        $pageH = (int) ($doc['pageH'] ?? self::PAGE_H);
+        $page = $doc['pages'][0] ?? ['background' => '#ffffff', 'elements' => []];
+        $out = [
+            'pageW'      => $pageW,
+            'pageH'      => $pageH,
+            'background' => $page['background'] ?? '#ffffff',
+            'elements'   => [],
+        ];
+        // Obraz/ikona: zostaje, jeśli to URL uploadu albo MAŁE data URI (ikony SVG do ~4 KB).
+        // Większe data URI (zdjęcia) zastępujemy placeholderem — to lista, nie edytor.
+        $keepSrc = static function (string $src): ?string {
+            if ($src === '') {
+                return null;
+            }
+            if (!str_starts_with($src, 'data:')) {
+                return $src;
+            }
+            if (str_starts_with($src, 'data:image/svg+xml') && strlen($src) < 8000) {
+                return $src;
+            }
+
+            return null; // duże data URI → placeholder
+        };
+        foreach (($page['elements'] ?? []) as $el) {
+            $t = $el['type'] ?? '';
+            $base = [
+                't' => $t,
+                'x' => $el['x'] ?? 0, 'y' => $el['y'] ?? 0,
+                'w' => $el['width'] ?? 0, 'h' => $el['height'] ?? 0,
+                'r' => $el['rotation'] ?? 0,
+                'o' => $el['opacity'] ?? 1,
+            ];
+            if ($t === 'rect') {
+                $base['fill'] = $el['fill'] ?? null;
+                $base['stroke'] = $el['stroke'] ?? null;
+                $base['sw'] = $el['strokeWidth'] ?? 0;
+                $base['cr'] = $el['cornerRadius'] ?? 0;
+            } elseif ($t === 'line') {
+                $base['stroke'] = $el['stroke'] ?? '#000';
+                $base['sw'] = $el['strokeWidth'] ?? 1;
+            } elseif ($t === 'text') {
+                $base['text'] = mb_substr((string) ($el['text'] ?? ''), 0, 160);
+                $base['ff'] = $el['fontFamily'] ?? 'Arial';
+                $base['fs'] = $el['fontSize'] ?? 12;
+                $base['fst'] = $el['fontStyle'] ?? 'normal';
+                $base['fill'] = $el['fill'] ?? '#1a2330';
+                $base['align'] = $el['align'] ?? 'left';
+                $base['lh'] = $el['lineHeight'] ?? 1.3;
+            } elseif ($t === 'image' || $t === 'icon') {
+                $src = $keepSrc((string) ($el['src'] ?? ''));
+                if ($src !== null) {
+                    $base['src'] = $src;
+                }
+            } else {
+                continue;
+            }
+            $out['elements'][] = $base;
+        }
+
+        return $out;
     }
 
     #[Route('/new', name: 'app_gazetka_new', methods: ['POST'])]
     public function new(Request $request): Response
     {
         $title = trim((string) $request->request->get('title')) ?: 'Nowa gazetka';
-        $pageCount = $request->request->getInt('pageCount', 4);
+        $format = $request->request->get('format') === 'a4' ? 'a4' : 'a5';
 
-        // Zaokrąglij w górę do wielokrotności 4 (składka), w zakresie 4..40.
-        $pageCount = max(4, min(40, (int) (ceil($pageCount / 4) * 4)));
+        if ($format === 'a4') {
+            // Plakat / pojedyncza strona A4 — składasz ręcznie (tło + grafiki z biblioteki + teksty).
+            $pageW = self::PAGE_A4_W;
+            $pageH = self::PAGE_A4_H;
+            $pageCount = 1;
+        } else {
+            // Gazetka A5: zaokrąglij liczbę stron w górę do wielokrotności 4 (składka), 4..40.
+            $pageW = self::PAGE_W;
+            $pageH = self::PAGE_H;
+            $pageCount = max(4, min(40, (int) (ceil($request->request->getInt('pageCount', 4) / 4) * 4)));
+        }
 
         $newsletter = new Newsletter();
         $newsletter->setOwner($this->currentUser());
         $newsletter->setTitle(mb_substr($title, 0, 200));
         $newsletter->setPageCount($pageCount);
-        $newsletter->setContent(json_encode($this->blankDocument($pageCount), JSON_UNESCAPED_UNICODE));
+        $newsletter->setContent(json_encode($this->blankDocument($pageCount, $pageW, $pageH), JSON_UNESCAPED_UNICODE));
 
         $this->repo->save($newsletter);
 
-        $allowedTemplates = ['cover', 'article2col', 'article1col', 'photopage', 'colophon'];
-        $template = (string) $request->request->get('template');
         $params = ['id' => $newsletter->getId()];
-        if (in_array($template, $allowedTemplates, true)) {
-            $params['template'] = $template;
+        // Szablony startowe są zaprojektowane pod A5 — dla A4 zaczynamy od pustej strony.
+        if ($format !== 'a4') {
+            $allowedTemplates = ['cover', 'article2col', 'article1col', 'photopage', 'colophon'];
+            $template = (string) $request->request->get('template');
+            if (in_array($template, $allowedTemplates, true)) {
+                $params['template'] = $template;
+            }
         }
 
         return $this->redirectToRoute('app_gazetka_edit', $params);
@@ -373,17 +472,26 @@ class GazetkaController extends AbstractController
             return new JsonResponse(['ok' => false, 'error' => 'Wpisz, czego szukasz.'], 400);
         }
 
+        $source = $request->query->get('source', 'pixabay');
         try {
-            $r = $this->pixabay->search(
-                $q,
-                (string) $request->query->get('type', 'illustration'),
-                $request->query->getInt('page', 1),
-            );
+            if ($source === 'unsplash') {
+                $r = $this->unsplash->search(
+                    $q,
+                    (string) $request->query->get('orientation', 'all'),
+                    $request->query->getInt('page', 1),
+                );
+            } else {
+                $r = $this->pixabay->search(
+                    $q,
+                    (string) $request->query->get('type', 'illustration'),
+                    $request->query->getInt('page', 1),
+                );
+            }
         } catch (\RuntimeException $e) {
             return new JsonResponse(['ok' => false, 'error' => $e->getMessage()], 502);
         }
 
-        return new JsonResponse(['ok' => true, 'query' => $r['query'], 'results' => $r['results']]);
+        return new JsonResponse(['ok' => true, 'query' => $r['query'], 'results' => $r['results'], 'source' => $source]);
     }
 
     #[Route('/{id}/stock-import', name: 'app_gazetka_stock_import', methods: ['POST'])]
@@ -401,7 +509,10 @@ class GazetkaController extends AbstractController
         }
 
         try {
-            $bytes = $this->pixabay->download($url);
+            // Wybór klienta po hostname URL — automatycznie ten sam, którym wyszukiwano.
+            $host = (string) (parse_url($url, PHP_URL_HOST) ?: '');
+            $isUnsplash = str_ends_with($host, '.unsplash.com');
+            $bytes = $isUnsplash ? $this->unsplash->download($url) : $this->pixabay->download($url);
             $info = @getimagesizefromstring($bytes);
             if (!$info) {
                 throw new \RuntimeException('Pobrany plik nie jest obrazem.');
@@ -415,7 +526,9 @@ class GazetkaController extends AbstractController
             };
 
             [$absDir, $relDir] = $this->ownerUploadDir();
-            $name = 'px_' . bin2hex(random_bytes(6)) . '.' . $ext;
+            // Prefix nazwy: us_ dla Unsplash, px_ dla Pixabay — by „Magazyn mediów" rozpoznał źródło.
+            $prefix = $isUnsplash ? 'us_' : 'px_';
+            $name = $prefix . bin2hex(random_bytes(6)) . '.' . $ext;
             if (@file_put_contents($absDir . '/' . $name, $bytes) === false) {
                 throw new \RuntimeException('Nie udało się zapisać grafiki.');
             }
@@ -449,7 +562,8 @@ class GazetkaController extends AbstractController
             $name = basename($path);
             // Pochodzenie po prefiksie nazwy (patrz storeDataUriImage / stockImport / upload).
             $kind = str_starts_with($name, 'ai_') ? 'ai'
-                : (str_starts_with($name, 'px_') ? 'stock' : 'upload');
+                : (str_starts_with($name, 'px_') ? 'stock'
+                : (str_starts_with($name, 'us_') ? 'stock' : 'upload'));
 
             $items[] = [
                 'url' => $relDir . '/' . $name,
@@ -560,6 +674,124 @@ class GazetkaController extends AbstractController
         }
 
         $blocks->remove($block);
+
+        return new JsonResponse(['ok' => true]);
+    }
+
+    // ─── Szablony stron (zapis CAŁEJ strony do biblioteki użytkownika) ───
+
+    #[Route('/page-templates', name: 'app_gazetka_page_templates_list', methods: ['GET'])]
+    public function pageTemplatesList(GazetkaPageTemplateRepository $tpls): JsonResponse
+    {
+        $items = array_map(static fn (GazetkaPageTemplate $t): array => [
+            'id'         => $t->getId(),
+            'name'       => $t->getName(),
+            'category'   => $t->getCategory(),
+            'pageW'      => $t->getPageWidth(),
+            'pageH'      => $t->getPageHeight(),
+            'background' => $t->getBackground(),
+            'count'      => $t->getElementCount(),
+            'preview'    => $t->getPreview(),
+            'elements'   => $t->getElements(),
+            'createdAt'  => $t->getCreatedAt()->format(\DateTimeInterface::ATOM),
+        ], $tpls->findByOwner($this->currentUser()));
+
+        return new JsonResponse(['ok' => true, 'items' => $items]);
+    }
+
+    #[Route('/page-templates', name: 'app_gazetka_page_templates_create', methods: ['POST'])]
+    public function pageTemplatesCreate(Request $request, GazetkaPageTemplateRepository $tpls): JsonResponse
+    {
+        if (!$this->isCsrfTokenValid('gazetka', (string) $request->headers->get('X-CSRF-Token'))) {
+            return new JsonResponse(['ok' => false, 'error' => 'Nieprawidłowy token CSRF.'], 419);
+        }
+
+        $p = json_decode($request->getContent(), true);
+        if (!is_array($p)) {
+            return new JsonResponse(['ok' => false, 'error' => 'Brak danych.'], 400);
+        }
+
+        $els = $p['elements'] ?? null;
+        if (!is_array($els)) {
+            return new JsonResponse(['ok' => false, 'error' => 'Brak elementów.'], 400);
+        }
+        if (count($els) > 400 || strlen(json_encode($els)) > 6_000_000) {
+            return new JsonResponse(['ok' => false, 'error' => 'Szablon jest zbyt duży (limit elementów lub objętości).'], 400);
+        }
+        if ($tpls->countByOwner($this->currentUser()) >= 200) {
+            return new JsonResponse(['ok' => false, 'error' => 'Osiągnięto limit zapisanych szablonów (200).'], 400);
+        }
+
+        $preview = is_string($p['preview'] ?? null) ? $p['preview'] : null;
+        if ($preview !== null && (!preg_match('#^data:image/(png|jpeg);base64,#', $preview) || strlen($preview) > 800_000)) {
+            $preview = null;
+        }
+
+        $bg = is_string($p['background'] ?? null) && preg_match('/^#[0-9a-fA-F]{3,8}$/', (string) $p['background']) ? (string) $p['background'] : null;
+
+        $tpl = new GazetkaPageTemplate();
+        $tpl->setOwner($this->currentUser());
+        $tpl->setName(mb_substr(trim((string) ($p['name'] ?? '')) ?: 'Szablon strony', 0, 120));
+        $tpl->setCategory($this->normalizeCategory($p['category'] ?? null));
+        $tpl->setPageWidth(max(1, min(5000, (int) ($p['pageW'] ?? 0))));
+        $tpl->setPageHeight(max(1, min(5000, (int) ($p['pageH'] ?? 0))));
+        $tpl->setBackground($bg);
+        $tpl->setElementCount(count($els));
+        $tpl->setPreview($preview);
+        $tpl->setElements(array_values($els));
+        $tpls->save($tpl);
+
+        return new JsonResponse(['ok' => true, 'id' => $tpl->getId(), 'category' => $tpl->getCategory()]);
+    }
+
+    #[Route('/page-templates/{tpl}/update', name: 'app_gazetka_page_templates_update', methods: ['POST'])]
+    public function pageTemplatesUpdate(GazetkaPageTemplate $tpl, Request $request, GazetkaPageTemplateRepository $tpls): JsonResponse
+    {
+        if (!$this->isCsrfTokenValid('gazetka', (string) $request->headers->get('X-CSRF-Token'))) {
+            return new JsonResponse(['ok' => false, 'error' => 'Nieprawidłowy token CSRF.'], 419);
+        }
+        if ($tpl->getOwner() !== $this->getUser()) {
+            throw $this->createAccessDeniedException('To nie jest Twój szablon.');
+        }
+
+        $p = json_decode($request->getContent(), true);
+        if (!is_array($p)) {
+            return new JsonResponse(['ok' => false, 'error' => 'Brak danych.'], 400);
+        }
+        if (array_key_exists('name', $p)) {
+            $name = mb_substr(trim((string) $p['name']) ?: $tpl->getName(), 0, 120);
+            $tpl->setName($name);
+        }
+        if (array_key_exists('category', $p)) {
+            $tpl->setCategory($this->normalizeCategory($p['category']));
+        }
+        $tpls->save($tpl);
+
+        return new JsonResponse(['ok' => true, 'name' => $tpl->getName(), 'category' => $tpl->getCategory()]);
+    }
+
+    /** Normalizuje kategorię: trim + max 60 znaków; pusty/null → null („Inne"). */
+    private function normalizeCategory(mixed $raw): ?string
+    {
+        if (!is_string($raw)) {
+            return null;
+        }
+        $v = trim($raw);
+
+        return $v === '' ? null : mb_substr($v, 0, 60);
+    }
+
+    #[Route('/page-templates/{tpl}/delete', name: 'app_gazetka_page_templates_delete', methods: ['POST'])]
+    public function pageTemplatesDelete(GazetkaPageTemplate $tpl, Request $request, GazetkaPageTemplateRepository $tpls): JsonResponse
+    {
+        if (!$this->isCsrfTokenValid('gazetka', (string) $request->headers->get('X-CSRF-Token'))) {
+            return new JsonResponse(['ok' => false, 'error' => 'Nieprawidłowy token CSRF.'], 419);
+        }
+        if ($tpl->getOwner() !== $this->getUser()) {
+            throw $this->createAccessDeniedException('To nie jest Twój szablon.');
+        }
+
+        $tpls->remove($tpl);
 
         return new JsonResponse(['ok' => true]);
     }
@@ -687,7 +919,7 @@ class GazetkaController extends AbstractController
      *
      * @return array<string, mixed>
      */
-    private function blankDocument(int $pageCount): array
+    private function blankDocument(int $pageCount, int $pageW = self::PAGE_W, int $pageH = self::PAGE_H): array
     {
         $pages = [];
         for ($i = 0; $i < $pageCount; $i++) {
@@ -696,8 +928,8 @@ class GazetkaController extends AbstractController
 
         return [
             'version' => 1,
-            'pageW' => self::PAGE_W,
-            'pageH' => self::PAGE_H,
+            'pageW' => $pageW,
+            'pageH' => $pageH,
             'pages' => $pages,
         ];
     }

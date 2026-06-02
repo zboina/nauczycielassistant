@@ -5,6 +5,34 @@
 {% block title_text %}Gazetka szkolna{% endblock %}
 
 {% block body %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Lato:wght@400;700&family=Montserrat:wght@400;700&family=Oswald:wght@400;700&family=Raleway:wght@400;700&family=Lora:wght@400;700&family=Merriweather:wght@400;700&family=Playfair+Display:wght@400;700&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+    .gz-grid { --thumb-w: 260px; }
+    .gz-newsletter { overflow:hidden; transition:transform .15s ease, box-shadow .15s ease; }
+    .gz-newsletter:hover { transform:translateY(-2px); box-shadow:0 10px 24px rgba(15,30,60,.12); }
+    .gz-preview-link { display:block; text-decoration:none; color:inherit; }
+    .gz-preview { position:relative; width:100%; background:#eef2f7; }
+    .gz-preview--a5 { aspect-ratio: 420 / 595; }   /* A5 pion */
+    .gz-preview--a4 { aspect-ratio: 595 / 842; }   /* A4 pion (plakat) */
+    .gz-preview-canvas {
+        position:absolute; inset:0; width:100%; height:100%;
+        display:block; background:#fff;
+        box-shadow:inset 0 0 0 1px rgba(15,30,60,.05);
+    }
+    .gz-preview-overlay {
+        position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+        background:linear-gradient(180deg, rgba(15,30,60,0) 60%, rgba(15,30,60,.45) 100%);
+        opacity:0; transition:opacity .15s ease;
+        pointer-events:none;
+    }
+    .gz-newsletter:hover .gz-preview-overlay { opacity:1; }
+    .gz-preview-open {
+        background:rgba(255,255,255,.95); color:#0b1f3a; font-weight:600; font-size:.85rem;
+        padding:.4rem .8rem; border-radius:99px; box-shadow:0 4px 10px rgba(0,0,0,.18);
+    }
+    .gz-card-body { padding:.7rem .85rem; }
+</style>
 <div class="row g-4">
 
     {# ── Nowa gazetka ─────────────────────────── #}
@@ -19,6 +47,13 @@
                         <input type="text" name="title" class="form-control" value="Gazetka szkolna" maxlength="200" required>
                     </div>
                     <div class="mb-2">
+                        <label class="form-label">Format</label>
+                        <select name="format" class="form-select" id="gzNewFormat">
+                            <option value="a5" selected>Gazetka A5 — składana, wielostronicowa</option>
+                            <option value="a4">Plakat / dokument A4 — pojedyncza strona</option>
+                        </select>
+                    </div>
+                    <div class="mb-2" id="gzRowPages">
                         <label class="form-label">Liczba stron</label>
                         <select name="pageCount" class="form-select">
                             <option value="4">4 strony (1 kartka A4)</option>
@@ -30,7 +65,10 @@
                         </select>
                         <small class="form-hint">Każda kartka A4 składana na pół daje 4 strony A5. Liczbę stron można później zmienić.</small>
                     </div>
-                    <div class="mb-2">
+                    <div class="mb-2" id="gzRowA4" style="display:none">
+                        <small class="form-hint">Powstanie <strong>jedna strona A4</strong> (np. plakat). Kolejne strony dodasz w edytorze. Buduj z biblioteki mediów (tło, telefon, QR, logo) i fontu Kalam.</small>
+                    </div>
+                    <div class="mb-2" id="gzRowTpl">
                         <label class="form-label">Szablon pierwszej strony</label>
                         <select name="template" class="form-select">
                             <option value="cover" selected>Okładka</option>
@@ -86,26 +124,35 @@
                 </div>
             </div>
         {% else %}
-            <div class="row row-cards">
+            <div class="row row-cards gz-grid" data-controller="gazetka-index">
                 {% for n in newsletters %}
-                    <div class="col-md-6">
-                        <div class="card card-link-pop">
-                            <div class="card-body">
-                                <div class="d-flex align-items-start justify-content-between">
-                                    <a href="{{ path('app_gazetka_edit', {id: n.id}) }}" class="card-link flex-grow-1">
-                                        <div class="d-flex align-items-center gap-3">
-                                            <span class="avatar avatar-lg rounded bg-primary-lt"><i class="ti ti-news" style="font-size:1.4rem;"></i></span>
-                                            <div>
-                                                <div class="fw-bold">{{ n.title }}</div>
-                                                <div class="text-secondary small">
-                                                    {{ n.pageCount }} stron ·
-                                                    {{ (n.updatedAt ?? n.createdAt)|date('d.m.Y H:i') }}
-                                                </div>
-                                            </div>
+                    {% set pv = previews[n.id]|default({pageW: 420, pageH: 595, background: '#fff', elements: []}) %}
+                    {% set isA4 = pv.pageW == 595 and pv.pageH == 842 %}
+                    <div class="col-sm-6 col-xl-4">
+                        <div class="card gz-newsletter">
+                            <a href="{{ path('app_gazetka_edit', {id: n.id}) }}" class="gz-preview-link" title="Otwórz w edytorze">
+                                <div class="gz-preview {{ isA4 ? 'gz-preview--a4' : 'gz-preview--a5' }}">
+                                    <canvas class="gz-preview-canvas"
+                                            data-preview="{{ pv|json_encode|e('html_attr') }}"></canvas>
+                                    <div class="gz-preview-overlay">
+                                        <span class="gz-preview-open"><i class="ti ti-edit me-1"></i>Otwórz w edytorze</span>
+                                    </div>
+                                </div>
+                            </a>
+                            <div class="card-body gz-card-body">
+                                <div class="d-flex align-items-start justify-content-between gap-2">
+                                    <div class="flex-grow-1 min-w-0">
+                                        <div class="fw-bold text-truncate" title="{{ n.title }}">{{ n.title }}</div>
+                                        <div class="text-secondary small d-flex flex-wrap gap-2">
+                                            <span><i class="ti ti-file me-1"></i>{{ n.pageCount }} {{ n.pageCount == 1 ? 'strona' : (n.pageCount < 5 ? 'strony' : 'stron') }}</span>
+                                            <span class="text-muted">·</span>
+                                            <span title="Format strony">{{ isA4 ? 'A4' : (pv.pageW == 420 and pv.pageH == 595 ? 'A5' : pv.pageW ~ '×' ~ pv.pageH ~ ' pt') }}</span>
+                                            <span class="text-muted">·</span>
+                                            <span title="Ostatnia zmiana"><i class="ti ti-clock me-1"></i>{{ (n.updatedAt ?? n.createdAt)|date('d.m.Y H:i') }}</span>
                                         </div>
-                                    </a>
+                                    </div>
                                     <div class="dropdown">
-                                        <button class="btn btn-sm btn-ghost-secondary px-1" data-bs-toggle="dropdown"><i class="ti ti-dots-vertical"></i></button>
+                                        <button class="btn btn-sm btn-ghost-secondary px-1" data-bs-toggle="dropdown" title="Więcej"><i class="ti ti-dots-vertical"></i></button>
                                         <div class="dropdown-menu dropdown-menu-end">
                                             <a href="{{ path('app_gazetka_edit', {id: n.id}) }}" class="dropdown-item"><i class="ti ti-edit me-2"></i>Edytuj</a>
                                             <form method="post" action="{{ path('app_gazetka_delete', {id: n.id}) }}" onsubmit="return confirm('Usunąć gazetkę „{{ n.title|e('js') }}"?');">
@@ -124,4 +171,22 @@
     </div>
 
 </div>
+
+<script>
+(function () {
+    var fmt = document.getElementById('gzNewFormat');
+    if (!fmt) { return; }
+    var rowPages = document.getElementById('gzRowPages');
+    var rowTpl = document.getElementById('gzRowTpl');
+    var rowA4 = document.getElementById('gzRowA4');
+    function sync() {
+        var a4 = fmt.value === 'a4';
+        if (rowPages) { rowPages.style.display = a4 ? 'none' : ''; }
+        if (rowTpl) { rowTpl.style.display = a4 ? 'none' : ''; }
+        if (rowA4) { rowA4.style.display = a4 ? '' : 'none'; }
+    }
+    fmt.addEventListener('change', sync);
+    sync();
+})();
+</script>
 {% endblock %}
